@@ -16,6 +16,8 @@ lib_libscan.py —— 静态链接库函数 / 密码学常量识别
 memcpy 家族里到底是 memcpy 还是 memmove，光看 rep movs 是分不出来的。
 """
 
+import sys
+
 from lib_x86 import K_CALL
 
 # ---------------------------------------------------------------- 常量表签名
@@ -102,6 +104,9 @@ def scan_const_tables(path: str, ident: dict, max_scan: int = 64 * 1024 * 1024
     from lib_formats import Reader
 
     hits: list[dict] = []
+    # (签名key, 文件偏移) 去重集合。必须放在跨度循环**外面**：下面分块读留了
+    # 64 字节重叠，同一个物理位置的签名会被相邻两块各命中一次。
+    seen: set[tuple] = set()
     try:
         with Reader(path) as rd:
             size = min(rd.size, max_scan)
@@ -119,16 +124,28 @@ def scan_const_tables(path: str, ident: dict, max_scan: int = 64 * 1024 * 1024
                     if not buf:
                         break
                     for sg in CONST_SIGS:
-                        idx = buf.find(sg["sig"])
-                        if idx < 0:
-                            continue
-                        foff = off + idx
-                        hits.append({
-                            "key": sg["key"], "name": sg["name"], "tag": sg["tag"],
-                            "offset": foff,
-                            "vma": vma + (foff - raw_off),
-                            "size": len(sg["sig"]),
-                        })
+                        # 【已修 bug】旧实现是 `idx = buf.find(...)` —— find 只
+                        # 返回**第一次**出现的位置，于是同一个 1MB 块里存在的
+                        # 第二份、第三份常量表永远扫不到（静态链接的大型加密
+                        # 库里同一张表出现多次很常见：不同 .o 各自内联一份）。
+                        # 结果就是明明有 AES S-box，却只报一处，引用它的函数
+                        # 有一部分认不出来。改成取全部命中位置。
+                        sig = sg["sig"]
+                        idx = buf.find(sig)
+                        while idx >= 0:
+                            foff = off + idx
+                            k = (sg["key"], foff)
+                            # 块间重叠区会被读两次，同一位置别记两遍
+                            if k not in seen:
+                                seen.add(k)
+                                hits.append({
+                                    "key": sg["key"], "name": sg["name"],
+                                    "tag": sg["tag"],
+                                    "offset": foff,
+                                    "vma": vma + (foff - raw_off),
+                                    "size": len(sig),
+                                })
+                            idx = buf.find(sig, idx + 1)
                     # 必须保证 off 单调前进：块比重叠还小时 n-overlap 会让 off
                     # 倒退，直接死循环（小数据节上必现）。
                     step = n - overlap
@@ -154,8 +171,17 @@ def _data_spans(ident: dict) -> list[tuple[int, int, int]]:
     try:
         from lib_semantics import _data_spans as _ds
         return _ds(ident)
-    except Exception:
-        return []
+    except Exception as e:
+        # 【已修 bug】旧写法是裸 `except Exception: return []`：
+        # 一旦 lib_semantics 取不到/炸了，这里静默返回「没有数据节」，
+        # 于是常量签名一条也扫不到 -> 所有依赖 characteristic: 的规则
+        # 大面积静默漏报，报告上却写着「样本干净，无命中」。
+        # 异常继续向外抛（本文件 138 行那处已是这个约定），同时留痕，
+        # 避免只剩一句异常不知所踪。
+        sys.stderr.write(
+            "[warn] _data_spans 取数据节失败，常量签名扫描可能不完整："
+            "%s: %s\n" % (type(e).__name__, e))
+        raise
 
 
 # ---------------------------------------------------------------- 指令形态指纹
