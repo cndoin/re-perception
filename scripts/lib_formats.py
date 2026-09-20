@@ -26,6 +26,10 @@ from datetime import datetime, timezone
 READ_CHUNK = 1 << 20            # 1MB，流式扫描块大小
 MAX_PARSE_SIZE = 256 * 1024 * 1024   # 超过此大小不做结构解析（固件/磁盘镜像保护）
 MAX_READ_FOR_ENTROPY = 8 * 1024 * 1024  # 单个节计算熵时最多读 8MB
+MAX_ENTROPY_TOTAL = 64 * 1024 * 1024    # 单次解析里「所有节算熵」合计最多读 64MB
+                                        # （单节上限挡不住放大：ELF 可声明 4096 个节、
+                                        #   Mach-O 可声明 1024×64 个节，逐个读 8MB 就是
+                                        #   几十 GB 的 I/O —— 病态文件能把这个工具挂死）
 
 # ---------------------------------------------------------------- 读文件封装
 
@@ -1068,12 +1072,27 @@ def parse_elf(r: Reader) -> dict:
             if 0 <= e_shstrndx < len(raw_secs):
                 st = raw_secs[e_shstrndx]
                 shstr = r.read(st["offset"], min(st["size"], 1 << 20))
+            ent_budget = MAX_ENTROPY_TOTAL
+            ent_skipped = 0
             for s in raw_secs:
                 nm = _cstr(shstr, s["name_off"]) if shstr else ""
                 ent = 0.0
                 if s["size"] and s["offset"] and s["type"] not in ("NOBITS", "NULL"):
-                    ent = shannon_entropy(r.read(s["offset"], min(s["size"], MAX_READ_FOR_ENTROPY)))
+                    take = min(s["size"], MAX_READ_FOR_ENTROPY)
+                    if ent_budget >= take:
+                        ent_budget -= take
+                        ent = shannon_entropy(r.read(s["offset"], take))
+                    else:
+                        # 预算耗尽就不再读。这里**不能**留 0.0：0.0 会被
+                        # 下游读成"这一节是常量字节"，那是另一个假结论。
+                        # None 才是"没算"，并在 notes 里交代。
+                        ent = None
+                        ent_skipped += 1
                 sections.append({k: v for k, v in s.items() if k != "name_off"} | {"name": nm, "entropy": ent})
+            if ent_skipped:
+                d["notes"].append(
+                    f"节熵合计读取超过 {MAX_ENTROPY_TOTAL // 1048576}MB 预算，"
+                    f"剩余 {ent_skipped} 个节的熵未计算（字段为 null，不是 0）")
 
         # 动态段
         needed, soname, rpath, runpath, flags1 = [], None, None, None, 0
@@ -1188,7 +1207,9 @@ def parse_elf(r: Reader) -> dict:
             "packer_signals": (
                 ["节头表缺失/被抹（常见于加壳）"] if not sections else []
             ) + ([f"节 {s['name']} 熵 {s['entropy']:.2f} 偏高，疑似加密/压缩"
-                  for s in sections if s.get("entropy", 0) >= 7.0 and s.get("size", 0) > 4096]),
+                  # None 表示"预算耗尽没算"，按 0 处理（不加壳信号），
+                  # 但绝不能让 None 进 :.2f 格式化 —— 那会直接抛 TypeError。
+                  for s in sections if (s.get("entropy") or 0) >= 7.0 and s.get("size", 0) > 4096]),
         })
         d["packer_suspected"] = bool(d["packer_signals"])
         return d
@@ -1269,6 +1290,7 @@ def _parse_macho_single(r: Reader, base: int, label: str) -> dict:
     arch, bits = MH_CPU.get(cputype, (f"unknown(0x{cputype:X})", 64 if is64 else 32))
 
     sections, dylibs, rpaths = [], [], []
+    ent_budget = MAX_ENTROPY_TOTAL      # 所有节算熵的合计预算（见常量处说明）
     encrypted, cryptid, uuid, entry, min_os, platform = False, None, None, None, None, None
     signed, chained = False, False
     nsyms, symoff, stroff, strsize = 0, 0, 0, 0
@@ -1305,7 +1327,14 @@ def _parse_macho_single(r: Reader, base: int, label: str) -> dict:
                     _addr, ssize, soff = struct.unpack_from(en + "III", sb, 32)
                 ent = 0.0
                 if soff and ssize and soff < r.size:
-                    ent = shannon_entropy(r.read(soff, min(ssize, MAX_READ_FOR_ENTROPY)))
+                    take = min(ssize, MAX_READ_FOR_ENTROPY)
+                    if ent_budget >= take:
+                        ent_budget -= take
+                        ent = shannon_entropy(r.read(soff, take))
+                    else:
+                        # 同 ELF：预算耗尽时置 None，不能留 0.0
+                        # （0.0 会被读成"这节是常量字节"）。
+                        ent = None
                 sections.append({"seg": sgname, "name": sname, "size": ssize,
                                  "offset": soff, "entropy": ent})
         elif cmd in (0xC, 0xD, 0x1F, 0x20, 0x12):  # 依赖库
