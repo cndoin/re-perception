@@ -4,7 +4,7 @@ description: 全平台逆向工程工具箱——AI 驱动的通用逆向工作�
 license: MIT
 compatibility: 只依赖 Python 3.10+ 标准库，无需 pip install。Windows / Linux / macOS 均可运行；部分实机验证用例需要本机存在 PE/ELF 样本，缺失时自动跳过。
 metadata:
-  version: "1.3.2"
+  version: "1.3.3"
   author: 寇豆码
   category: security
   tags: [reverse-engineering, binary-analysis, disassembly, pe, elf, malware-analysis]

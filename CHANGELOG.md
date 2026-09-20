@@ -3,6 +3,69 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.3.3] — 2026-09-20
+
+**仓库整理与最终检查**：把项目从"文件躺在磁盘上"变成"一个自洽的 git 仓库"。
+
+### 新增
+
+- **git 仓库初始化 + 首次提交**。此前项目不是仓库，导致 README 的
+  clone 说明无法执行、也无法提交/推送/打标签 —— 这是 1.3.2 审计里
+  唯一剩下的高危项。
+- **`.gitattributes`** —— 显式 `eol=lf`。仓库的 `.editorconfig` 要求 LF，
+  而 Windows 上 git 默认 `autocrlf=true` 会把文本转成 CRLF，两者打架会让
+  diff 出现整文件差异。锁死行尾后不会再有这种噪声。
+
+### 清理
+
+- **移除 6 个零引用的历史快照**（约 150 KB）：`_msvc_new` / `_msvc_old` /
+  `_msvc_test` / `_msvc_score` / `_lib_symbols_before_splice` /
+  `_corpus_build2`。这些是 MSVC 引擎开发期的拼接工作流产物，引擎并入
+  `lib_symbols.py` 后已无任何引用。`_dev/README.md` 里保留了归档说明。
+- **移除编译产物**：`scripts/selftest.pyc`（234 KB，本不该进源码目录）、
+  两处 `__pycache__/`。
+- **`.gitignore` 补充分析产物后缀**：`*.re-report.json` / `*.re-cfg.json` /
+  `*.re-funcs.txt` / `*.re-strings.txt`。
+
+### 文档修复（漂移）
+
+本轮又抓到一批文档与代码不一致 —— 都是"代码在长、文档没跟"：
+
+| 位置 | 问题 |
+|---|---|
+| `README.md` 目录结构 | 只列 12 个模块，实际 **17 个**（漏 `lib_agent` / `lib_names` / `lib_obfstr` / `lib_rules` / `lib_x86`） |
+| `SKILL.md` 模块表 | 漏 `lib_symbols`（最复杂的模块）/ `lib_names` / `lib_obfstr` / `lib_agent` / `_quirk` |
+| `scripts/_dev/README.md` | 漏 `_adversarial` / `_deepaudit` / `_fuzz` / `_fuzzlib` / `_ossaudit` 五个脚本 |
+
+### 审计器增强
+
+`_ossaudit.py` 新增**反向检查：生产模块是否被文档覆盖**。
+
+旧版只查"文档引用的文件在不在"（防多余），不查"存在的文件有没有被文档提到"
+（防缺失）—— 而上面那批漏列正是这个盲区。现在两个方向都查。
+新检查**上线即命中**：`_dev/README.md` 还在描述我删掉的文件。
+
+### 验证
+
+| 项目 | 结果 |
+|---|---|
+| 全量自检 | 81/81 |
+| 静态体检 | 生产 0 处 / 脚手架 18 处，退出码 0 |
+| 未定义名 | 0 处 |
+| 开源合规自审 | **0 项**（1.3.2 结束时为 1 项） |
+| `git clone` 后自检 | 62 文件 / 1.16 MB，81/81 通过 |
+
+### 提交历史
+
+按主题拆成 4 个提交（不是一个大 commit），便于 review 与单点 revert：
+
+```
+ea128e8  test: 开发脚手架与自审工具
+fa30046  docs: 开源标配文件与合规文档
+cf235b3  docs: 技能定义与逆向方法论参考
+0da58c3  feat: 逆向工程工具箱核心引擎（零第三方依赖）
+```
+
 ## [1.3.2] — 2026-09-20
 
 **开源准备专项**：把项目从"能跑"推到"能开源"。这一轮的核心不是加功能，

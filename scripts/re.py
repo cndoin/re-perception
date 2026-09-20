@@ -62,7 +62,7 @@ import lib_obfstr as OS          # noqa: E402
 import lib_agent as AG           # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.3.2"
+VERSION = "1.3.3"
 
 
 # ---------------------------------------------------------------- 输出
