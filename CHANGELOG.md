@@ -3,6 +3,108 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.3.8] — 2026-09-20
+
+「每一个工具都要单独验一遍」：再挖 7 处静默缺陷，其中 6 处是**静默丢结果**，
+1 处是把**虚拟地址当成文件偏移**的功能性失效。
+
+这一轮换了做法：不再只靠静态审计，而是造了一版「工具体检矩阵」
+（`scripts/_dev/_matrix.py`），把 **26 个子命令 × 12 种样本格式**实跑一遍，
+逐条检查退出码 / Traceback / JSON 可解析性 / `ok` 键 / null 字段五类契约。
+首份报告里 26 个子命令只覆盖了 14 个 —— 探针把文件路径塞给了 `case`
+这类取值是 `{init,status,...}` 的**动作型**子命令，argparse 判非法选项后
+直接退出，于是这些命令**一次都没真正跑到**，却报了 12 处「工具坏了」。
+这是本版第一个被修的东西，也是本版最值得记的一条：**体检工具自己也会
+说谎，必须用它是否真的覆盖了来判断它可信不可信。** 修完覆盖 26/26。
+
+### 修复
+
+- **P0 · `obfstr` 的 XOR 加密串在 PE 上永远恢复不出来**（`lib_obfstr.py`）
+
+  `xor_loops_to_strings` 第 507 行把 `lp["data_ref"]` 直接喂给
+  `Reader.read()`。而 `data_ref` 来自指令的 `mem_ref`，是**虚拟地址**
+  （`lib_x86.py:849-855`）；`Reader.read` 是**文件偏移**语义
+  （`lib_formats.py:54-61`）。PE 的 image_base 通常是 0x140000000，远超文件
+  长度 → `read()` 越界返回空 → 一条 XOR 串都出不来，而函数照样返回
+  `warnings: []`。新增 `make_vma2off(ident)` 按节表换算后再读。
+
+  顺带修掉两处同源坐标错误：输出里的 `offset` 字段填的其实是 VMA（用户拿
+  它去跳转必然扑空），现在 `offset` 给真实文件偏移、VMA 另给 `vma` 字段；
+  `data_ref` 为 `None`（循环体里是寄存器间接取数）时原本静默 `continue`，
+  现在计数并告警。
+
+  Mach-O 的节表目前**没有输出地址字段**（`lib_formats.py:1338-1339` 只有
+  seg/name/size/offset），无法建映射 —— 这种情况明确报「给不出映射」，
+  不假装成功。
+
+- **P0 · `xref` 的 `unresolved_calls` 是编造的数字**（`lib_code.py`）
+
+  原实现 `sum(1 for f in funcs for i in [0] if any(c is None for c in [None]))`
+  是没写完的占位脚手架 —— `any(c is None for c in [None])` 恒为 True，于是
+  该值恒等于**函数总数**。notepad.exe 上真实输出是 308，一个跟真数字并排
+  放着、看不出是编的值。现在拆成两个如实口径：`unresolved_calls`
+  （`target` 与 `mem_ref` 都为 None，真·无从下手）与 `indirect_calls`
+  （留有 IAT/thunk 线索，下游可还原）。实测 notepad.exe：
+  `unresolved_calls=0`、`indirect_calls=1373`。
+
+  > 这里纠正过一次自己：第一版把所有 `target is None` 的调用都算「未解析」，
+  > 得出 1373 这个吓人的数字。逐条核过发现这 1373 条**全部带 `mem_ref`**，
+  > 是 MSVC 调 API 的标准写法，下游能还原成 API 名。把「可还原」报成
+  > 「没解析出来」是方向相反的另一种编造，所以要拆开。
+
+- **P1 · `_as_vma_int` 把十进制地址当十六进制解析**（`lib_semantics.py:557`）
+
+  两个分支都写成 `int(v, 16)`，十进制串 `"4096"` 被解析成 `16534` 且
+  **不抛异常** —— 静默得到错误的 VMA，后面按这个地址查名全部落空。
+
+- **P1 · `_walk` 撞到遍历预算返回半个函数体**（`lib_code.py`）
+
+  调用方无法区分「走完了」和「没走完」，照单全收 → `insn_count` /
+  `bb_count` / `calls` 全是偏小的假数字，还没有任何提示。现在返回
+  `(body, hit_limit)` 二元组，`analyze()` 会在输出里给出
+  `functions_truncated` 与对应说明。`max_functions` 触顶时原本直接
+  `break` 不留痕（用户会把 `function_count` 读成全文件的函数总数），
+  现在登记 `skipped_seeds` 并给出 `function_seed_truncated`。
+
+- **P1 · `bytes` 叶子承诺了要报，实际静默不命中**（`lib_rules.py`）
+
+  注释写着「但要报出来（不能静默当成不命中）」，实现却只有一个裸
+  `return False`。现在真的往 `errors` 里登记。
+
+- **P1 · 常量签名扫描每个分块只报第一处**（`lib_libscan.py`）
+
+  `buf.find()` 只返回第一次出现的位置，同一 1MB 分块里存在的第二份、
+  第三份常量表永远扫不到。改为取全部命中位置，并按 `(签名, 偏移)` 去重
+  （分块留有 64 字节重叠，同一位置会被相邻两块各命中一次）。
+
+- **P1 · `_data_spans` 裸 `except` 吞异常**（`lib_libscan.py`）
+
+  取数据节失败时静默 `return []`，于是常量签名一条也扫不到 → 所有依赖
+  `characteristic:` 的规则大面积静默漏报，报告上却写着「样本干净」。
+  现在留痕并向上抛出，与本文件另一处的既有约定一致。
+
+### 未改但有结论
+
+- `lib_symbols.py` 三个 `guard()` 的 `depth` 只增不减，名字与实际语义不符。
+  查证后确认三个解析器类都是**每个符号新建实例**（`_Ita(body)` /
+  `_Msvc(s)` / `_RV0(body)`），不存在跨符号累积；且每次 `guard()` 调用都
+  对应一次递归进入，累计次数 ≥ 当前深度，照样挡得住无限递归。因此判定为
+  **非用户可见缺陷**，只订正了文档，不改行为（避免后来者按错误前提再加
+  一层守卫，反而引进真 bug）。
+
+### 新增
+
+- 回归用例 **92 → 97**，新增 5 个（每一项都做了反向验证：撤回复修必须变红）：
+  `unresolved_calls` 不是函数数、VMA→文件偏移换算、`_as_vma_int` 十进制
+  分支、`bytes` 叶子必须报错、函数截断与丢弃种子留痕。
+- `scripts/_dev/_matrix.py`：工具体检矩阵（26 子命令 × 12 格式）。
+- `scripts/_dev/_probe138.py`：修复前后行为对比探针。
+
+### 门禁
+
+lint 生产 0 处违规 ／ 未定义名 0 处 ／ 自检 97/97 ／ e2e 36/36 ／
+体检矩阵 26/26 覆盖且硬性故障 0 处。
+
 ## [1.3.7] — 2026-09-20
 
 开源前全量复查：再挖出 2 个 P0「假成功」+ 5 个静默降级。
