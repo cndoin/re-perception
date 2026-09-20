@@ -3945,6 +3945,310 @@ def t_names_go_pclntab_scan_truncated_reports():
         return False, "完整扫过的小文件不该产生噪声告警：%r" % (warns2,)
     return True, "扫描窗口截断时给出告警（%d 条），完整扫描时不噪声" % len(warns)
 
+def t_xrefs_unresolved_calls_counted():
+    """
+    build_xrefs 的 unresolved_calls 必须是「真·解析不出目标的调用」条数。
+
+    原缺陷（P0，编造数字）：旧写法是
+        sum(1 for f in funcs for i in [0] if any(c is None for c in [None]))
+    —— `any(c is None for c in [None])` 是个没写完的占位脚手架，对每个 f 恒
+    为 True，于是该值恒等于 len(funcs)。用户拿到的「未解析调用数」其实是
+    「函数总数」，而且在 xref 表里跟真数字并排放着，看不出哪个是编的：不崩、
+    不报错，只是交出一张错表。
+
+    样本为什么这样造（关键）：必须让**真值严格小于** function_count，
+    否则旧实现那种「恒等于函数数」的编造值还能蒙混过关。
+      · 函数 A：一条目标已知的 call rel32 + 一条目标未知的 call rax
+      · 函数 B：只有 ret，一条 call 都没有
+    → 真实 unresolved_calls = 1 < function_count = 2。
+    """
+    import lib_code as LC
+
+    code = (b"\xe8\x08\x00\x00\x00"      # call +0x8 -> 0x100d（目标已知）
+            b"\xff\xd0"                  # call rax（间接调用，目标未知）
+            b"\xc3"                      # ret
+            + b"\xcc" * 5                # int3 对齐填充（不该被当成函数）
+            + b"\xc3")                   # 第二个函数：只有一条 ret
+    idx = LC.CodeIndex(code, base_vma=0x1000, bits=64, arch="x86-64",
+                       max_insns=64)
+    funcs = LC.find_functions(idx, seeds=[0x1000, 0x100d], symbols={})
+    if len(funcs) != 2:
+        return False, ("样本没构造出预期的 2 个函数，实际 %d 个：%r"
+                       % (len(funcs), [f["name"] for f in funcs]))
+
+    # 先把「样本里两种 call 确实都有」钉住，免得这条用例自己退化成空跑
+    indirect = sum(1 for f in funcs for o in (f.get("_offs") or [])
+                   for ins in [idx.insn.get(o)]
+                   if ins is not None and ins.kind == LC.K_CALL
+                   and ins.target is None)
+    direct = sum(len(f["calls"]) for f in funcs)
+    if indirect != 1:
+        return False, "样本里应恰好有 1 条目标未知的间接调用，实际 %d 条" % indirect
+    if direct != 1:
+        return False, "样本里应恰好有 1 条目标已知的直接调用，实际 %d 条" % direct
+
+    xr = LC.build_xrefs(idx, funcs)
+    got = xr["unresolved_calls"]
+    n = len(funcs)
+    if got >= n:
+        return False, ("unresolved_calls=%d 不小于 function_count=%d —— 这个值"
+                       "退化回了「恒等于函数数」的编造口径" % (got, n))
+    if got != 1:
+        return False, "unresolved_calls 应为 1（只有 1 条 call rax），实际 %d" % got
+    return True, ("unresolved_calls=%d < function_count=%d（直接调用 %d 条已解析，"
+                  "间接调用 1 条如实记为未解析）" % (got, n, direct))
+
+def t_obfstr_vma2off_translates_vma():
+    """
+    make_vma2off：解密循环的密文地址是 VMA，必须先换算成文件偏移才能读。
+
+    原缺陷（P0）：xor_loops_to_strings 把指令里读到的**虚拟地址**直接当
+    **文件偏移**喂给 Reader.read()。PE 的 image_base 通常是 0x140000000，
+    远超任何文件长度 -> read() 越界返回空 -> 一条明文都恢复不出来，而
+    warnings 是空的 —— 标准的「失败被上报为成功」。
+
+    这条用例钉三层：
+      1) 单元：PE 的 virtual_address 是 RVA，要加 image_base 才是 VMA；
+         节内偏移要跟着走，节外必须坦白返回 None；
+      2) 端到端（最关键）：同一份密文，给了 vma2off 必须恢复出明文，
+         不给必须恢复不出来 —— 后者正是旧实现的表现；
+      3) 诚实度：Mach-O 节表目前**没有地址字段**（lib_formats.py:1338-1339
+         只输出 seg/name/size/offset），此时必须返回 (None, 非空 warnings)，
+         不许假装能算出一个映射。
+    """
+    import lib_obfstr as OS
+    import lib_formats as LF
+
+    ident = {"format": "PE", "detail": {
+        "image_base": 0x140000000,
+        "sections": [{"virtual_address": 0x1000, "raw_offset": 0x400,
+                      "raw_size": 0x200, "virtual_size": 0x100}]}}
+    fn, warns = OS.make_vma2off(ident)
+    if warns:
+        return False, "节信息完整的 PE 却给了告警：%r" % (warns,)
+    if fn is None:
+        return False, "节信息完整的 PE 却返回 None（密文会全部读不出来）"
+
+    # PE 的 virtual_address 是 RVA：0x140000000 + 0x1000 -> 文件偏移 0x400
+    got_map = fn(0x140001000)
+    if got_map != 0x400:
+        return False, ("VMA 0x140001000 应映射到文件偏移 0x400，实际 %r"
+                       "（RVA 有没有加 image_base？）" % (got_map,))
+    if fn(0x140001010) != 0x410:
+        return False, "节内 +0x10 后文件偏移没跟着走：%r" % (fn(0x140001010),)
+    if fn(0x140002000) is not None:
+        return False, "节外地址不该给出映射（应返回 None）：%r" % (fn(0x140002000),)
+
+    # ---- 端到端：同一份密文，给不给映射函数必须是两种结果 ----
+    key = 0x4A
+    plain = "http://cdn.example.com/update.bin"
+    cipher = bytes(b ^ key for b in plain.encode("ascii")) + b"\xff"
+    buf = bytearray(b"\xff" * 0x600)
+    buf[0x400:0x400 + len(cipher)] = cipher
+    p = w("xordata_vma2off.bin", bytes(buf))
+    loop = {"key": key, "data_ref": 0x140001000,
+            "loop_start_vma": 0x140001100, "evidence": "合成解密循环"}
+    with LF.Reader(str(p)) as r:
+        with_map = OS.xor_loops_to_strings(r, [loop], vma2off=fn)
+        no_map = OS.xor_loops_to_strings(r, [loop])
+    hit = [s["string"] for s in with_map["strings"]]
+    if plain not in hit:
+        return False, ("给了 vma2off 仍没恢复出明文：strings=%r warnings=%r"
+                       % (hit[:3], with_map["warnings"]))
+    miss = [s["string"] for s in no_map["strings"]]
+    if miss:
+        return False, ("不传 vma2off 时 VMA 0x140001000 必然超出文件长度，"
+                       "不该读出任何明文，实际得到 %r" % (miss[:2],))
+
+    # ---- Mach-O：给不出映射必须诚实报错，不许假装成功 ----
+    mach = {"format": "Mach-O", "detail": {"sections": [
+        {"name": "__text", "size": 16, "offset": 0x1000}]}}
+    mfn, mw = OS.make_vma2off(mach)
+    if mfn is not None:
+        return False, "Mach-O 节表没有地址字段，却返回了一个换算函数（会算出假偏移）"
+    if not mw:
+        return False, "给不出映射却没留下 warnings —— 调用方会以为换算成功了"
+    return True, ("PE: 0x140001000->0x400 / 0x140001010->0x410 / 节外 None；"
+                  "端到端给了映射才出明文、不给就是空；Mach-O 报 %d 条告警"
+                  % len(mw))
+
+def t_semantics_as_vma_int_decimal():
+    """
+    _as_vma_int 的十进制分支必须真的按十进制解析。
+
+    原缺陷（P0）：旧写法两个分支都是十六进制
+        int(v, 16) if v.lower().startswith("0x") else int(v, 16)
+    于是十进制串地址 "4096" 被解析成 0x4096 = 16534，而且**不抛异常** ——
+    静默得到一个差了几倍的错误 VMA。后面拿它去查符号、查函数名、查调用关系
+    全部查空，表现为「这个函数没名字」「这条调用没目标」，没人会怀疑到
+    地址解析这一步。
+
+    失败方向也钉住：非法入参必须返回 None，不能返回 0 —— 0 是一个合法 VMA，
+    把解析失败冒充成 0 号地址同样是静默造假。
+    """
+    import lib_semantics as LS
+
+    cases = [("4096", 4096),        # 十六进制旧 bug 下会变成 16534
+             ("0x1000", 0x1000),
+             ("0X1000", 0x1000),
+             ("zz", None),
+             (None, None)]
+    problems = []
+    for arg, want in cases:
+        got = LS._as_vma_int(arg)
+        if got != want:
+            problems.append("_as_vma_int(%r) = %r，期望 %r" % (arg, got, want))
+    if problems:
+        return False, "；".join(problems)
+    return True, "十进制 4096 不再被当成十六进制；0x1000 正常；非法串/None 返回 None"
+
+def t_rules_bytes_leaf_reported():
+    """
+    规则里用了 bytes 叶子时，必须报「无法求值」，不能静默当成不命中。
+
+    原缺陷（P0）：lib_rules._leaf_hit 的 `kind == "bytes"` 分支只有一个裸
+    `return False`，而它头顶那行注释写着「但要报出来（不能静默当成不命中）」
+    —— 注释里的承诺没兑现。后果是：规则整条不命中，match_rules 返回的
+    errors 里一个字都没有，用户读到的是「样本干净」，真相是「这条规则压根
+    没有能力判」。
+
+    为什么这里走完整的 match_rules 而不是去调内部闭包：errors 是 match_rules
+    收集并返回给调用方的出口，`_leaf_hit` 只是它内部的局部闭包 —— 绕过
+    match_rules 就等于自己重新实现一遍「错误怎么汇总」的约定，测到的东西跟
+    用户实际看到的不是一回事。而这条路径只需一条 file 作用域规则加最小
+    feats 就能走到叶子求值（成本远低于构造真实样本跑 build_features），
+    所以走全链路。
+    """
+    import lib_rules as LR
+
+    def _mk(name, features):
+        return LR.Rule({"rule": {"meta": {"name": name, "scope": "file"},
+                                 "features": features}})
+
+    feats = {"instruction": [], "basic block": [], "function": [], "file": []}
+
+    bad = _mk("带字节序列的规则",
+              {"or": [{"bytes": "E8 ?? 00 00"}, {"mnemonic": "nop"}]})
+    res = LR.match_rules([bad], feats)
+    if res.get("hits"):
+        return False, "bytes 叶子在无文件句柄时不可能命中，却命中了：%r" % (
+            [h["rule"] for h in res["hits"]],)
+    errs = res.get("errors") or []
+    if not errs:
+        return False, ("bytes 叶子无法求值，errors 却为空 —— 用户会读成"
+                       "「样本干净」，而真相是这条规则没能力判")
+    if not any("无法求值" in str(e) for e in errs):
+        return False, "errors 里没有「无法求值」的说明：%r" % (errs[:2],)
+    if not any("带字节序列的规则" in str(e) for e in errs):
+        return False, "errors 没指名是哪条规则失效，排障只能靠猜：%r" % (errs[:2],)
+
+    # 反向守卫：不含 bytes 的普通规则不得产生这条告警，
+    # 否则守卫会退化成「每条规则都报错」的噪音。
+    good = _mk("普通规则", {"or": [{"mnemonic": "nop"}]})
+    errs2 = (LR.match_rules([good], feats).get("errors") or [])
+    if any("无法求值" in str(e) for e in errs2):
+        return False, "不含 bytes 的规则也报了「无法求值」：%r" % (errs2[:2],)
+    return True, ("bytes 叶子登记了含「无法求值」的错误（%d 条），普通规则不产生该告警"
+                  % len(errs))
+
+def t_code_truncation_reported():
+    """
+    find_functions / _walk 撞到预算时必须留痕，不许交出偏小却看似完整的数字。
+
+    原缺陷（两个，同一类——隐性丢数据）：
+      · _walk 撞到遍历预算时 `return body` 返回的是**半个函数体**，返回值里
+        没有任何标记，调用方无法区分「走完了」和「没走完」，照单全收 ->
+        insn_count / bb_count / calls 全是偏小的假数字；
+      · max_functions 到了直接 `break`，被丢掉的种子一个都不登记，外面只看
+        到 N 个函数，报告里的 function_count 会被读成「全文件就这么多函数」。
+
+    修复约定：_walk 返回 (body, hit_limit)；find_functions 把 skipped_seeds /
+    truncated_functions 写进传入的 stats；analyze() 把它们翻译成
+    function_seed_truncated / functions_truncated 及对应的 note。本用例从最内
+    层到最外层把这条链路钉住。
+    """
+    import lib_code as LC
+
+    problems = []
+
+    # ---- 1) 丢种子必须登记（max_functions=1，种子多于 1 个）----
+    # ret / int3 / ret / int3 / ret：三个互不相干的函数，int3 是对齐填充
+    idx = LC.CodeIndex(b"\xc3\xcc\xc3\xcc\xc3", base_vma=0x1000, bits=64,
+                       arch="x86-64", max_insns=64)
+    stats: dict = {}
+    kept = LC.find_functions(idx, seeds=[0x1000, 0x1002, 0x1004],
+                             symbols={}, max_functions=1, stats=stats)
+    if len(kept) != 1:
+        problems.append("max_functions=1 时应只保留 1 个函数，实际 %d 个" % len(kept))
+    if not stats.get("skipped_seeds"):
+        problems.append("丢弃了候选入口但 skipped_seeds=%r（调用方无从知道 "
+                        "function_count 不是全文件的函数总数）"
+                        % (stats.get("skipped_seeds"),))
+
+    # ---- 2) analyze() 必须把丢种子这件事翻译成输出字段 ----
+    # analyze 的 max_functions 用默认值 20000，这里给 20001 个互不相同的种子，
+    # 最后一个必然被丢掉 —— 这是不用任何替身就能真正走到该分支的最省办法。
+    big = b"\xc3" * 20001
+    bidx = LC.CodeIndex(big, base_vma=0x2000, bits=64, arch="x86-64",
+                        max_insns=len(big) + 8)
+    seeds = [0x2000 + i for i in range(len(big))]
+    an = LC.analyze(bidx, seeds=seeds)
+    if not an.get("function_seed_truncated"):
+        problems.append("analyze() 输出里没有 function_seed_truncated："
+                        "function_count=%r 会被读成全文件的函数总数"
+                        % (an.get("function_count"),))
+    if not an.get("function_seed_note"):
+        problems.append("有 function_seed_truncated 却没有 function_seed_note，"
+                        "用户只看到标记看不到原因")
+
+    # ---- 3) _walk 单独测：撞预算时第二返回值必须是 True ----
+    # 为什么要「先填满解码缓存、再调小 max_insns」：_walk 的
+    # limit = idx.max_insns * 2，而 decode_at 在已解码条数达到 max_insns 后会
+    # 返回 None 让 _walk 提前 break —— 直接用小预算的 idx，guard 最多只能涨到
+    # max_insns，永远追不上 2 倍的上限，截断分支就永远执行不到。所以这里先用
+    # 大预算把 101 条指令全部解码进缓存，再把 max_insns 调到 20（limit=40），
+    # 同一条解码路径就能连续走 41 步，真正触发该分支。
+    nop = b"\x90" * 100 + b"\xc3"
+    widx = LC.CodeIndex(nop, base_vma=0x3000, bits=64, arch="x86-64",
+                        max_insns=100000)
+    widx.linear_scan()
+    cached = len(widx.insn)
+    widx.max_insns = 20
+    body, hit_limit = LC._walk(widx, 0, set(), {})
+    if not isinstance(hit_limit, bool):
+        problems.append("_walk 的第二返回值不是 bool：%r（约定是「是否截断」）"
+                        % (hit_limit,))
+    elif not hit_limit:
+        problems.append("_walk 撞到遍历预算却返回 hit_limit=False"
+                        "（body=%d 条 / 缓存=%d 条）" % (len(body), cached))
+
+    # 反向守卫：预算充足时不得谎报截断，否则标记会退化成恒真噪音
+    oidx = LC.CodeIndex(nop, base_vma=0x3000, bits=64, arch="x86-64",
+                        max_insns=100000)
+    oidx.linear_scan()
+    _b2, h2 = LC._walk(oidx, 0, set(), {})
+    if h2:
+        problems.append("预算充足时 _walk 也报了截断")
+
+    # ---- 4) 外层：函数体只走了一半时，analyze 也要标注 ----
+    tidx = LC.CodeIndex(nop, base_vma=0x4000, bits=64, arch="x86-64",
+                        max_insns=100000)
+    tidx.linear_scan()
+    tidx.max_insns = 20
+    tan = LC.analyze(tidx, seeds=[0x4000])
+    if not tan.get("functions_truncated"):
+        problems.append("函数体被截断但输出里没有 functions_truncated")
+    elif not tan.get("functions_truncated_note"):
+        problems.append("有 functions_truncated 却没有 functions_truncated_note，"
+                        "用户不知道 insn_count 是偏小的")
+
+    if problems:
+        return False, "；".join(problems)
+    return True, ("skipped_seeds=%s；analyze 输出 function_seed_truncated 与 "
+                  "functions_truncated；_walk 截断返回 True、不截断返回 False"
+                  % stats.get("skipped_seeds"))
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -4049,6 +4353,11 @@ def main():
         ("能力识别：无函数索引必须告警", t_capability_warns_without_function_index),
         ("熵：采样分支真的采样", t_entropy_sampled_really_samples),
         ("符号：pclntab 截断不伪装成非 Go", t_names_go_pclntab_scan_truncated_reports),
+        ("交叉引用：unresolved_calls 不是函数数", t_xrefs_unresolved_calls_counted),
+        ("混淆串：VMA 到文件偏移换算", t_obfstr_vma2off_translates_vma),
+        ("语义：_as_vma_int 十进制分支", t_semantics_as_vma_int_decimal),
+        ("能力规则：bytes 叶子必须报错", t_rules_bytes_leaf_reported),
+        ("函数识别：截断与丢弃种子留痕", t_code_truncation_reported),
     ]
 
     t0 = time.time()
