@@ -235,6 +235,9 @@ burden and drift away from the primary file.
 - [ ] Tag created and release notes written (section 4)
 - [ ] Actions green on all three platforms after the push (section 5)
 - [ ] Working tree clean, no stray files (`git status`)
+- [ ] `OWNER/REPO` placeholders in `.github/ISSUE_TEMPLATE/config.yml` replaced
+      with the real account/repo name — otherwise two contact links 404, and
+      nobody notices until someone clicks them
 
 ---
 

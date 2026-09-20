@@ -221,6 +221,8 @@ git push origin v1.3.8
 - [ ] 已打 tag 并写 Release Notes（见第 4 节）
 - [ ] 推送后 Actions 三平台全绿（见第 5 节）
 - [ ] 工作区无未提交改动、无临时文件（`git status` 干净）
+- [ ] `.github/ISSUE_TEMPLATE/config.yml` 里的 `OWNER/REPO` 已换成真实账号/仓库名
+      —— 不改就是两个 404 链接，且只有人点进去才发现
 
 ---
 

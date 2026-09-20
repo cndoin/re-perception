@@ -145,6 +145,19 @@ for doc in DOCS:
                     "%s 写的是 %d，源码里只有 %d 条（%r）"
                     % (label, got, E2E_SRC_N, m.group(0)))
 
+# 发布占位符：OWNER/REPO 这类没换的占位符，推上去就是死链。
+# 它不属于"文档数字漂移"，但同样属于「看着能用其实不能用」，故单独查。
+_cfg = ".github/ISSUE_TEMPLATE/config.yml"
+if os.path.isfile(os.path.join(ROOT, _cfg)):
+    _t = read(_cfg)
+    # 注释行里的示例不算 —— 只看真的出现在 url: 后面的
+    for m in re.finditer(r"^\s*url:\s*\S*", _t, re.M):
+        if "OWNER" in m.group(0) or "REPO" in m.group(0):
+            ln = _t[:m.start()].count("\n") + 1
+            rep("发布占位符未替换", "中", "%s:%d" % (_cfg, ln),
+                "URL 里还有 OWNER/REPO 占位符，发布后会 404：%s"
+                % m.group(0).strip()[:90])
+
 # 命令数表格行数（README "命令一览"）
 # 从标题扫到下一个同级标题为止 —— 不假设"标题后紧跟空行+表格"这种脆弱排版。
 _cm = re.search(r"^## 命令一览\s*$", read("README.md"), re.M)

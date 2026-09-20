@@ -1,3 +1,5 @@
+# ⚠️ 发布前必改：把下面两处 OWNER/REPO 换成真实的 GitHub 账号/仓库名，
+#    否则这两个链接在仓库里就是 404。PUBLISHING.md 的发布检查单里有这一项。
 blank_issues_enabled: false
 contact_links:
   - name: 安全漏洞
