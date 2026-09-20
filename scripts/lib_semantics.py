@@ -554,7 +554,11 @@ def _as_vma_int(v) -> int | None:
         return v
     if isinstance(v, str) and v:
         try:
-            return int(v, 16) if v.lower().startswith("0x") else int(v, 16)
+            # 【已修 bug】旧写法两个分支都是 int(v, 16)：十进制串地址
+            # （如 "4198400"）会被当成十六进制解析，且不抛异常 —— 静默得到
+            # 一个差了几倍的**错误 VMA**，后面按这个地址查名全部查空。
+            return (int(v, 16) if v.lower().startswith("0x")
+                    else int(v, 10))
         except ValueError:
             return None
     return None

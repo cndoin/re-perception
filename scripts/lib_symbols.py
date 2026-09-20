@@ -40,6 +40,15 @@ lib_symbols.py —— 符号名 demangle（零第三方依赖）
 
 from __future__ import annotations
 
+# 【命名订正】这个值的真实含义是「单次 demangle 里 guard() 的**累计调用
+# 次数**」，不是嵌套深度 —— guard() 每次进入递归记一次、出来不减。
+# 因为每次 guard() 调用都对应一次递归进入，所以累计次数 >= 当前深度，
+# 用它照样能把无限递归挡住（实测三个解析器类都是**每个符号新建实例**：
+# _Ita(body) / _Msvc(s) / _RV0(body)，depth 每次从 0 起，不存在跨符号累积。
+# 见下方三个 guard() 的注释。）
+# 副作用：一个**很宽**的名字（模板嵌套深、参数多）总节点数超过 200 也会被
+# 判 _Fail。这是刻意的复杂度兜底，不是漏洞 —— 超出范围时返回原始名，不会
+# 给出错误的解析结果。
 _MAX_DEPTH = 200
 _MAX_LEN = 8192
 
@@ -225,6 +234,11 @@ class _Ita:
         return r
 
     def guard(self):
+        """进入一层解析时调用，累计计数并在超限时中止。
+
+        注意：这里是**累计计数**，出来不减 —— 详见 _MAX_DEPTH 处的说明。
+        别照着"深度"的名字去给它加 try/finally 递减：那样会让预算限制失效。
+        """
         self.depth += 1
         if self.depth > _MAX_DEPTH:
             raise _Fail
@@ -1686,6 +1700,11 @@ class _Msvc:
         return self.i >= len(self.s)
 
     def guard(self):
+        """进入一层解析时调用，累计计数并在超限时中止。
+
+        注意：这里是**累计计数**，出来不减 —— 详见 _MAX_DEPTH 处的说明。
+        别照着"深度"的名字去给它加 try/finally 递减：那样会让预算限制失效。
+        """
         self.depth += 1
         if self.depth > _MAX_DEPTH:
             raise _Fail
@@ -2835,6 +2854,11 @@ class _RV0:
         return self.s[self.i:]
 
     def guard(self):
+        """进入一层解析时调用，累计计数并在超限时中止。
+
+        注意：这里是**累计计数**，出来不减 —— 详见 _MAX_DEPTH 处的说明。
+        别照着"深度"的名字去给它加 try/finally 递减：那样会让预算限制失效。
+        """
         self.depth += 1
         if self.depth > _MAX_DEPTH:
             raise _Fail

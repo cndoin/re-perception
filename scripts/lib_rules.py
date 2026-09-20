@@ -1143,13 +1143,21 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
         if kind == "format":
             return str(one).lower() in (ff.get("format") or set())
         if kind == "bytes":
-            # 字节序列特征需要原始数据，本引擎在无文件句柄时跳过，
-            # 但要报出来（不能静默当成不命中）
+            # 字节序列特征需要原始数据，本引擎在无文件句柄时确实判不了。
+            # 【已修 bug】注释写的是「但要报出来（不能静默当成不命中）」，
+            # 旧实现却只有裸 `return False`：规则整条不命中，errors 里一个
+            # 字都没有，用户看到的是「样本干净」，真相是「这条规则没能力
+            # 判」。现在真的登记出去。
+            errors.append(
+                "%s: 使用了 bytes 字节序列特征，本规则引擎无文件句柄，"
+                "该叶子判据无法求值（不是不命中，是没判）" % (_cur_rule[0] or "?"))
             return False
         return False
 
     # 自顶向下跑：file 作用域只跑一次；其余按函数跑
+    _cur_rule = [None]   # 供叶子判据登记「是哪条规则」的轻量上下文
     for r in rules:
+        _cur_rule[0] = getattr(r, "name", None)
         try:
             if r.scope == "file":
                 if eval_rule(r, None):
