@@ -1,0 +1,152 @@
+# 加解密与数据操作能力规则
+
+rule:
+  meta:
+    name: 使用 AES
+    namespace: data-manipulation/encryption/aes
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Encryption of Data [T1027]
+    description: 通过 CryptoAPI 或内嵌 S-box 实现 AES 加解密，勒索软件与 C2 通信常见
+  features:
+    - or:
+      - and:
+        - or:
+          - api: advapi32.CryptEncrypt
+          - api: advapi32.CryptDecrypt
+        - or:
+          - number: 0x660E
+          - number: 0x6610
+          - number: 0x6801
+      - api: bcrypt.BCryptEncrypt
+      - api: bcrypt.BCryptDecrypt
+      - characteristic: aes_sbox
+
+---
+
+rule:
+  meta:
+    name: 使用 RC4
+    namespace: data-manipulation/encryption/rc4
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Encryption of Data [T1027]
+    description: RC4 的 KSA/PRGA 特征是 256 字节置换 + 模加交换，恶意软件常用于配置与 C2 加密
+  features:
+    # 【误报教训 · 必读】RC4 的第二条分支最初写成
+    #     number: 256 + mnemonic: xor + mnemonic: add
+    # 结果在 notepad.exe 上命中 3 个函数，反汇编核实全是误报：
+    #   sub_1400054a4 是 FormatMessageW 的参数准备（mov r8d,0x200 是**缓冲区长度**、
+    #   lea rsi 加载格式串、xor edx,edx 清零一个入参）；
+    #   sub_14000b91c / sub_14000bb98 是 LocalFree / CoTaskMemFree 包装。
+    # 根因是**粒度错了**，不是阈值松：mnemonic 特征是在「函数」粒度上按集合取交的，
+    # 而任何一个 MSVC 函数（动辄几十条指令）都必然同时含 xor / mov / lea / add，
+    # 也总能碰到某个 256 附近的立即数。在函数粒度上用公用助记符做合取，
+    # 等价于没有约束 —— 这类分支不管怎么调都不可能变准。
+    #
+    # 因此这里**删掉**该分支，只保留真正有判别力的写法：
+    #   · 显式算法标识（ALG_ID 0x6801 = CALG_RC4）搭配 CryptEncrypt/CryptDecrypt；
+    #   · 常量签名命中（RC4 的 KSA 是 256 字节递增初始化序列，见 lib_libscan 的
+    #     常量表匹配），这条由 re.py 的 libscan 通道单独给出，不在这里用助记符猜。
+    # 原则：宁可这条规则少报，也不产出"在任何正常程序上都命中"的假信号。
+    - or:
+      - and:
+        - or:
+          - api: advapi32.CryptEncrypt
+          - api: advapi32.CryptDecrypt
+        - number: 0x6801
+      # 常量签名：RC4 KSA 初始化序列（0x00..0xFF）在数据区被识别出来时，
+      # 由特征提取阶段打上该标记。
+      - characteristic: rc4_ksa
+      - api: crypt32.CryptBinaryToString
+
+---
+
+rule:
+  meta:
+    name: 密钥或配置解密例程
+    namespace: anti-analysis/obfuscation/string-decrypt
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+    description: 典型的"立即数装载 + XOR 循环"字符串解密例程，常用于隐藏 API 名与 C2 地址
+  features:
+    # 【误报教训 · 必读】这条规则最初写成 `xor + (loop 或 jnz)`，实测在
+    # notepad.exe 上命中了 **83 个函数（308 个里的 27%）** —— 完全不是检测规则，
+    # 是噪声源。反汇编核实后确认：那只是"循环里清零/异或一个寄存器"，
+    # 编译产物里最普遍的形态，和字符串解密毫无关系。
+    # 教训：**在函数粒度上，"含某个助记符"几乎等于没有约束** ——
+    # 一个几十条指令的函数必然含 xor / mov / call / loop。
+    #
+    # 修正：改用语义层已经算好的**异或密度**（features.xor_dense，
+    # 即 xor 指令占比 > 12%）。字符串加解密例程的判别式是"异或指令高度密集"，
+    # 而不是"存在异或"。实测该指标把 308 个函数收敛到 20 个，
+    # 再叠加"枚举加密密钥"（imul/rol/shl 在循环里处理 32 位字）才具判别力。
+    - and:
+      - characteristic: nzxor
+      # 【已修 bug】只用 xor_dense（占比 > 12%）不够：短函数里 5 条 xor / 30 条指令
+      # 就能过线，实测 notepad.exe 的 sub_140001f98（GetSystemTimeAsFileTime 计时函数，
+      # 连循环都没有）就这样被误判成解密例程。
+      # 占比在**小样本**上极不稳定，必须同时卡一个绝对条数下限。
+      # 真实的字符串解密循环会有较多异或（一次处理一个字节/字），这里要求
+      # 异或条数 ≥ 8 且本身构成循环，才认为是"密集异或循环"。
+      - characteristic: loop
+      - optional:
+        - mnemonic: jnz
+        - mnemonic: jne
+      # 真正区分"解密例程"与"随便一个异或循环"的附加特征：
+      # 常数密钥枚举通常伴随移位/乘法（DK/滚动密钥），或处理 0xFF/4 字节字长
+      - or:
+        - mnemonic: imul
+        - mnemonic: rol
+        - mnemonic: ror
+        - mnemonic: shl
+        - mnemonic: shr
+      - optional:
+        - number: 0xFF
+      - optional:
+        - number: 4
+
+---
+
+rule:
+  meta:
+    name: 哈希计算
+    namespace: data-manipulation/hashing
+    scope: function
+    authors:
+      - 寇豆码
+    description: 计算 MD5/SHA/CRC 等摘要，常见于样本自校验、互斥体名与文件指纹
+  features:
+    - or:
+      - api: advapi32.CryptCreateHash
+      - api: bcrypt.BCryptCreateHash
+      - api: bcrypt.BCryptHashData
+      - api: ntdll.RtlComputeCrc32
+      - characteristic: sha256_init
+      - characteristic: md5_sha1_init
+      - characteristic: crc32_table
+
+---
+
+rule:
+  meta:
+    name: Base64 编解码
+    namespace: data-manipulation/encoding/base64
+    scope: file
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Deobfuscate or Decode Files or Information [T1140]
+    description: 出现 Base64 字母表，常用于配置外联载荷与隐藏字符串
+  features:
+    - or:
+      - characteristic: base64
+      - string: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
+      - api: crypt32.CryptBinaryToString

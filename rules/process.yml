@@ -1,0 +1,113 @@
+# 进程与线程操作 —— capa 风格能力规则
+#
+# 规则格式参考 mandiant/capa（Apache-2.0）的 YAML 结构，但只使用本项目
+# 支持的特征子集。写规则时注意：
+#   * scope: function 时特征在**函数**内匹配；file 时在**整个文件**内匹配
+#   * `optional:` 不改变真值，只用于表达「命中则置信度更高」
+#   * `match:` 可引用其它规则的 name，实现规则复用
+#
+# 详细格式说明见 references/rules.md
+
+rule:
+  meta:
+    name: 创建进程
+    namespace: host-interaction/process/create
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Execution::Command and Scripting Interpreter [T1059]
+      - Execution::Windows Management Instrumentation [T1047]
+    description: 通过 Win32/WMI/Shell 接口创建新进程，常见于下载器、加载器与横向移动
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessa
+  features:
+    - or:
+      - api: kernel32.CreateProcess
+      - api: kernel32.CreateProcessA
+      - api: kernel32.CreateProcessW
+      - api: kernel32.CreateProcessAsUser
+      - api: kernel32.CreateProcessWithToken
+      - api: kernel32.WinExec
+      - api: shell32.ShellExecute
+      - api: shell32.ShellExecuteEx
+      - api: wmi.Win32_Process
+      - api: advapi32.CreateProcessWithLogonW
+
+---
+
+rule:
+  meta:
+    name: 创建远程线程（注入）
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Process Injection [T1055]
+      - Privilege Escalation::Process Injection [T1055]
+    description: 在另一进程内分配内存并写入代码后创建线程执行，经典的进程注入三件套
+  features:
+    - or:
+      - and:
+        - api: kernel32.VirtualAllocEx
+        - api: kernel32.WriteProcessMemory
+        - api: kernel32.CreateRemoteThread
+      - and:
+        - api: kernel32.OpenProcess
+        - api: ntdll.NtCreateThreadEx
+        - api: kernel32.WriteProcessMemory
+      - api: kernel32.QueueUserAPC
+      - api: ntdll.NtQueueApcThread
+      - api: kernel32.SetThreadContext
+
+---
+
+rule:
+  meta:
+    name: 进程镂空（Process Hollowing）
+    namespace: host-interaction/process/inject/hollowing
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Process Injection::Process Hollowing [T1055.012]
+    description: 挂起目标进程、解除映射其镜像、写入新镜像并恢复执行
+  features:
+    - or:
+      - and:
+        - api: kernel32.CreateProcess
+        - api: kernel32.NtUnmapViewOfSection
+      - and:
+        - api: kernel32.CreateProcess
+        - api: kernel32.ResumeThread
+        - or:
+          - api: kernel32.WriteProcessMemory
+          - api: ntdll.NtWriteVirtualMemory
+      - and:
+        - api: kernel32.CreateProcess
+        - api: ntdll.ZwUnmapViewOfSection
+
+---
+
+rule:
+  meta:
+    name: 创建服务（持久化）
+    namespace: persistence/service
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Persistence::Create or Modify System Process::Windows Service [T1543.003]
+      - Privilege Escalation::Create or Modify System Process::Windows Service [T1543.003]
+    description: 通过 SCM 接口创建或修改 Windows 服务实现开机自启
+  features:
+    - and:
+      - or:
+        - api: advapi32.CreateService
+        - api: advapi32.ChangeServiceConfig
+        - api: advapi32.CreateServiceW
+      - optional:
+        - api: advapi32.OpenSCManager
+      - optional:
+        - api: advapi32.StartService

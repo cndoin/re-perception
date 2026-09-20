@@ -1,0 +1,128 @@
+# 网络通信能力规则
+
+rule:
+  meta:
+    name: 建立 HTTP 连接
+    namespace: communication/http
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Command and Control::Application Layer Protocol::Web Protocols [T1071.001]
+    description: 通过 WinINet/WinHTTP 发起 HTTP 请求，常见于 C2 与载荷下载
+  features:
+    - or:
+      - and:
+        - api: wininet.InternetOpen
+        - or:
+          - api: wininet.InternetConnect
+          - api: wininet.InternetOpenUrl
+      - api: wininet.HttpSendRequest
+      - api: wininet.HttpOpenRequest
+      - and:
+        - api: winhttp.WinHttpOpen
+        - api: winhttp.WinHttpSendRequest
+      - api: winhttp.WinHttpConnect
+
+---
+
+rule:
+  meta:
+    name: 原始套接字通信
+    namespace: communication/socket
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Command and Control::Non-Application Layer Protocol [T1095]
+    description: 直接使用 Winsock 建立 TCP/UDP 连接，绕过高层 HTTP 库
+  features:
+    - or:
+      - and:
+        - api: ws2_32.socket
+        - or:
+          - api: ws2_32.connect
+          - api: ws2_32.WSAConnect
+      - api: ws2_32.WSASocket
+      - and:
+        - api: ws2_32.send
+        - api: ws2_32.recv
+      - and:
+        - api: ws2_32.gethostbyname
+        - api: ws2_32.inet_addr
+
+---
+
+rule:
+  meta:
+    name: DNS 查询
+    namespace: communication/dns
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Command and Control::Application Layer Protocol::DNS [T1071.004]
+    description: 通过 DNS 解析或隧道外联，Tor 域名与 DGA 常见特征
+  features:
+    - or:
+      - api: ws2_32.getaddrinfo
+      - api: ws2_32.gethostbyname
+      - api: dnsapi.DnsQuery
+      - api: dnsapi.DnsQuery_A
+      - api: ws2_32.WSAIoctl
+
+---
+
+rule:
+  meta:
+    name: 下载并执行
+    namespace: load-code/download
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Command and Control::Ingress Tool Transfer [T1105]
+      - Execution::Command and Scripting Interpreter [T1059]
+    description: 下载远程内容后落盘或直接执行，典型 loader 行为
+  features:
+    - or:
+      - and:
+        - or:
+          - api: wininet.InternetReadFile
+          - api: urlmon.URLDownloadToFile
+          - api: winhttp.WinHttpReadData
+        - or:
+          - api: kernel32.CreateFile
+          - api: kernel32.WriteFile
+          - api: kernel32.WinExec
+          - api: shell32.ShellExecute
+      - and:
+        - or:
+          - api: kernel32.WinExec
+          - api: shell32.ShellExecute
+        - or:
+          - string: powershell
+          - string: cmd.exe
+          - string: /c
+
+---
+
+rule:
+  meta:
+    name: 读取主机信息
+    namespace: discovery/system
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+      - Discovery::System Owner/User Discovery [T1033]
+    description: 枚举主机名/用户名/系统版本，用于受害者指纹与 C2 上报
+  features:
+    - or:
+      - api: kernel32.GetComputerName
+      - api: ws2_32.gethostname
+      - api: advapi32.GetUserName
+      - api: kernel32.GetVolumeInformation
+      - api: kernel32.GetSystemInfo
+      - api: ntdll.RtlGetVersion

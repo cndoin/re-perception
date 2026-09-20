@@ -1,0 +1,193 @@
+# 反分析（Anti-Analysis）能力规则
+#
+# 这一类规则价值最高：命中即说明样本**主动对抗**分析，
+# 分析时要把对应环节的对抗手段先绕过。
+#
+# 【误报教训 · 必读】
+# 第一版「反调试检测」写成一行 or 罗列 IsDebuggerPresent / OutputDebugString /
+# QueryPerformanceCounter，结果在 notepad.exe 上命中了 3 个函数 —— 全是误报：
+#   · IsDebuggerPresent + SetUnhandledExceptionFilter + RtlCaptureContext
+#     = MSVC 的 __report_gsfailure（栈溢出保护），那句 IsDebuggerPresent
+#       的含义是"崩了别中断到调试器"，和反分析无关；
+#   · OutputDebugStringW = CRT 的 _CrtDbgReport 调试日志出口；
+#   · QueryPerformanceCounter = 计时 / getpid 样板代码。
+# 这些函数**每个 MSVC 编译的 Windows 程序都有**。一条会在 100% 目标上命中的
+# 规则等于没有规则，还会淹没真正的信号（正是本项目最忌讳的"把缺陷正常化"）。
+#
+# 修正思路（对齐专业 capa 规则库的做法）：单看某个 API 不足以定性，
+# 必须要求**多个独立信号同时出现**，或命中**强特征**（PEB 手工遍历、
+# 调试器注册表/Peb 检查这类只服务反调试的写法）。
+# 原则：宁可少报，不可把 CRT 样板当恶意行为报出来。
+
+rule:
+  meta:
+    name: 反调试检测
+    namespace: anti-analysis/anti-debugging
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Debugger Evasion [T1622]
+    description: 同时具备调试器探测与主动反制手段；单纯调用探测 API 不足以定性
+  features:
+    # 【误报教训 · 必读 —— 这条规则改了三轮才对】
+    # 第 1 版：or 罗列 IsDebuggerPresent / OutputDebugString / QueryPerformanceCounter
+    #         → notepad.exe 命中 3 个函数，全是 MSVC CRT（__report_gsfailure 的
+    #           IsDebuggerPresent 是"崩了别中断"，_CrtDbgReport 的 OutputDebugStringW
+    #           是日志出口，QueryPerformanceCounter 是计时样板）。
+    # 第 2 版：改成"多信号 and"，但组合里仍含 SetUnhandledExceptionFilter / GetTickCount
+    #         → notepad.exe 仍命中 2 个函数（同样是 CRT 异常处理 + 计时）。
+    # 第 3 版（当前）：结论是**这些 API 组合本身在正常二进制里就是饱和的**，
+    #         靠 API 共现无法区分 CRT 与反调试。
+    # 因此只保留两条真正有判别力的路径：
+    #   (a) 探测手段 + **主动反制**（把 SEH 装成自己的处理器、隐藏线程、让调试器断下）
+    #       —— 这是"我要对抗调试器"的完整行为链，CRT 不会同时具备；
+    #   (b) PEB 手工遍历（characteristic: peb-access）—— 不调 API 直接读
+    #       BeingDebugged，正常程序没理由这么写。
+    # 如果只想看"线索"，用语义层的 tag「反调试(弱)」，那不代表结论。
+    - or:
+      # (a) 探测 + **主动反制**。反制手段必须是"只服务对抗、CRT 不会用"的：
+      #     DbgBreakPoint/DebugBreak 让调试器断下、DbgUiRemoteBreakin 把调试器拉进来、
+      #     NtSetInformationThread(ThreadHideFromDebugger) 隐藏线程。
+      # 【重要】SetUnhandledExceptionFilter **不算反制手段**：CRT 的
+      # __report_gsfailure（栈溢出保护）里 IsDebuggerPresent 和它同时出现，
+      # 实测在 notepad.exe 上误报。凡是 MSVC 样板会用的 API 一律不能进组合。
+      - and:
+        - or:
+          - api: kernel32.IsDebuggerPresent
+          - api: kernel32.CheckRemoteDebuggerPresent
+          - api: ntdll.NtQueryInformationProcess
+        - or:
+          - api: ntdll.DbgBreakPoint
+          - api: ntdll.DbgUiRemoteBreakin
+          - api: kernel32.DebugBreak
+          - api: ntdll.NtSetInformationThread
+          - api: ntdll.NtSetInformationProcess
+      # (b) 手工读 PEB.BeingDebugged（不调 API，正常程序不会这么写）
+      - characteristic: peb-access
+
+---
+
+rule:
+  meta:
+    name: 反虚拟机 / 沙箱检测
+    namespace: anti-analysis/anti-vm
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion [T1497]
+    description: 探测虚拟化痕迹或沙箱特征（设备名、驱动、MAC、CPU 特性）
+  features:
+    - or:
+      - and:
+        - api: advapi32.RegOpenKey
+        - or:
+          - string: VMware
+          - string: VirtualBox
+          - string: VBOX
+          - string: QEMU
+          - string: Xen
+          - string: Sandboxie
+      - api: kernel32.GetSystemFirmwareTable
+      - api: kernel32.EnumDeviceDrivers
+      - api: ntdll.NtQuerySystemInformation
+
+
+---
+
+rule:
+  meta:
+    name: 反汇编检测（沙箱规避）
+    namespace: anti-analysis/anti-disassembly
+    scope: file
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion [T1497]
+    description: 通过进程名、窗口列表或文件系统痕迹判断是否在分析环境
+  features:
+    - or:
+      - api: kernel32.FindWindow
+      - api: user32.FindWindow
+      - string: OllyDbg
+      - string: x64dbg
+      - string: api_log
+      - string: Process Monitor
+      - string: Wireshark
+
+---
+
+rule:
+  meta:
+    name: 加壳或压缩
+    namespace: anti-analysis/packer
+    scope: file
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Software Packing [T1027.002]
+    description: 节名或节熵命中加壳特征，静态分析前需要先脱壳
+  features:
+    - or:
+      - characteristic: packed
+      - section: UPX0
+      - section: UPX1
+      - section: .aspack
+      - section: .themida
+      - section: .vmp0
+      - section: .vmp1
+      - section: .enigma1
+      - section: .petite
+      - section: .nsp0
+
+---
+
+rule:
+  meta:
+    name: 时间延迟规避
+    namespace: anti-analysis/evasion/sleep
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::Time Based Evasion [T1497.003]
+    description: 长时间 Sleep 或等待，用于熬过沙箱的自动分析时限
+  features:
+    - or:
+      - api: kernel32.Sleep
+      - api: kernel32.SleepEx
+      - api: ntdll.NtDelayExecution
+      - api: kernel32.WaitForSingleObject
+      - api: kernel32.CreateWaitableTimer
+
+---
+
+rule:
+  meta:
+    name: 从内存加载执行（反射式）
+    namespace: load-code/memory
+    scope: function
+    authors:
+      - 寇豆码
+    att_ck:
+      - Defense Evasion::Reflective Code Loading [T1620]
+    description: 不落盘，直接在内存里映射并执行 PE/Shellcode
+  features:
+    - or:
+      - and:
+        - api: kernel32.VirtualAlloc
+        - or:
+          - number: 0x40
+          - number: 0x3000
+        - or:
+          - api: kernel32.CreateThread
+          - mnemonic: call
+      - and:
+        - api: ntdll.NtAllocateVirtualMemory
+        - api: kernel32.VirtualProtect
+      - and:
+        - api: kernel32.LoadLibrary
+        - api: kernel32.GetProcAddress
+        - optional:
+          - api: kernel32.VirtualProtect
