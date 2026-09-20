@@ -8,7 +8,7 @@
   .NET / Java / Python pyc / Web-WASM-Electron / 固件 / 私有格式 / SQLite
 - **内存有界、速度优先**：流式扫描，100MB 文件字符串扫描约 1 秒
 - **只读分析**：不写目标文件、不打补丁、不生成注册码
-- **自带自检**：88 个自检用例 + 36 项端到端集成，提交前必须全绿
+- **自带自检**：92 个自检用例 + 36 项端到端集成，提交前必须全绿
 
 > ⚠️ **仅限授权使用**。只对你自己拥有或已获书面授权的目标做逆向。
 > 授权提示见 [USE-POLICY.md](USE-POLICY.md)；法律条款见 [LICENSE](LICENSE)（MIT）。
@@ -93,7 +93,7 @@ AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法�
 ## 自检
 
 ```bash
-python selftest.py                     # 全量自检（88 个用例，约 110 秒）
+python selftest.py                     # 全量自检（92 个用例，约 155 秒）
 python selftest.py --only 性能          # 只跑某一类
 python _dev/_lint.py                   # 静态体检（语法/静默吞异常/硬编码路径）
 python _dev/_e2e.py                    # 端到端：26 个子命令在真实 PE 上全跑一遍
@@ -184,7 +184,14 @@ reverse-engineering/
 │   ├── toolchain.md             # 工具矩阵、安装源、学习路线
 │   ├── ecosystem.md             # 开源生态地图：四层堆栈 / 项目对照 / 选型决策树
 │   ├── research.md              # 论文索引：按「卡在哪」组织（反编译/符号/BCSD/Agent/协议）
+│   ├── ai-calling-protocol.md   # AI 怎么挑工具：意图检索 / 摘要层 / 编排协议
+│   ├── top-tier-tools.md        # 顶尖逆向工程师的工具、套路与「AI 可达性」对照表
 │   └── legal.md                 # 合规红线（中/美/欧盟 + 自查清单）
+├── rules/                       # 能力规则库（capa 风格，`capability` 子命令加载）
+│   ├── anti-analysis.yml        # 反调试 / 反分析
+│   ├── crypto.yml               # AES 等加密常量与 API
+│   ├── network.yml              # HTTP / 网络通信
+│   └── process.yml              # 进程创建 / WMI / Shell
 ├── assets/
 │   ├── frida-templates.js       # Frida Hook 模板（Native/Android/iOS/抓明文/脱壳）
 │   └── notes-template.md        # 分析笔记模板
@@ -205,7 +212,7 @@ reverse-engineering/
     ├── lib_agent.py             # 工具编排：意图→命令检索 / 工作流 / 状态 / 转移图
     ├── lib_tools.py             # 工具链探测 + 分析计划
     ├── _quirk.py                # dbghelp 已知缺陷清单（参考文档，非运行时模块）
-    ├── selftest.py              # 自检套件（88 个用例，含 5 个安装用例）
+    ├── selftest.py              # 自检套件（92 个用例，含 5 个安装用例）
     └── _dev/                    # 开发脚手架（不随发布分发）
         └── _install.py          # 跨运行时安装器（--auto 探测 / --verify 回验）
 ```

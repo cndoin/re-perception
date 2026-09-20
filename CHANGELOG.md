@@ -3,6 +3,108 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.3.7] — 2026-09-20
+
+开源前全量复查：再挖出 2 个 P0「假成功」+ 5 个静默降级。
+
+这一轮不是加功能，是把「要开源了，每个角落都看一遍」这条要求真正执行完。
+派了一组审计子代理逐文件找**静默失败**，命中 7 处；另有 1 处是修复过程中
+我自己引入、被回归用例当场抓住的（见最后一条）。
+
+### 修复
+
+- **P0 · `capability` 在非 x86 上把「没做」报成「没有」**：
+
+  `cmd_capability` 里 `idx = res.pop("_idx", None)`，之后所有语义层代码
+  都以 `if idx is not None` 为条件。而 `lib_disasm.analyze_file` 对非 x86
+  架构走线性反汇编分支，返回 `ok: True` **但不带 `_idx`**
+  （`lib_disasm.py:295-309`）。于是语义层（resolve_thunks /
+  summarize_functions）与字符串 VMA 映射**整段跳过**，api / 字符串类特征
+  全空 → 规则必然大面积漏报，而输出仍是 `ok: true` + `capabilities: []`，
+  **一个 warning 都没有**。
+
+  用户读到的是「这个样本没有这些能力」，真相是「压根没做函数识别」——
+  这正是该函数自己注释里点名要防的那句话（"把没命中读成没这个能力"），
+  结果它自己就踩了。现在 `idx is None`，以及 idx 在但识别出 0 个函数，
+  都会产出显式告警并进 `--json` 的 `warnings`。`semantics` 子命令
+  同一处缺陷一并修掉。
+
+- **P0 · `imports` 在 PE 解析失败时仍报 `ok: true`**：
+
+  原代码写死 `out = {..., "ok": True}`，随后
+  `out["modules"] = [... for m in det.get("imports", [])]`。PE 头畸形时
+  `parse_pe` 在 `lib_formats.py:1001-1007` 的 except 里把异常吞掉，
+  `detail` 只剩 `parse_ok: False` + `errors`，**连 `imports` 键都没有**，
+  于是返回 `ok: true / modules: [] / function_count: null`。
+  用户读到「这文件没有导入表」，真相是「压根没解析成功」。
+
+  `identify` / `info` 也是写死的 `d["ok"] = True`，与 `triage`
+  （`not bool(errors)`）口径不一致——三处三种写法。现在统一到新增的
+  `_ident_ok()` 助手：从顶层 `errors` + `detail.errors` 推导，
+  且 `parse_ok=False` 却没记 errors 的分支也判失败（防御以后有人加
+  只设 flag 不记原因的代码）。失败时 `errors` 一并输出。
+
+- **P1 · pclntab 扫描窗口截断 = 假阴性「不是 Go」**：
+
+  `find_pclntab` 默认只扫前 32MB。文件更大而 pclntab 落在窗口之外时返回
+  空列表，`recover_go_symbols` 直接 `return None, []` —— 与「不是 Go
+  程序」在返回值上**完全一样**。现在窗口小于文件且没找到候选时给出告警，
+  明确说「不能据此断定不是 Go 程序」。与 1.3.5 修的 AXML 截断同族。
+
+- **P1 · 熵分析「声称采样」却根本没采样**：
+
+  `entropy_profile` 的 else 分支写着「整体熵由采样估算」并设
+  `sampled=True`，**一行采样代码都没有** —— `overall_entropy` 保持
+  `None`，报告里就印出「整体熵：**None**」。这比不做更糟：读者会以为
+  那个数字是采样结果。现在真的做等距采样（64 段），并给出
+  `sampled_bytes` / `sampled_ratio` 与一句说清覆盖范围的 note。
+
+- **P1 · `truncated` 在 semantics / capability 里被丢掉**：
+
+  `lib_code.analyze` 在 `--max-insns` 触顶时会给 `truncated` +
+  `truncated_note`；`cmd_funcs` 正确透传，但 `cmd_semantics` 与
+  `cmd_capability` 都没带出去 —— 命中的能力只覆盖已解码的那一段，
+  却没有任何标记。现在两个子命令都透传。
+
+- **P2 · `semantics` 的 warning 被第二次赋值静默覆盖**：
+
+  `out["warning"]` 先被 `_libscan_error` 写、再被 `_string_map_error` 写。
+  两个都挂时用户只看到后者，前者凭空消失。改成累加后拼接。
+
+- **P2 · 病态文件能把 I/O 放大到几十 GB**：
+
+  逐节算熵时每节上限 8MB，但**没有合计上限**：ELF 可声明 4096 个节、
+  Mach-O 可声明 1024×64 个节，逐个读 8MB 就是几十 GB 的读放大，
+  一个 256MB 的构造文件足以把这个工具挂死。现在加了 64MB 合计预算；
+  预算耗尽时该节熵置 `null`（**不是 0.0** —— 0.0 会被读成
+  「这节是常量字节」，那是另一个假结论），并在 `notes` 里交代
+  有几个节没算。顺带修了 `lib_names` 里一处 `Reader` 未用 `with`
+  的句柄泄漏。
+
+### 我自己引入、被回归用例抓住的那一条
+
+第一版采样写的是「64 段 × 每段 1MB」，没考虑段长 > 段间距时相邻段会
+**互相重叠**：3MB 的文件采样出 56MB，`sampled_ratio` 算出 1794%。
+回归用例里加了「采样字节数不得超过文件本身」这条断言，当场变红。
+现在段长取 `min(1MB, 段间距)`。
+
+### 验证
+
+- 新增 4 条回归用例：`t_imports_ok_false_on_parse_error`、
+  `t_capability_warns_without_function_index`、
+  `t_entropy_sampled_really_samples`、
+  `t_names_go_pclntab_scan_truncated_reports`。每条都带**反向验证**
+  （正常场景不能被误伤）。
+- 4 条全部做了「撤回修复 → 用例必须变红」的反向确认：
+  **撤销后仍然绿的守卫等于没有守卫**。
+- 全量自检 **92/92 通过**（88 → 92）；`_lint` 生产 0 处；
+  `_undefined` 0 处。
+
+### 文档
+
+用例数 88 → 92 散落在 7 处（README × 2、SKILL × 2、CONTRIBUTING、
+Makefile、PR 模板），全部对齐；耗时标注 110s → 155s。
+
 ## [1.3.6] - 2026-09-20
 
 整理：安装器的 WorkBuddy 路径解析错误 + 三处过期文档数字。
