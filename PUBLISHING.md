@@ -125,13 +125,20 @@ git status
 git config user.name  "going-ahead"
 git config user.email "你的邮箱"
 
-# 3) 关联远程（用你自己的仓库地址）
-git remote add origin https://github.com/<你的账号>/<仓库名>.git
+# 3) 把 .github/ISSUE_TEMPLATE/config.yml 里的 OWNER/REPO 换成真名
+python scripts/_dev/_prep_publish.py <你的GitHub账号> re-perception
 
-# 4) 首推
-git branch -M main          # 可选：把 master 改名为 main
+# 4) 关联远程
+git remote add origin https://github.com/<你的GitHub账号>/re-perception.git
+
+# 5) 首推
+git branch -M main          # 把 master 改名为 main（GitHub 默认分支惯例）
 git push -u origin main
 ```
+
+> **仓库名已定为 **（README 里说明：re = reverse engineering，
+> perception = 给 AI 装上「感知未知文件」的能力）。
+>  会顺手撤掉 config.yml 顶部那条「发布前必改」注记。
 
 > ⚠️ 推送前**再确认一次** `git log --format='%an <%ae>'` 里没有不想公开的邮箱。
 
