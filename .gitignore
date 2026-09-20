@@ -1,0 +1,36 @@
+# 编译产物与缓存
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+
+# 开发脚手架（LLVM 参考源码体积大，且版权归 LLVM 项目所有，不随本仓库分发）
+# 如需要，请按 scripts/_dev/_ref/README.md 的说明自行下载。
+scripts/_dev/_ref/
+
+# 自检与分析的临时产物
+# （这些是 re.py / selftest.py 跑出来的东西。历史上真发生过
+#   sample_pe64.exe.re-report.md 混进 scripts/ 跟着发布出去，
+#   所以规则放宽到能覆盖所有分析产物后缀。）
+_st_last.log
+_lint.log
+_st*.log
+*.re-report.md
+*.re-report.json
+*.re-cfg.json
+*.re-funcs.txt
+*.re-strings.txt
+re-selftest/
+.re-selftest/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# 虚拟环境
+.venv/
+venv/
+env/

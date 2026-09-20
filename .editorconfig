@@ -1,0 +1,30 @@
+# 统一编辑器配置
+# 让不同编辑器对这份代码库采取一致的缩进、换行与编码约定。
+# 项目本身零依赖，本文件也不需要任何插件才能生效（主流编辑器内建支持）。
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# 行尾空白在 Markdown 里是有意义的（两空格 = 硬换行），不能裁
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.json]
+indent_size = 2
+
+# Makefile 必须用真实制表符，空格会让它直接失效
+[Makefile]
+indent_style = tab
+
+[*.{bat,cmd}]
+end_of_line = crlf

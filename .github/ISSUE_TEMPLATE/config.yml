@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞
+    url: https://github.com/OWNER/REPO/security/advisories/new
+    about: 不要用公开 issue 报告漏洞，请走私密渠道（见 SECURITY.md）
+  - name: 使用与合规问题
+    url: https://github.com/OWNER/REPO/blob/main/references/legal.md
+    about: 关于授权范围、合规红线的疑问先看这里

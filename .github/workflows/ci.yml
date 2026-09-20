@@ -1,0 +1,99 @@
+name: CI
+
+# 零第三方依赖是这个项目的核心卖点，所以 CI 必须真的在三个平台上跑起来 ——
+# 只在 Ubuntu 上绿，等于没验证"全平台可用"这件事。
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------- 主门禁：三平台 × 多 Python 版本跑全量自检 ----------
+  selftest:
+    name: 自检 py${{ matrix.python }} @ ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false          # 一个平台挂了，别的平台的结果仍然有价值
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.13"]
+        exclude:
+          # 3.10 的语义与 3.13 差异面小，只在 Linux 上跑以省 runner 时间；
+          # Windows / macOS 各留一个版本，保证平台覆盖不丢。
+          - os: windows-latest
+            python: "3.10"
+          - os: macos-latest
+            python: "3.10"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: 环境信息
+        run: python -c "import sys, platform; print(sys.version); print(platform.platform())"
+
+      # 刻意不装任何依赖 —— 装了反而掩盖"零依赖"被破坏的问题
+      - name: 全量自检
+        working-directory: scripts
+        run: python selftest.py
+
+      # 退出码契约：生产文件有告警 → 非零退出。_dev/ 脚手架的告警不影响
+      # 退出码（它们不随发布分发），但仍会打印出来。
+      - name: 静态体检
+        working-directory: scripts
+        run: python _dev/_lint.py
+
+      - name: 未定义名检查
+        working-directory: scripts
+        run: python _dev/_undefined.py
+
+  # ---------- 端到端：需要真实系统二进制，只在 Linux 上跑 ----------
+  e2e:
+    name: 端到端（真实二进制）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: 端到端
+        working-directory: scripts
+        run: python _dev/_e2e.py
+
+  # ---------- 零依赖硬约束：独立一道门，防止哪天悄悄混进 pip 包 ----------
+  no-third-party:
+    name: 零第三方依赖
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: 生产模块不得 import 非标准库
+        working-directory: scripts
+        run: python selftest.py --only 零第三方
+
+  # ---------- 开源合规自审 ----------
+  oss-audit:
+    name: 开源合规自审
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: 审计
+        working-directory: scripts
+        # 该脚本自己决定退出码：高危项 > 0 时非零退出
+        run: python _dev/_ossaudit.py

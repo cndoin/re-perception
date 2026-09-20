@@ -1,0 +1,17 @@
+# 统一行尾：所有文本文件在仓库内一律 LF（.editorconfig 里有同样要求）。
+# 不声明的话，Windows 上 git 默认 autocrlf=true，clone 出来会是 CRLF，
+# 而 .editorconfig 要求 LF —— 两者打架会让 diff 出现整文件差异。
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换
+*.pyc binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+
+# 语言统计：Markdown 不计入代码量
+*.md linguist-documentation
+*.yml linguist-language=YAML
