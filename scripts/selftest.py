@@ -3765,6 +3765,186 @@ def t_axml_truncated_window_reports():
 
 
 
+def t_imports_ok_false_on_parse_error():
+    """
+    PE 解析失败时 `imports` 必须报 ok:false 并给出 errors。
+
+    原缺陷（P0）：out 里把 "ok" 写死成 True。PE 头畸形时 parse_pe 在
+    lib_formats 的 except 里把异常吞掉，detail 只剩 parse_ok:False + errors，
+    **连 imports 键都不会有**；命令照样返回 ok:true / modules:[] /
+    function_count:null。用户读到的是"这文件没有导入表"，而真相是
+    "压根没解析成功"——失败被上报为成功，而且比直接崩掉更难发现。
+
+    反向也验：正常 PE 必须仍是 ok:true，不能把守卫写成"永远失败"。
+    """
+    import struct as _st
+
+    buf = bytearray(1024)
+    buf[0:2] = b"MZ"
+    _st.pack_into("<I", buf, 0x3C, 0x80)      # e_lfanew 指向 0x80
+    buf[0x80:0x84] = b"PE\x00\x00"
+    _st.pack_into("<H", buf, 0x84, 0x9999)    # 未知 Optional Header 魔数
+    p = w("bad_optmagic.exe", bytes(buf))
+
+    code, data, raw = jrun([str(CLI), "imports", str(p), "--json"])
+    if code != 0:
+        return False, "退出码 %d（输出：%s）" % (code, raw[:300])
+    if data.get("ok") is not False:
+        return False, "畸形 PE 仍报 ok=%r（应为 false）：%s" % (
+            data.get("ok"), json.dumps(data, ensure_ascii=False)[:400])
+    if not data.get("errors"):
+        return False, "ok:false 却没有 errors，排障的人只能靠猜：%s" % (
+            json.dumps(data, ensure_ascii=False)[:400])
+
+    good = mk_pe64()
+    code2, data2, raw2 = jrun([str(CLI), "imports", str(good), "--json"])
+    if code2 != 0:
+        return False, "正常 PE 退出码 %d（%s）" % (code2, raw2[:300])
+    if data2.get("ok") is not True:
+        return False, "正常 PE 被误判为失败：ok=%r（%s）" % (
+            data2.get("ok"), json.dumps(data2, ensure_ascii=False)[:400])
+    return True, "畸形 PE → ok:false + %d 条 errors；正常 PE 仍 ok:true" % len(data["errors"])
+
+
+def t_capability_warns_without_function_index():
+    """
+    analyze_file 没给出函数索引（idx=None）时，capability 必须告警。
+
+    原缺陷（P0）：非 x86 架构下 lib_disasm.analyze_file 走线性反汇编分支，
+    返回 ok:true 但**不带 _idx**；cmd_capability 里随后所有语义层代码都以
+    `if idx is not None` 为条件，于是整段跳过 —— api / 字符串类特征全空，
+    规则必然大面积漏报，输出却仍是 ok:true / capabilities:[]。
+    用户会把"没命中"读成"样本没这个能力"，这正是该函数自己注释里
+    点名要防的事（"把没命中读成没这个能力"）。
+
+    这里用替身直接复现该分支，不依赖能否造出真实的非 x86 样本。
+    """
+    import argparse as _ap
+    import contextlib as _cl
+    import importlib.util as _ilu
+    import io as _io
+
+    spec = _ilu.spec_from_file_location("_re_cli_under_test", str(CLI))
+    if spec is None or spec.loader is None:
+        return False, "无法构造 re.py 的 import spec：%s" % CLI
+    mod = _ilu.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception as e:
+        return False, "导入 re.py 失败：%s: %s" % (type(e).__name__, e)
+
+    try:
+        import lib_disasm as _ld
+    except Exception as e:
+        return False, "导入 lib_disasm 失败：%s: %s" % (type(e).__name__, e)
+
+    pe = mk_pe64()
+    orig = _ld.analyze_file
+    calls = {"n": 0}
+
+    def _stub(path, ident=None, region=None, max_insns=0, **kw):
+        calls["n"] += 1
+        # 精确复刻 lib_disasm 的非 x86 分支：ok:true，但**没有 _idx**
+        return {"ok": True, "arch": "arm64", "region": ".text",
+                "note": "arm64 暂未接入函数识别/CFG，仅做线性反汇编",
+                "insn_count": 10, "insns": []}
+
+    _ld.analyze_file = _stub
+    buf = _io.StringIO()
+    try:
+        ns = _ap.Namespace(target=str(pe), json=False, section=None,
+                           max_insns=20000, limit=60, no_strings=True,
+                           rules=None, rule=None)
+        with _cl.redirect_stdout(buf):
+            rc = mod.cmd_capability(ns)
+    except Exception as e:
+        return False, "cmd_capability 崩了：%s: %s" % (type(e).__name__, e)
+    finally:
+        _ld.analyze_file = orig
+
+    if calls["n"] != 1:
+        return False, "替身未被调用（n=%d），本用例没有真正覆盖该分支" % calls["n"]
+    txt = buf.getvalue()
+    if "未做函数识别" not in txt:
+        return False, "idx=None 时零告警，输出：\n%s" % txt[:800]
+    if rc != mod.EXIT_OK:
+        return False, "退出码异常：%r" % rc
+    return True, "idx=None → 明确告警「未做函数识别」，不再伪装成 0 条命中"
+
+
+def t_entropy_sampled_really_samples():
+    """
+    超过采样阈值时 entropy_profile 必须真的算出整体熵，而不是留 None。
+
+    原缺陷：else 分支只设 sampled=True 和一句"整体熵由采样估算"，
+    **一行采样代码都没有** —— out["overall_entropy"] 始终是 None，
+    报告里就印出"整体熵：**None**"。这比不做更糟：读者会以为那个数字
+    是采样结果，实际什么都没算（"声称做了但没做"）。
+
+    反向：小文件必须走精确分支，sampled=False。
+    """
+    import lib_analyze as LA
+
+    p = w("entropy_big.bin", os.urandom(3 * 1024 * 1024))
+    d = LA.entropy_profile(str(p), window=4096, max_windows=32,
+                           sample_threshold=1024)   # 强制进采样分支
+    if not d.get("sampled"):
+        return False, "没进采样分支（sampled=%r）" % d.get("sampled")
+    oe = d.get("overall_entropy")
+    if oe is None:
+        return False, "sampled=True 但 overall_entropy 仍是 None（声称采样却没采样）"
+    if not (7.5 <= oe <= 8.0):
+        return False, "3MB 均匀随机字节的采样熵 %r 不在 [7.5, 8.0]" % oe
+    if not d.get("sampled_bytes"):
+        return False, "没记录 sampled_bytes，读者无从判断采样覆盖了多少"
+    # 采样量绝不可能超过文件本身：段长若大于段间距，相邻段重叠会把同一批
+    # 字节重复计数，sampled_ratio 会算出 1794% 这种荒唐值（本机实测踩到过）。
+    if d["sampled_bytes"] > os.path.getsize(str(p)):
+        return False, ("采样字节 %d 超过文件本身 %d —— 采样段重叠了，"
+                       "统计不可信" % (d["sampled_bytes"], os.path.getsize(str(p))))
+    if not (0 < (d.get("sampled_ratio") or 0) <= 1.0):
+        return False, "sampled_ratio=%r 不在 (0, 1.0]" % d.get("sampled_ratio")
+
+    small = w("entropy_small.bin", b"\x00" * 4096)
+    d2 = LA.entropy_profile(str(small), window=1024, max_windows=4)
+    if d2.get("sampled"):
+        return False, "小文件被误判为采样：sampled=%r" % d2.get("sampled")
+    if d2.get("overall_entropy") != 0.0:
+        return False, "全零文件精确熵应为 0.0，得到 %r" % d2.get("overall_entropy")
+    return True, "采样分支 really 采样：overall_entropy=%s（采样 %d 字节，占 %.1f%%）" % (
+        oe, d["sampled_bytes"], (d.get("sampled_ratio") or 0) * 100)
+
+
+def t_names_go_pclntab_scan_truncated_reports():
+    """
+    pclntab 扫描窗口被截断时必须报出来，不能等同于"不是 Go 程序"。
+
+    原缺陷：find_pclntab 默认只扫前 32MB；文件更大而 pclntab 落在窗口之外时
+    返回空列表，recover_go_symbols 直接 `return None, []` —— 与"这文件不是
+    Go 程序"在返回值上**完全一样**。用户拿到的是假阴性，且没有任何线索
+    提示"其实只扫了一部分"。与已修的 AXML 截断窗口同族缺陷。
+
+    反向：完整扫过的小文件不该产生噪声告警。
+    """
+    import lib_formats as LF
+    import lib_names as LN
+
+    big = w("go_scan_big.bin", b"\x11" * (2 * 1024 * 1024))
+    with LF.Reader(str(big)) as r:
+        res, warns = LN.recover_go_symbols(r, r.size, scan_limit=4096)
+    if res is not None:
+        return False, "填充数据不该解析出 Go 符号"
+    if not warns:
+        return False, ("扫描窗口 4096 字节 << 文件 2MB 且未找到候选，"
+                       "却零告警 —— 与「不是 Go 程序」无法区分")
+
+    small = w("go_scan_small.bin", b"\x00" * 1024)
+    with LF.Reader(str(small)) as r2:
+        _res2, warns2 = LN.recover_go_symbols(r2, r2.size, scan_limit=4096)
+    if warns2:
+        return False, "完整扫过的小文件不该产生噪声告警：%r" % (warns2,)
+    return True, "扫描窗口截断时给出告警（%d 条），完整扫描时不噪声" % len(warns)
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -3865,6 +4045,10 @@ def main():
         ("安装：验证器能识别坏安装", t_install_verify_detects_broken),
         ("安装：复制可用且裁剪开发产物", t_install_copy_slims_and_runs),
         ("安装：不覆盖用户已有技能", t_install_no_clobber),
+        ("导入表：解析失败不报 ok:true", t_imports_ok_false_on_parse_error),
+        ("能力识别：无函数索引必须告警", t_capability_warns_without_function_index),
+        ("熵：采样分支真的采样", t_entropy_sampled_really_samples),
+        ("符号：pclntab 截断不伪装成非 Go", t_names_go_pclntab_scan_truncated_reports),
     ]
 
     t0 = time.time()
