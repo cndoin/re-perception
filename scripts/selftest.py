@@ -21,6 +21,7 @@ import json
 import os
 import random
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -1493,8 +1494,16 @@ def t_no_third_party():
                 "typing", "dataclasses", "enum", "itertools", "functools", "bisect",
                 "heapq", "array", "copy", "textwrap", "string", "binascii", "base64"}
     stdlib = set(getattr(sys, "stdlib_module_names", ())) or set(fallback)
-    # 同目录 .py 都是本项目自带模块，一律放行
+    # 同目录 .py 都是本项目自带模块，一律放行。
+    #
+    # 【已修 bug 4】旧实现只扫 HERE（scripts/*.py），不含 _dev/。
+    # 于是 _dev/ 下的自研模块被当成第三方依赖误报（安装器用例 import
+    # _install 时当场抓到）。_dev/ 是开发脚手架，同样属于本项目自带，
+    # 必须一起收进本地模块集。
     local = {p.stem for p in HERE.glob("*.py")}
+    _dev_dir = HERE / "_dev"
+    if _dev_dir.is_dir():
+        local |= {p.stem for p in _dev_dir.glob("*.py")}
     allowed = stdlib | local | fallback
 
     # 【已修 bug 3】旧实现只取 `s.split()[0]`，遇到逗号分隔的
@@ -1509,7 +1518,11 @@ def t_no_third_party():
 
     bad = []
     scanned = 0
-    for p in sorted(HERE.glob("*.py")):
+    # 生产脚本 + _dev/ 脚手架都要扫：脚手架坏了同样会让门禁失灵（假绿）。
+    _scan_targets = sorted(HERE.glob("*.py"))
+    if _dev_dir.is_dir():
+        _scan_targets += sorted(_dev_dir.glob("*.py"))
+    for p in _scan_targets:
         txt = p.read_text(encoding="utf-8")
         scanned += 1
         for line in txt.splitlines():
@@ -3363,6 +3376,218 @@ def t_rules_feature_depth_guard():
                   "浅层/成环正常，运行期兜底拦住了绕过 Rule 的深树")
 
 
+def t_install_paths_in_spec():
+    """各运行时的技能目录必须落在官方约定上，且能被本机解析成绝对路径。
+
+    这是"能不能装"的地基：路径错了，后面一切免谈。
+    """
+    sys.path.insert(0, str(HERE / "_dev"))
+    try:
+        import _install as I
+    except Exception as e:
+        return False, "导入 _install.py 失败：%s: %s" % (type(e).__name__, e)
+
+    # 必须覆盖用户点名要求的运行时
+    need = ["claude-code", "codex", "hermes", "openclaw"]
+    missing = [r for r in need if r not in I._RUNTIME_DOC]
+    if missing:
+        return False, "缺少运行时定义：%s" % "、".join(missing)
+
+    # 路径终点必须叫 skills（各家的约定一致），且个人级能解析成绝对路径
+    problems = []
+    for rt in need:
+        p = I.personal_dir(rt)
+        if p is None:
+            continue
+        if not os.path.isabs(p):
+            problems.append("%s 个人级路径不是绝对路径：%s" % (rt, p))
+        if os.path.basename(p.rstrip("/\\")) != "skills":
+            problems.append("%s 个人级目录不以 skills 结尾：%s" % (rt, p))
+    if problems:
+        return False, "；".join(problems)
+
+    # Codex 必须认 CODEX_HOME（不能硬编码 ~/.codex）
+    old = os.environ.get("CODEX_HOME")
+    try:
+        os.environ["CODEX_HOME"] = os.path.join(str(TMP), "cx")
+        got = I.personal_dir("codex")
+        if not got or "cx" not in got:
+            return False, "Codex 未遵循 CODEX_HOME 环境变量：%s" % got
+    finally:
+        if old is None:
+            os.environ.pop("CODEX_HOME", None)
+        else:
+            os.environ["CODEX_HOME"] = old
+
+    return True, "4 个必需运行时路径合规，Codex 正确遵循 CODEX_HOME"
+
+
+def t_install_verify_detects_broken():
+    """验证器必须能识别坏安装 —— 一个永不失败的检查等于没有。
+
+    这是本项目"假成功"病在安装环节的对偶：验证器若总是返回 ok，
+    就等于把坏安装上报成好安装。
+    """
+    sys.path.insert(0, str(HERE / "_dev"))
+    try:
+        import _install as I
+    except Exception as e:
+        return False, "导入 _install.py 失败：%s: %s" % (type(e).__name__, e)
+
+    sandbox = Path(TMP) / "inst-verify"
+    os.environ[I.HOME_ENV] = str(sandbox)
+    if sandbox.exists():
+        shutil.rmtree(sandbox, ignore_errors=True)
+    dest = sandbox / ".claude" / "skills" / "reverse-engineering"
+    dest.mkdir(parents=True)
+
+    # 1) 缺 SKILL.md
+    (dest / "README.md").write_text("x", encoding="utf-8")
+    ok, problems = I.verify_one("claude-code", "personal", str(sandbox))
+    if ok:
+        return False, "缺 SKILL.md 时验证器仍报通过（假成功）"
+    if not any("SKILL.md" in p for p in problems):
+        return False, "未指出缺 SKILL.md：%s" % problems
+
+    # 2) name 与目录名不一致
+    (dest / "SKILL.md").write_text(
+        "---\nname: wrong-name\ndescription: x\n---\n", encoding="utf-8")
+    ok, problems = I.verify_one("claude-code", "personal", str(sandbox))
+    if ok:
+        return False, "name 与目录名不符时验证器仍报通过（假成功）"
+    if not any("名称" in p or "name" in p for p in problems):
+        return False, "未指出 name 不一致：%s" % problems
+
+    # 3) 完好的安装必须能过（反向确认验证器不是一味报错）
+    (dest / "SKILL.md").write_text(
+        "---\nname: reverse-engineering\ndescription: d\n---\n",
+        encoding="utf-8")
+    (dest / "scripts").mkdir(exist_ok=True)
+    (dest / "scripts" / "re.py").write_text("", encoding="utf-8")
+    (dest / "scripts" / "selftest.py").write_text("", encoding="utf-8")
+    ok, problems = I.verify_one("claude-code", "personal", str(sandbox))
+    if not ok:
+        return False, "完好的安装被误判为坏：%s" % problems
+
+    os.environ.pop(I.HOME_ENV, None)
+    shutil.rmtree(sandbox, ignore_errors=True)
+    return True, "缺 SKILL.md / name 不符均被拦截，完好安装正常通过"
+
+
+def t_install_copy_slims_and_runs():
+    """真装一次：复制模式必须可用，且裁掉开发产物（_ref/_dev/.github）。
+
+    末尾用子进程跑一次 re.py --help，确认**装出来的副本真的能执行** ——
+    只看文件在不在是不够的。
+    """
+    sys.path.insert(0, str(HERE / "_dev"))
+    try:
+        import _install as I
+    except Exception as e:
+        return False, "导入 _install.py 失败：%s: %s" % (type(e).__name__, e)
+
+    sandbox = Path(TMP) / "inst-copy"
+    os.environ[I.HOME_ENV] = str(sandbox)
+    if sandbox.exists():
+        shutil.rmtree(sandbox, ignore_errors=True)
+    sandbox.mkdir(parents=True)
+
+    old_force = None
+    try:
+        ok, msg = I.install_one("claude-code", "personal", str(sandbox),
+                                "copy", False)
+        if not ok:
+            return False, "复制安装失败：%s" % msg
+    except Exception as e:
+        return False, "安装抛异常：%s: %s" % (type(e).__name__, e)
+    finally:
+        if old_force is not None:
+            pass
+
+    dest = sandbox / ".claude" / "skills" / "reverse-engineering"
+    if not (dest / "SKILL.md").is_file():
+        return False, "装完没有 SKILL.md"
+
+    # 开发/合规产物必须被裁掉
+    leaked = [rel for rel in ("scripts/_dev", "scripts/_ref", ".github", ".git")
+              if (dest / rel).exists()]
+    if leaked:
+        return False, "安装副本泄漏了开发/合规产物：%s" % "、".join(leaked)
+
+    # 装出来的副本必须真的能执行
+    # 装出来的副本必须真的能执行。
+    # 注意 cwd 必须是副本自己的 scripts/ —— re.py 按相对位置 import 同目录模块，
+    # 沿用 run() 的 cwd=HERE 会去 import 源仓库的模块，测不出副本真实可用性。
+    cp_scripts = dest / "scripts"
+    p = subprocess.run([PY, "re.py", "--help"], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", timeout=120,
+                       cwd=str(cp_scripts))
+    if p.returncode != 0 or "triage" not in p.stdout:
+        return False, ("安装副本无法执行 re.py --help（code=%s, err=%s）"
+                       % (p.returncode, p.stderr[:160]))
+
+    # 副本跑一次真实子命令（不只是 --help），确认分析链路完整
+    p2 = subprocess.run([PY, "re.py", "magic", "--json"], capture_output=True,
+                        text=True, encoding="utf-8", errors="replace",
+                        timeout=120, cwd=str(cp_scripts))
+    if p2.returncode != 0:
+        return False, ("安装副本执行 magic 子命令失败（code=%s）" % p2.returncode)
+    try:
+        if not json.loads(p2.stdout).get("ok"):
+            return False, "安装副本 magic 未返回 ok=true"
+    except Exception as e:
+        return False, "安装副本 magic 输出不可解析：%s" % e
+
+    # 自验要通过
+    vok, problems = I.verify_one("claude-code", "personal", str(sandbox))
+    if not vok:
+        return False, "安装后自验未过：%s" % problems
+
+    os.environ.pop(I.HOME_ENV, None)
+    shutil.rmtree(sandbox, ignore_errors=True)
+    return True, "复制安装可用、已裁掉 _dev/_ref/.github、副本可执行 re.py"
+
+
+def t_install_no_clobber():
+    """已存在同名技能时必须拒绝覆盖（保护用户已有安装）。"""
+    sys.path.insert(0, str(HERE / "_dev"))
+    try:
+        import _install as I
+    except Exception as e:
+        return False, "导入 _install.py 失败：%s: %s" % (type(e).__name__, e)
+
+    sandbox = Path(TMP) / "inst-noclobber"
+    os.environ[I.HOME_ENV] = str(sandbox)
+    if sandbox.exists():
+        shutil.rmtree(sandbox, ignore_errors=True)
+    dest = sandbox / ".claude" / "skills" / "reverse-engineering"
+    dest.mkdir(parents=True)
+    marker = dest / "MINE.txt"
+    marker.write_text("用户自己的东西", encoding="utf-8")
+
+    ok, msg = I.install_one("claude-code", "personal", str(sandbox),
+                            "copy", False)
+    if ok:
+        return False, "已存在时仍覆盖了用户目录（危险）"
+    if not marker.is_file():
+        return False, "用户原有内容被破坏"
+
+    # --force 时必须先备份
+    ok2, msg2 = I.install_one("claude-code", "personal", str(sandbox),
+                              "copy", True)
+    if not ok2:
+        return False, "--force 覆盖失败：%s" % msg2
+    baks = list((sandbox / ".claude" / "skills").glob("reverse-engineering.bak-*"))
+    if not baks:
+        return False, "--force 覆盖前没生成备份"
+    if not (baks[0] / "MINE.txt").is_file():
+        return False, "备份里没保住用户原内容"
+
+    os.environ.pop(I.HOME_ENV, None)
+    shutil.rmtree(sandbox, ignore_errors=True)
+    return True, "已存在时拒绝覆盖；--force 先备份且备份含原内容"
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -3456,6 +3681,10 @@ def main():
         ("稳定性：case 索引形状容错", t_case_index_shape_tolerance),
         ("稳定性：journal 有界读取", t_case_journal_bounded_read),
         ("稳定性：规则特征树深度守卫", t_rules_feature_depth_guard),
+        ("安装：运行时路径合规", t_install_paths_in_spec),
+        ("安装：验证器能识别坏安装", t_install_verify_detects_broken),
+        ("安装：复制可用且裁剪开发产物", t_install_copy_slims_and_runs),
+        ("安装：不覆盖用户已有技能", t_install_no_clobber),
     ]
 
     t0 = time.time()

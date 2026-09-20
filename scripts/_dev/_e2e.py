@@ -28,17 +28,17 @@ PASS, FAIL = [], []
 RPT = None   # 报告落盘用的临时目录（main 里建立）
 
 
-def run(args, expect_rc=(0,), timeout=180):
-    p = subprocess.run([PY, RE] + args, cwd=SCRIPTS,
+def run(args, expect_rc=(0,), timeout=180, cwd=None):
+    p = subprocess.run([PY, RE] + args, cwd=cwd or SCRIPTS,
                        capture_output=True, text=True, timeout=timeout,
                        encoding="utf-8", errors="replace")
     return p
 
 
 def case(name, args, expect_rc=(0,), need_json=True, check=None,
-         timeout=180):
+         timeout=180, cwd=None):
     try:
-        p = run(args, expect_rc, timeout)
+        p = run(args, expect_rc, timeout, cwd=cwd)
     except subprocess.TimeoutExpired:
         FAIL.append((name, "超时 >%ds" % timeout))
         return None
@@ -181,6 +181,13 @@ def main():
     # 回归守卫：受保护目录下的目标，无 --out 时必须降级而不是失败。
     # 这条守着 cmd_report 的 writable_fallback 逻辑 —— 旧版直接退出码 4，
     # 用户拿 notepad.exe 试第一次就踩到。
+    #
+    # 【cwd 为什么要指定】降级会把报告写到**当前工作目录**。若沿用默认的
+    # cwd=SCRIPTS，报告就落在源码目录里（notepad.exe.re-report.md），
+    # 被 _lint 的"测试残留物"护栏当成发布物残留反复抓到。
+    # 让这条用例在自己的临时目录里跑，产物随之可丢弃。
+    FALLBACK_CWD = tempfile.mkdtemp(prefix="re-e2e-fallback-")
+
     def _report_fallback_ok(o, p):
         if not isinstance(o, dict):
             return "顶层不是对象"
@@ -190,10 +197,16 @@ def main():
             return "未标出 writable_fallback（静默换位置＝假成功）"
         if not o.get("note"):
             return "缺少 note 说明降级原因"
+        # 报告必须真的落在降级目录里（cwd），而不是别处
+        rp = o.get("report")
+        if not rp or not os.path.isfile(rp):
+            return "返回的 report 路径不存在：%r" % rp
+        if os.path.dirname(os.path.abspath(rp)) != os.path.abspath(FALLBACK_CWD):
+            return "降级报告不在 cwd 下：%r" % rp
         return None
 
     case("report(受保护目录降级)", ["report", exe, "--json"],
-         check=_report_fallback_ok, timeout=300)
+         check=_report_fallback_ok, timeout=300, cwd=FALLBACK_CWD)
 
     # ---------- disasm ----------
     case("disasm", ["disasm", exe, "--json", "--max-insns", "200"])

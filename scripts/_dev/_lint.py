@@ -199,7 +199,22 @@ def _underscore_modules():
 
 
 def check_underscore_guard():
-    """护栏 9：_ 前缀模块被 import 了 → 它在 _dev/ 里就是错的。"""
+    """护栏 9：被生产代码 import 的 _ 前缀模块，必须留在 scripts/ 下。
+
+    这条护栏的**真实目的**：`_quirk.py` 曾是生产模块，被误当脚手架
+    挪进 _dev/，导致发布出去少一个必需文件（`re.py` 直接 ImportError）。
+    所以要拦的是「**生产运行时依赖的模块**被挪走」。
+
+    例外只给一种情况：**测试文件 import _dev/ 里的开发工具**。
+    `selftest.py` 要测 `_dev/_install.py`，这是正当用法 ——
+    但 `re.py` / `lib_*.py` 这些**生产模块**绝不允许 import `_dev/` 的东西
+    （发布时 `_dev/` 根本不分发，import 会直接崩）。
+
+    判据的教训（这里栽过两次）：
+      1) 不能用「被导入模块在 _dev/」当例外 —— 那样把 `_quirk.py`
+         挪进 `_dev/` 也会被放行，护栏等于失效（负向测试当场抓到）。
+      2) 必须用**导入方的身份**做判据：只有测试文件才享例外。
+    """
     mods = _underscore_modules()
     prod = [f for f in sorted(os.listdir(SCRIPTS))
             if f.endswith(".py") and not f.startswith("_")]
@@ -225,6 +240,10 @@ def check_underscore_guard():
                 add("护栏:被导入的 _ 模块不存在", os.path.join(SCRIPTS, f),
                     node.lineno, "import %s（找不到该文件）" % name)
             elif "scripts/" not in locs:
+                # 例外：**测试文件**测 _dev/ 里的开发工具是正当的。
+                # 生产模块（re.py / lib_*.py）不享此例外。
+                if f == "selftest.py" and any("_dev" in x for x in locs):
+                    continue
                 add("护栏:_ 模块被挪进 _dev", os.path.join(SCRIPTS, f),
                     node.lineno,
                     "生产代码 import %s，但文件不在 scripts/ 下（实际在 %s）"
