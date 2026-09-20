@@ -8,10 +8,35 @@
   .NET / Java / Python pyc / Web-WASM-Electron / 固件 / 私有格式 / SQLite
 - **内存有界、速度优先**：流式扫描，100MB 文件字符串扫描约 1 秒
 - **只读分析**：不写目标文件、不打补丁、不生成注册码
-- **自带自检**：81 个自检用例 + 36 项端到端集成，提交前必须全绿
+- **自带自检**：85 个自检用例 + 36 项端到端集成，提交前必须全绿
 
 > ⚠️ **仅限授权使用**。只对你自己拥有或已获书面授权的目标做逆向。
 > 授权提示见 [USE-POLICY.md](USE-POLICY.md)；法律条款见 [LICENSE](LICENSE)（MIT）。
+
+## 安装到你的 AI
+
+本技能遵循 **Agent Skills 开放标准**，同一份 `SKILL.md` 可直接用于
+**Claude Code / Codex CLI / Hermes / OpenClaw / Cursor / Gemini CLI**。
+各家只是技能目录不同：
+
+```bash
+cd scripts
+python _dev/_install.py --auto --verify      # 探测本机装了哪些运行时
+python _dev/_install.py --auto               # 装到全部探测到的运行时
+```
+
+| 运行时 | 个人级目录 | 项目级目录 |
+|---|---|---|
+| Claude Code | `~/.claude/skills/` | `.claude/skills/` |
+| Codex CLI | `$CODEX_HOME/skills/`（默认 `~/.codex/skills/`） | `.codex/skills/` |
+| Hermes | `~/.hermes/skills/` | —— |
+| OpenClaw | `~/.openclaw/skills/` | `.openclaw/skills/` |
+| Cursor | ——（仅项目级） | `.cursor/skills/` |
+| Gemini CLI | `~/.gemini/skills/` | `.gemini/skills/` |
+
+完整说明、手工装法与常见坑见 **[INSTALL.md](INSTALL.md)**。
+
+> 装完请**重开一次新会话** —— 技能在会话启动时扫描，中途装的当轮不加载。
 
 ## 快速开始
 
@@ -138,6 +163,7 @@ MSVC 一路以 `dbghelp!UnDecorateSymbolName` 为逐字对齐目标，**在 61,2
 ```
 reverse-engineering/
 ├── SKILL.md                     # 技能主入口（AI 读这个）
+├── INSTALL.md                   # **安装到各 AI 运行时**（Claude Code/Codex/Hermes/OpenClaw…）
 ├── README.md                    # 本文件
 ├── LICENSE                      # MIT（标准全文，无附加限制）
 ├── USE-POLICY.md                # 使用政策：授权/合规提醒（非许可证）
@@ -178,8 +204,9 @@ reverse-engineering/
     ├── lib_agent.py             # 工具编排：意图→命令检索 / 工作流 / 状态 / 转移图
     ├── lib_tools.py             # 工具链探测 + 分析计划
     ├── _quirk.py                # dbghelp 已知缺陷归一化表（生产模块）
-    ├── selftest.py              # 自检套件（81 个用例）
+    ├── selftest.py              # 自检套件（85 个用例，含 4 个安装用例）
     └── _dev/                    # 开发脚手架（不随发布分发）
+        └── _install.py          # 跨运行时安装器（--auto 探测 / --verify 回验）
 ```
 
 ## 合规
