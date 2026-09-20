@@ -13,6 +13,11 @@
 > ⚠️ **仅限授权使用**。只对你自己拥有或已获书面授权的目标做逆向。
 > 授权提示见 [USE-POLICY.md](USE-POLICY.md)；法律条款见 [LICENSE](LICENSE)（MIT）。
 
+**English documentation:** [README.en.md](README.en.md) ・
+[INSTALL.en.md](INSTALL.en.md) ・ [CONTRIBUTING.en.md](CONTRIBUTING.en.md) ・
+[SECURITY.en.md](SECURITY.en.md) ・ [USE-POLICY.en.md](USE-POLICY.en.md) ・
+[CODE_OF_CONDUCT.en.md](CODE_OF_CONDUCT.en.md)
+
 ## 安装到你的 AI
 
 本技能遵循 **Agent Skills 开放标准**，同一份 `SKILL.md` 可直接用于
@@ -163,14 +168,16 @@ MSVC 一路以 `dbghelp!UnDecorateSymbolName` 为逐字对齐目标，**在 61,2
 
 ```
 reverse-engineering/
-├── SKILL.md                     # 技能主入口（AI 读这个）
-├── INSTALL.md                   # **安装到各 AI 运行时**（Claude Code/Codex/Hermes/OpenClaw…）
-├── README.md                    # 本文件
+├── SKILL.md                     # 技能主入口（AI 读这个，中文）
+├── INSTALL.md / INSTALL.en.md   # **安装到各 AI 运行时**（中 / 英）
+├── README.md                    # 中文主 README（本文件）
+├── README.en.md                 # English README
+├── PUBLISHING.md / .en.md       # 开源发布指南（维护者手册，中 / 英）
+├── CONTRIBUTING.md / .en.md     # 贡献指南（中 / 英）
+├── SECURITY.md / SECURITY.en.md # 漏洞披露（中 / 英）
+├── USE-POLICY.md / .en.md       # 使用政策（中 / 英，明确非许可证）
+├── CODE_OF_CONDUCT.md / .en.md  # 行为准则（中 / 英）
 ├── LICENSE                      # MIT（标准全文，无附加限制）
-├── USE-POLICY.md                # 使用政策：授权/合规提醒（非许可证）
-├── SECURITY.md                  # 漏洞披露政策
-├── CODE_OF_CONDUCT.md           # 贡献者行为准则
-├── CONTRIBUTING.md              # 贡献指南（含两条硬约束与修 bug 流程）
 ├── CHANGELOG.md                 # 更新日志
 ├── Makefile                     # 常用命令入口（make test / lint / check）
 ├── .editorconfig                # 编辑器统一配置
