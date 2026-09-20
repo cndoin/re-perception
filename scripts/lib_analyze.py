@@ -28,6 +28,7 @@ CHUNK = 1 << 20          # 1MB
 CARRY = 8192             # 跨块字符串的最大回看长度
 CLASSIFY_MAXLEN = 512    # 参与分类匹配的最大字符数（性能护栏）
 DEFAULT_MAX_STRLEN = 8192   # 单条字符串的最大保存长度（内存护栏）
+SAMPLE_CHUNKS = 64          # 大文件整体熵采样的段数（每段 CHUNK 字节）
 
 # ---------------------------------------------------------------- 分类正则（模块级编译一次）
 
@@ -312,8 +313,47 @@ def entropy_profile(path: str, window: int = 4096, max_windows: int = 512,
         out["null_byte_ratio"] = round(zeros / total, 4) if total else 0
         out["printable_ratio"] = round(printable / total, 4) if total else 0
     else:
+        # 【已修 bug】原实现在这里只设 sampled=True 和一句"整体熵由采样估算"，
+        # **根本没有任何采样代码** —— out["overall_entropy"] 一直是 None，
+        # 报告里就印出"整体熵：**None**"。这是"声称做了但没做"，比不做更糟：
+        # 读者会以为那个数字是采样结果，实际什么都没算。
+        # 现在真的采样：等距取 SAMPLE_CHUNKS 段，按字节计数估算。
+        counts = {}
+        total = 0
+        printable = 0
+        zeros = 0
+        spans = SAMPLE_CHUNKS
+        stride = max(1, size // spans)
+        # 每段读多少必须 ≤ 段间距：否则相邻段互相重叠，同一批字节被重复
+        # 计数，sampled_bytes / sampled_ratio 会算出 1794% 这种荒唐值
+        # （本机实测踩到过）。
+        take = max(4096, min(CHUNK, stride))
+        with Reader(path) as r:
+            for k in range(spans):
+                chunk = r.read((size * k) // spans, take)
+                if not chunk:
+                    continue
+                total += len(chunk)
+                zeros += chunk.count(0)
+                printable += len(chunk) - chunk.translate(PRINTABLE_TABLE).count(0)
+                for kk, vv in Counter(chunk).items():
+                    counts[kk] = counts.get(kk, 0) + vv
+        if total:
+            ent = 0.0
+            for c in counts.values():
+                if c:
+                    p = c / total
+                    ent -= p * math.log2(p)
+            out["overall_entropy"] = round(ent, 4)
+            out["null_byte_ratio"] = round(zeros / total, 4)
+            out["printable_ratio"] = round(printable / total, 4)
         out["sampled"] = True
-        out["note"] = f"文件 {size / 1048576:.0f}MB 超过精确扫描阈值，整体熵由采样估算"
+        out["sampled_bytes"] = total
+        out["sampled_ratio"] = round(total / size, 6) if size else 0
+        out["note"] = (f"文件 {size / 1048576:.0f}MB 超过精确扫描阈值 "
+                       f"{sample_threshold / 1048576:.0f}MB：整体熵由等距采样 "
+                       f"{spans} 段（合计 {total / 1048576:.1f}MB，占 "
+                       f"{(total / size * 100) if size else 0:.1f}%）估算，不是精确值")
 
     # 分块熵曲线
     if size == 0:

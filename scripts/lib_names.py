@@ -230,6 +230,15 @@ def recover_go_symbols(reader, size: int, scan_limit: int = 32 * 1024 * 1024):
     warnings = []
     cands = find_pclntab(reader, size, scan_limit=scan_limit)
     if not cands:
+        if size > scan_limit:
+            # 【已修 bug】扫描窗口只有前 scan_limit 字节，pclntab 完全可能在
+            # 窗口之外（Go 二进制常见几十 MB）。原实现直接 return None, []，
+            # 和"不是 Go 程序"在返回值上**完全一样** —— 用户拿到的是假阴性，
+            # 而且没有任何线索提示"其实只扫了一部分"。
+            return None, [
+                f"pclntab 扫描只覆盖了前 {scan_limit / 1048576:.0f}MB"
+                f"（文件共 {size / 1048576:.0f}MB），未找到候选；"
+                f"不能据此断定不是 Go 程序 —— 提高 scan_limit 后重试"]
         return None, []  # 不是 Go，不算 "失败"，不产生噪声警告
 
     # 逐个候选试；取解析出函数最多的那个
@@ -369,9 +378,11 @@ def recover_symbols(ident: dict, want_demangle: bool = True,
         if path:
             try:
                 from lib_formats import Reader
-                r = Reader(path)
-                size = r.size
-                go, go_warn = recover_go_symbols(r, size)
+                # 必须显式关闭：裸构造依赖 GC 回收句柄，长驻进程里反复
+                # 调用会累积文件描述符（Windows 上尤甚）。
+                with Reader(path) as r:
+                    size = r.size
+                    go, go_warn = recover_go_symbols(r, size)
                 warnings.extend(go_warn)
             except Exception as ex:
                 go_err = "%s: %s" % (type(ex).__name__, ex)
