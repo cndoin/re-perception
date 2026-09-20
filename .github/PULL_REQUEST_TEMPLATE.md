@@ -21,7 +21,7 @@
 
 ## 自检清单
 
-- [ ] `cd scripts && python selftest.py` **全绿**（81 个用例）
+- [ ] `cd scripts && python selftest.py` **全绿**（88 个用例）
 - [ ] `cd scripts && python _dev/_lint.py` **零告警**
 - [ ] `cd scripts && python _dev/_undefined.py` **零告警**
 - [ ] 每个修复都配了**回归用例**（加在 `selftest.py` 的 `cases` 列表里）

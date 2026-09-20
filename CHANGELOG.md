@@ -3,6 +3,35 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.3.6] - 2026-09-20
+
+整理：安装器的 WorkBuddy 路径解析错误 + 三处过期文档数字。
+
+### 修复
+
+- **`workbuddy` 运行时的目标路径解析错误（假成功）**：
+  `personal_dir("workbuddy")` 返回 `os.path.dirname(SELF_ROOT)`，即
+  「技能自己的上一级目录」。两层后果，第二层更严重：
+  1) 把仓库 clone 到 `~/projects/re-clone` 后跑 `--auto`，会往
+     `~/projects/reverse-engineering` 再复制一份 —— 那不是任何运行时
+     读技能的路径；
+  2) 这一步还被上报成「[成功] 复制 → …」。装到一个永远不会被读的位置
+     却报成功，是本项目最忌讳的假成功。
+  现固定返回 `<home>/.workbuddy/skills`，并让「技能已在此位置」走幂等
+  分支（回报已就绪、不复制），杜绝自己复制进自己。
+
+### 文档
+
+- 修正三处过期用例数：`README.md` 快速开始仍写「81 个用例，约 170 秒」、
+  `.github/PULL_REQUEST_TEMPLATE.md` 仍写 81。这两处 ossaudit 未覆盖，
+  属于上一轮只改 CONTRIBUTING.md 时留下的漏网。
+
+### 新增用例（87 → 88）
+
+- `安装：workbuddy 不复制到技能上级` —— 断言目标必须是
+  `<home>/.workbuddy/skills`，且不得退化为技能上级目录。
+  已做负向验证：撤回修复即变红。
+
 ## [1.3.5] - 2026-09-20
 
 收尾：修复两处「静默截断」缺陷 —— 它们与已修的 `function_count: 0` 同源，
@@ -22,7 +51,7 @@
   注意此处原本已谨慎处理 inflate 失败（注释明写「不要 pass」），
   唯独漏了窗口截断这一路。现改为返回带原因的 `_error`。
 
-### 新增用例（85 → 87）
+### 新增用例（85 → 88）
 
 - `稳定性：差分比对截断如实标注` —— 双向验证：触顶必须标 `partial`，
   充足时不得误标。
