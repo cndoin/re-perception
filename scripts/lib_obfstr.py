@@ -491,20 +491,100 @@ def find_xor_loops(insns, base_vma: int = 0, max_results: int = 50):
     return {"loops": dedup, "warnings": []}
 
 
+def make_vma2off(ident: dict):
+    """构造 VMA -> 文件偏移 的换算函数。
+
+    返回 (func, warnings)。func 对映射不了的地址返回 None。
+
+    【为什么必须建这张表】本模块从指令里读到的 mem_ref 是**虚拟地址**
+    （lib_x86.py:849-855：RIP 相对是 vma+size+disp，绝对寻址是绝对地址），
+    而 lib_formats.Reader.read 是**文件偏移**语义（lib_formats.py:54-61）。
+    旧实现直接把 VMA 当偏移喂进去，PE 的 image_base 常常是 0x140000000，
+    远超文件长度 -> read() 越界返回空 -> XOR 串一条都出不来，却照样返回
+    warnings: [] —— 典型的「失败被上报为成功」。
+
+    各格式节表的真实字段（逐行读源码确认，不是猜的）：
+      PE     detail.sections[]: virtual_address（**RVA**，要加 image_base）
+                                / raw_offset / raw_size / virtual_size
+      ELF    detail.sections[]: addr / offset / size
+      Mach-O detail.sections[]: 只有 seg/name/size/offset/**没有地址**
+             （lib_formats.py:1338-1339 把 _addr 解出来后丢掉了）
+    """
+    warnings = []
+    det = (ident or {}).get("detail") or {}
+    secs = det.get("sections") or []
+    fmt = str((ident or {}).get("format") or "").lower()
+    base = det.get("image_base")
+    spans = []
+    for s in secs:
+        if "pe" in fmt:
+            va, rawo = s.get("virtual_address"), s.get("raw_offset")
+            if va is None or rawo is None:
+                continue
+            vsz = s.get("virtual_size") or 0
+            rsz = s.get("raw_size") or 0
+            n = min(rsz, vsz or rsz)
+            if n <= 0:
+                continue
+            start = (base or 0) + va
+            spans.append((start, start + n, rawo))
+        elif "elf" in fmt:
+            va, off = s.get("addr"), s.get("offset")
+            sz = s.get("size") or 0
+            if va is None or off is None or sz <= 0:
+                continue
+            spans.append((va, va + sz, off))
+    if not spans:
+        warnings.append(
+            "无法建立 VMA->文件偏移映射（%s）：%s"
+            % (fmt or "未知格式",
+               "Mach-O 的节表没有输出地址字段，暂时给不出映射"
+               if "mach" in fmt else
+               "没有可用的节区地址信息，密文地址只能按「VMA 与文件偏移重合」的裸二进制假设去试"))
+        return None, warnings
+
+    def _f(v: int):
+        for a, b, o in spans:
+            if a <= v < b:
+                return o + (v - a)
+        return None
+    return _f, warnings
+
+
 def xor_loops_to_strings(reader, loops, min_len: int = _MIN_CIPHER,
-                         max_results: int = 100):
+                         max_results: int = 100, vma2off=None):
     """对已识别的解密循环，把它推导出的 key 套用到数据上并抽取明文。
 
     因为有**代码证据**（循环 + 立即数 key），这里的门槛可以放宽：
     不再需要锚点判据 —— 这是"结构性消除误报"带来的收益。
+
+    vma2off：make_vma2off() 造出来的换算函数。data_ref 是 VMA，必须换算
+    成文件偏移才能读。**不传时退化成「VMA 即偏移」的裸二进制假设**，
+    并且凡是从这个假设救回来的结果都会标出来，不会冒充精确 mapping 的产物。
     """
     out = []
+    _unmapped = 0
+    _noref = 0
     for lp in loops:
         ref = lp.get("data_ref")
         if not ref:
+            # 解密循环找到了（有立即数 key、有读有写、有回跳），但循环体里
+            # 没有任何**静态算得出地址**的内存读（比如 movzx eax,[rsi+rcx]
+            # 这种寄存器间接取数，地址运行时才确定），于是密文在哪不知道。
+            # 【已修 bug】旧实现这里裸 continue：报告里躺着一条
+            # xor_loops，却交不出任何明文，warning 还是空的 —— 用户会以为
+            # 「工具坏了」或者「样本干净」。现在数出来并报出去。
+            _noref += 1
             continue
         key = lp["key"]
-        chunk = reader.read(ref, 512)
+        # 坐标系换算：ref 是 VMA，reader.read 要的是文件偏移。
+        off = vma2off(ref) if vma2off else None
+        if off is None:
+            if vma2off is not None or ref >= reader.size:
+                _unmapped += 1
+                continue
+            off = ref      # 没给映射函数时的裸二进制回退
+        chunk = reader.read(off, 512)
         if len(chunk) < min_len:
             continue
         dec = bytes(b ^ key for b in chunk)
@@ -515,7 +595,11 @@ def xor_loops_to_strings(reader, loops, min_len: int = _MIN_CIPHER,
                 "string": s,
                 "method": "xor-loop",
                 "key": key,
-                "offset": ref + rel,
+                # 【已修 bug】旧实现写 "offset": ref + rel，而 ref 是**虚拟
+                # 地址**，字段名却是 offset —— 用户拿它去 Hex 编辑器里跳转到
+                # 文件偏移，必然扑空。真实文件偏移是 off + rel，VMA 单独给。
+                "offset": off + rel,
+                "vma": ref + rel,
                 "loop_start_vma": lp.get("loop_start_vma"),
                 "evidence": lp.get("evidence"),
             })
@@ -529,7 +613,19 @@ def xor_loops_to_strings(reader, loops, min_len: int = _MIN_CIPHER,
             continue
         seen.add(r["string"])
         dedup.append(r)
-    return {"strings": dedup[:max_results], "warnings": []}
+    warns = []
+    if _noref:
+        warns.append(
+            "%d 个解密循环里没有静态可求的密文地址（寄存器间接取数），"
+            "这些循环的明文恢复不了" % _noref)
+    if _unmapped:
+        warns.append(
+            "%d 个解密循环的密文地址没能映射到文件偏移（%s），这些循环的明文未被恢复"
+            % (_unmapped,
+               "地址不在节表覆盖范围内，或运行时才重定位生效"
+               if vma2off is not None else
+               "未提供 VMA->文件偏移映射，且地址超出文件长度"))
+    return {"strings": dedup[:max_results], "warnings": warns}
 
 
 def try_xor_decode(data: bytes, min_len: int = _MIN_CIPHER):

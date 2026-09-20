@@ -62,7 +62,7 @@ import lib_obfstr as OS          # noqa: E402
 import lib_agent as AG           # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.3.7"
+VERSION = "1.3.8"
 
 
 # ---------------------------------------------------------------- 输出
@@ -1849,8 +1849,13 @@ def cmd_obfstr(args):
                 # 必须显式关闭：裸构造依赖 GC 回收句柄，长驻进程里
                 # 反复调用会累积文件描述符（Windows 上尤甚）。
                 with Reader(args.target) as r:
+                    # 必须换算： loops 里的 data_ref 是 **VMA**，Reader.read
+                    # 是文件偏移。旧实现少了这一步，PE 上永远读不到密文。
+                    vma2off, _mw = OS.make_vma2off(ident)
+                    warnings.extend(_mw)
                     xr = OS.xor_loops_to_strings(r, lr["loops"],
-                                                 max_results=args.limit)
+                                                 max_results=args.limit,
+                                                 vma2off=vma2off)
                 out["xor_strings"] = xr["strings"]
                 warnings.extend(xr.get("warnings") or [])
             else:
