@@ -62,7 +62,7 @@ import lib_obfstr as OS          # noqa: E402
 import lib_agent as AG           # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.3.6"
+VERSION = "1.3.7"
 
 
 # ---------------------------------------------------------------- 输出
@@ -211,8 +211,14 @@ def _fmt_doctor(d: dict) -> str:
 
 
 def _fmt_entropy(d: dict) -> str:
-    L = [f"大小    : {d.get('size'):,} 字节   窗口 {d.get('window')}",
-         f"整体熵  : {d.get('overall_entropy')}" + ("（采样估算）" if d.get("sampled") else "")]
+    _oe = d.get("overall_entropy")
+    if _oe is None:
+        # 打印 None 等于什么都没说：必须交代为什么没算出来。
+        _ent_line = f"整体熵  : 未计算（{d.get('note') or '文件读取失败' }）"
+    else:
+        _ent_line = (f"整体熵  : {_oe}"
+                     + ("（采样估算）" if d.get("sampled") else ""))
+    L = [f"大小    : {d.get('size'):,} 字节   窗口 {d.get('window')}", _ent_line]
     for k in ("null_byte_ratio", "printable_ratio"):
         if d.get(k) is not None:
             L.append(f"{k:<18}: {d[k]}")
@@ -243,12 +249,33 @@ def cmd_doctor(args):
     return EXIT_OK
 
 
+def _ident_ok(ident: dict) -> "tuple[bool, list[str]]":
+    """
+    【统一口径】识别类命令的 ok 必须从 errors 推，不能写死 True。
+
+    写死 True 的后果（实打实的假成功）：PE 头畸形时 parse_pe 在
+    lib_formats.py 的 except 里把异常吞掉，detail 只剩 parse_ok:False +
+    errors，连 imports 键都不会有；命令却照旧返回 ok:true / modules:[] /
+    function_count:null —— 用户读到的是"这文件没有导入表"，
+    而真相是"压根没解析成功"。这正是本项目头号缺陷：失败被上报为成功。
+    """
+    errs = list(ident.get("errors") or [])
+    det = ident.get("detail")
+    if isinstance(det, dict):
+        errs += list(det.get("errors") or [])
+        # 防御：哪天有人加了条只置 parse_ok=False 却不记 errors 的分支，
+        # 这里仍能把它判成失败，不让守卫静默失效。
+        if det.get("parse_ok") is False and not errs:
+            errs.append("结构解析失败（parse_ok=False，未提供具体错误信息）")
+    return (not errs), errs
+
+
 def cmd_identify(args):
     need_path(args.target, args.json)
     if args.max_parse_size:
         F.MAX_PARSE_SIZE = args.max_parse_size
     d = F.identify(args.target, deep=not args.no_deep)
-    d["ok"] = True
+    d["ok"] = _ident_ok(d)[0]
     if not args.json:
         print(_fmt_ident(d))
         return EXIT_OK
@@ -301,7 +328,13 @@ def cmd_imports(args):
     need_path(args.target, args.json)
     ident = F.identify(args.target, deep=True)
     det = ident.get("detail") or {}
-    out: dict = {"path": args.target, "format": ident.get("format"), "ok": True}
+    _idok, _iderrs = _ident_ok(ident)
+    out: dict = {"path": args.target, "format": ident.get("format"), "ok": _idok}
+    if _iderrs:
+        # ok:false 却不给原因，排障的人只能靠猜 —— 错误必须一起带出去。
+        # 典型场景：PE 头畸形 → parse_pe 抛异常被兜住 → 没有 imports 键，
+        # 若只报 ok:false 而无 errors，用户会以为是"这文件确实没导入表"。
+        out["errors"] = _iderrs
     if det.get("parser") == "pe":
         out["kind"] = "PE 导入表"
         out["modules"] = [{"dll": m["dll"], "count": m["count"],
@@ -340,7 +373,7 @@ def cmd_info(args):
     if args.max_parse_size:
         F.MAX_PARSE_SIZE = args.max_parse_size
     d = F.identify(args.target, deep=True)
-    d["ok"] = True
+    d["ok"] = _ident_ok(d)[0]
     if not args.json:
         print(_fmt_ident(d))
         det = d.get("detail") or {}
@@ -585,6 +618,20 @@ def cmd_semantics(args):
         funcs = find_functions(idx, seeds=D.entry_points(ident),
                                symbols=D.symbols_from(ident))
 
+    sem_warnings: list[str] = []
+    # 【防静默降级】idx 为 None 表示 analyze_file 没做函数识别
+    # （lib_disasm 只对 x86 / x86-64 建 CodeIndex）。此时 funcs 为空、
+    # resolve_thunks 与 summarize_functions 都跑不出东西，命令仍然
+    # 返回 ok:true / function_count:0 —— 用户读成"这文件没有函数"。
+    if idx is None:
+        sem_warnings.append(
+            "未做函数识别（架构 %s）—— 语义层整体跳过，本结果不含任何\n"
+            "            函数级结论。原因：%s"
+            % (ident.get("arch") or "未知",
+               res.get("note") or "该架构未接入函数识别/CFG"))
+    elif not funcs:
+        sem_warnings.append("函数识别返回 0 个函数：请核对代码区/入口点是否正确。")
+
     iat = D.resolve_iat(ident)
     str_map = {}
     if not args.no_strings:
@@ -639,13 +686,25 @@ def cmd_semantics(args):
         "tag_order": list(CAT_ORDER),
         "functions": sums,
     }
+    # 【已修 bug】原实现两次都写 out["warning"]，第二条会静默覆盖第一条：
+    # libscan 挂了 + 字符串映射也挂了，用户只会看到后者，前者凭空消失。
+    # 改成累加后拼接，两条都在。
+    _warn: list[str] = list(sem_warnings)
     if res.get("_libscan_error"):
-        out["warning"] = res["_libscan_error"]
+        _warn.append("库函数/常量表识别失败：" + str(res["_libscan_error"]))
+    if res.get("_string_map_error"):
+        _warn.append("字符串映射失败：" + str(res["_string_map_error"]))
+    if res.get("truncated"):
+        # 与 cmd_funcs 对齐：指令数上限触顶时这只是「已解码那一段」的结论。
+        out["truncated"] = True
+        out["truncated_note"] = res.get("truncated_note") or (
+            "函数识别在指令数上限处触顶：function_count / analyzed 只覆盖\n"
+            "            已解码的那一段，不是整个代码区。提高 --max-insns 可得完整结果。")
+    if _warn:
+        out["warning"] = "；".join(_warn)
     if args.tag:
         out["functions"] = [s for s in sums if args.tag in (s.get("tags") or [])]
         out["filtered_by_tag"] = args.tag
-    if res.get("_string_map_error"):
-        out["warning"] = res["_string_map_error"]
     if not args.json:
         print(_fmt_semantics(out))
         return EXIT_OK
@@ -913,7 +972,12 @@ def render_report(path, ident, ent, st, plan, packer) -> str:
     A_("")
 
     A_("## 2. 熵与加壳判断\n")
-    A_(f"- 整体熵：**{ent.get('overall_entropy')}**（8.0 为上限；≥7.2 通常意味着整文件压缩/加密）")
+    _oe = ent.get("overall_entropy")
+    if _oe is None:
+        A_(f"- 整体熵：**未计算**（{ent.get('note') or '文件读取失败' }）")
+    else:
+        A_(f"- 整体熵：**{_oe}**（8.0 为上限；≥7.2 通常意味着整文件压缩/加密）"
+           + ("（采样估算）" if ent.get("sampled") else ""))
     if ent.get("null_byte_ratio") is not None:
         A_(f"- 空字节占比：{ent['null_byte_ratio']}　可打印占比：{ent.get('printable_ratio')}")
     A_(f"- 加壳嫌疑等级：**{packer.get('level')}**")
@@ -1047,6 +1111,23 @@ def cmd_capability(args):
     iat = D.resolve_iat(ident)
     str_map: dict[int, str] = {}
     warnings: list[str] = []
+    # 【防静默降级 · P0】idx 为 None 意味着 analyze_file 没做函数识别
+    # （lib_disasm 只对 x86 / x86-64 建 CodeIndex，ARM/ARM64 走线性反汇编分支，
+    #  返回 ok:true 但**不带 _idx**）。后果：下面的语义层与字符串 VMA 映射
+    # 整段跳过，api / 字符串类特征全空，规则必然大面积漏报，
+    # 而输出仍然是 ok:true / capabilities:[] —— 用户会读成"样本没这能力"。
+    # 这正是本函数注释里点名要防的"把没命中读成没这个能力"。
+    if idx is None:
+        warnings.append(
+            "未做函数识别（架构 %s）—— 语义层与字符串映射整体跳过，\n"
+            "            api/字符串类特征为空，能力规则会大面积漏报；\n"
+            "            0 条命中 ≠ 样本没有这些能力。原因：%s"
+            % (ident.get("arch") or "未知",
+               res.get("note") or "该架构未接入函数识别/CFG"))
+    elif not funcs:
+        warnings.append(
+            "函数识别返回 0 个函数 —— 能力规则依赖函数级特征，\n"
+            "            这个结果下的 0 条命中不代表样本没有这些能力。")
     if not args.no_strings and idx is not None:
         try:
             from lib_semantics import string_vma_map
@@ -1120,6 +1201,12 @@ def cmd_capability(args):
             "file_imports": len(feats["file"]["import"]),
         },
     }
+    if res.get("truncated"):
+        # 与 cmd_funcs 对齐：--max-insns 触顶时，命中的规则只覆盖已解码那一段。
+        out["truncated"] = True
+        out["truncated_note"] = res.get("truncated_note") or (
+            "函数识别在指令数上限处触顶：下列能力只覆盖已解码的那一段，\n"
+            "            未解码部分的能力未被检出。提高 --max-insns 可得完整结果。")
     if warnings:
         out["warnings"] = warnings
     if args.json:
