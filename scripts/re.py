@@ -62,7 +62,7 @@ import lib_obfstr as OS          # noqa: E402
 import lib_agent as AG           # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.3.4"
+VERSION = "1.3.5"
 
 
 # ---------------------------------------------------------------- 输出
@@ -1759,9 +1759,11 @@ def cmd_obfstr(args):
             warnings.extend(lr.get("warnings") or [])
             if lr["loops"]:
                 from lib_formats import Reader
-                r = Reader(args.target)
-                xr = OS.xor_loops_to_strings(r, lr["loops"],
-                                             max_results=args.limit)
+                # 必须显式关闭：裸构造依赖 GC 回收句柄，长驻进程里
+                # 反复调用会累积文件描述符（Windows 上尤甚）。
+                with Reader(args.target) as r:
+                    xr = OS.xor_loops_to_strings(r, lr["loops"],
+                                                 max_results=args.limit)
                 out["xor_strings"] = xr["strings"]
                 warnings.extend(xr.get("warnings") or [])
             else:

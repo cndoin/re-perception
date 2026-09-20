@@ -571,7 +571,9 @@ def recover_xor_strings(reader, regions, min_len: int = 8,
     """
     warnings = []
     found = []
+    scanned_regions = 0
     for off, size, name in regions:
+        scanned_regions += 1
         if size <= 0:
             continue
         pos = off
@@ -614,6 +616,8 @@ def recover_xor_strings(reader, regions, min_len: int = 8,
             continue
         seen.add(r["string"])
         dedup.append(r)
+    # scanned_regions 必须反映**真正扫过**的区间数。原写法
+    # len(list(regions)) 只对带 __len__ 的对象成立，对生成器返回 None，
+    # 而且 list() 会把已经遍历过的迭代器再要一遍 —— 统计值不可信。
     return {"strings": dedup[:max_results], "warnings": warnings,
-            "scanned_regions": len(list(regions)) if hasattr(regions, "__len__")
-            else None}
+            "scanned_regions": scanned_regions}
