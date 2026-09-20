@@ -4,8 +4,10 @@ __pycache__/
 *.pyc
 *.pyo
 
-# 开发脚手架（LLVM 参考源码体积大，且版权归 LLVM 项目所有，不随本仓库分发）
-# 如需要，请按 scripts/_dev/_ref/README.md 的说明自行下载。
+# 开发脚手架：_ref/ 放的是 demangle 开发期对照用的 LLVM 源码（版权归 LLVM
+# 项目所有，体积也大），不随本仓库分发 —— 运行时**不会**读它，缺了不影响使用。
+# 需要对照时直接从 LLVM 官方仓库取（llvm-project/lib/Demangle 下的
+# MicrosoftDemangle.cpp 等），不必依赖本目录。
 scripts/_dev/_ref/
 
 # 自检与分析的临时产物

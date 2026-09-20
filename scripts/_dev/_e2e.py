@@ -86,7 +86,13 @@ def need(obj, *keys):
 
 
 def samples():
-    """挑真实样本。优先系统自带文件，避免依赖外部下载。"""
+    """挑真实样本。优先系统自带文件，避免依赖外部下载。
+
+    **只在 Windows 上能拿到 PE 样本**（取自 System32）。Linux / macOS 上
+    这些路径不存在，本函数会返回空 exe/dll，随后 main() 失败退出 ——
+    这是刻意的：不拿合成样本凑数，也不静默跳过。
+    CI 里这个 job 因此跑在 windows-latest。
+    """
     out = {}
 
     def first(*paths):
@@ -120,7 +126,13 @@ def main():
 
     exe, dll, dll2, text = S.get("exe"), S.get("dll"), S.get("dll2"), S.get("text")
     if not exe or not dll:
-        print("！缺少 PE 样本，无法继续；请在有 System32 的机器上跑")
+        # 必须失败退出，不能静默跳过：否则 CI 上会出现「0 个用例全通过」的
+        # 永不拦截的门。但要把原因说清楚，别让 Linux 上的贡献者一头雾水。
+        print("！缺少 PE 样本，无法继续。")
+        print("  本端到端测试依赖 Windows 的 System32 文件（notepad.exe /")
+        print("  kernel32.dll / ntdll.dll / null.sys），Linux 与 macOS 没有。")
+        print(f"  当前平台：{sys.platform}")
+        print("  请在 Windows 上运行，或改跑 `python selftest.py`（全平台可用）。")
         return 1
 
     # ---------- doctor ----------

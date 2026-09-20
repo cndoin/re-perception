@@ -58,10 +58,15 @@ jobs:
         working-directory: scripts
         run: python _dev/_undefined.py
 
-  # ---------- 端到端：需要真实系统二进制，只在 Linux 上跑 ----------
+  # ---------- 端到端：需要真实系统二进制 ----------
+  # 【必须跑在 Windows】_e2e.py 的样本取自 System32（notepad.exe /
+  # kernel32.dll / ntdll.dll / null.sys），Linux 与 macOS 上没有这些文件，
+  # 而它在缺样本时是**失败退出**（return 1，不是静默跳过）——
+  # 所以放在 Linux 上跑会永久变红。别再改回 ubuntu-latest。
+  # 三平台覆盖由上面的 selftest job 负责。
   e2e:
     name: 端到端（真实二进制）
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

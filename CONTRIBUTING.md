@@ -23,7 +23,7 @@
 # 拿到仓库后进 scripts/ 目录即可，无需安装任何东西
 cd reverse-engineering/scripts
 
-# 全量自检（约 110 秒，88 个用例）
+# 全量自检（约 155 秒，92 个用例）
 python selftest.py
 
 # 只跑名字含关键字的用例
@@ -33,6 +33,9 @@ python selftest.py --only 符号
 python _dev/_lint.py
 
 # 端到端：把 26 个子命令在真实系统 PE 上全跑一遍
+# ⚠️ 仅 Windows：样本取自 System32（notepad.exe / kernel32.dll / ntdll.dll /
+#    null.sys）。Linux / macOS 上没有这些文件，脚本会**失败退出**（不是跳过）——
+#   这是刻意的，不用合成样本凑数。CI 里该 job 也跑在 windows-latest。
 python _dev/_e2e.py
 ```
 
