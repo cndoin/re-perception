@@ -4,7 +4,7 @@ description: 全平台逆向工程工具箱——AI 驱动的通用逆向工作�
 license: MIT
 compatibility: 只依赖 Python 3.10+ 标准库，无需 pip install。Windows / Linux / macOS 均可运行；部分实机验证用例需要本机存在 PE/ELF 样本，缺失时自动跳过。
 metadata:
-  version: "1.3.4"
+  version: "1.3.5"
   author: 寇豆码
   category: security
   tags: [reverse-engineering, binary-analysis, disassembly, pe, elf, malware-analysis]
@@ -35,7 +35,7 @@ python re.py plan   "/path/to/unknown.bin" --json
 - 退出码： `0` 成功 / `2` 用法错误 / `3` 目标不可读 / `4` 分析出错
 - `--json` 下所有子命令都输出顶层 `ok` 字段，优先用它判断成败
 - 路径用正斜杠，含空格必须加引号
-- 自检：`python selftest.py`（85 个用例，期望全绿）
+- 自检：`python selftest.py`（87 个用例，期望全绿）
 - 静态体检：`python _dev/_lint.py`（期望 `生产 0 处`，退出码 0）
 - 安装到本机 AI：`python _dev/_install.py --auto --verify`（先看装到哪，再 `--auto` 实装）
 - 稳定性压测：`python _dev/_fuzz.py` 与 `python _dev/_fuzzlib.py`（期望 0 缺陷）
@@ -406,7 +406,7 @@ capa 风格的规则库折算成"这样本能做什么"，并直接给出 ATT&CK
 | `scripts/lib_agent.py` | **工具编排层**：意图→命令检索、分阶段工作流、状态目录、工具转移图 |
 | `scripts/_quirk.py` | dbghelp 已知缺陷清单（**参考文档**，须随发布分发，勿挪进 `_dev/`） |
 | `rules/*.yml` | **能力规则库**（capa 格式）：进程/加密/网络/反分析四类共 20 条，带 ATT&CK 映射 |
-| `scripts/selftest.py` | 自检套件（正确性 + 稳定性 + 性能，共 85 个用例，含 74 条 x86 + 18 条 ARM64 黄金指令向量） |
+| `scripts/selftest.py` | 自检套件（正确性 + 稳定性 + 性能，共 87 个用例，含 74 条 x86 + 18 条 ARM64 黄金指令向量） |
 | `scripts/_dev/_lint.py` | **静态体检器**：语法/告警、静默吞异常、可变默认参数、重复定义、**未定义名**、open 未 with、硬编码本机路径、以及 3 条工程护栏（见下） |
 | `scripts/_dev/_undefined.py` | 手写 AST 作用域分析：找"函数体里写错的变量名"（零依赖下替代 pyflakes） |
 | `scripts/_dev/_install.py` | **跨运行时安装器**：把技能装到 Claude Code / Codex / Hermes / OpenClaw / Cursor / Gemini / WorkBuddy 的技能目录，支持 `--auto` 探测、`--verify` 回验、幂等与备份 |

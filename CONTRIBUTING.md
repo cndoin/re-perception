@@ -23,7 +23,7 @@
 # 拿到仓库后进 scripts/ 目录即可，无需安装任何东西
 cd reverse-engineering/scripts
 
-# 全量自检（约 110 秒，85 个用例）
+# 全量自检（约 110 秒，87 个用例）
 python selftest.py
 
 # 只跑名字含关键字的用例
