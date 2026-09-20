@@ -43,6 +43,9 @@ PY = sys.executable
 RESULTS: list[dict] = []
 
 
+SKIP = object()   # 用例返回 detail 为该值即视为「跳过」（环境不具备）
+
+
 def case(name, fn):
     t0 = time.time()
     try:
@@ -52,6 +55,15 @@ def case(name, fn):
     except Exception as e:
         ok, detail = False, f"用例异常：{type(e).__name__}: {e}"
     dt = round(time.time() - t0, 2)
+    skipped = detail is SKIP
+    if skipped:
+        # 环境不具备（典型：装到运行时后 _dev/ 不再分发）→ 记为跳过。
+        # 跳过必须**显式可见**，不能混进"通过"里冒充绿 —— 否则
+        # 用例没跑也会显示全绿，正是本项目最忌的假成功。
+        RESULTS.append({"case": name, "ok": True, "skipped": True,
+                        "detail": "环境不具备，已跳过", "seconds": dt})
+        print(f"  [SKIP] {name} ({dt}s)  环境不具备，已跳过")
+        return True
     RESULTS.append({"case": name, "ok": bool(ok), "detail": str(detail)[:500], "seconds": dt})
     tag = "PASS" if ok else "FAIL"
     brief = str(detail).replace("\n", " ")[:96]
@@ -1504,6 +1516,14 @@ def t_no_third_party():
     _dev_dir = HERE / "_dev"
     if _dev_dir.is_dir():
         local |= {p.stem for p in _dev_dir.glob("*.py")}
+    # 安装到运行时后 _dev/ 不再分发，selftest 里指向 _dev 工具的 import
+    # 会变成"找不到的第三方依赖"。这不是依赖问题，是**环境不具备**，
+    # 应当整条用例跳过，而不是报红。判据：_dev/ 目录不存在且有 _ 模块
+    # 找不到归属。
+    if not _dev_dir.is_dir():
+        _dev_only = {m for m in ("_install",) if m not in local}
+        if _dev_only:
+            return True, SKIP
     allowed = stdlib | local | fallback
 
     # 【已修 bug 3】旧实现只取 `s.split()[0]`，遇到逗号分隔的
@@ -3381,6 +3401,10 @@ def t_install_paths_in_spec():
 
     这是"能不能装"的地基：路径错了，后面一切免谈。
     """
+    if not (HERE / "_dev" / "_install.py").is_file():
+        # 装到运行时后 _dev/ 不再分发（面向贡献者的脚手架），
+        # 此时安装用例无从取材 —— 跳过而不是失败。
+        return True, SKIP
     sys.path.insert(0, str(HERE / "_dev"))
     try:
         import _install as I
@@ -3428,6 +3452,10 @@ def t_install_verify_detects_broken():
     这是本项目"假成功"病在安装环节的对偶：验证器若总是返回 ok，
     就等于把坏安装上报成好安装。
     """
+    if not (HERE / "_dev" / "_install.py").is_file():
+        # 装到运行时后 _dev/ 不再分发（面向贡献者的脚手架），
+        # 此时安装用例无从取材 —— 跳过而不是失败。
+        return True, SKIP
     sys.path.insert(0, str(HERE / "_dev"))
     try:
         import _install as I
@@ -3480,6 +3508,10 @@ def t_install_copy_slims_and_runs():
     末尾用子进程跑一次 re.py --help，确认**装出来的副本真的能执行** ——
     只看文件在不在是不够的。
     """
+    if not (HERE / "_dev" / "_install.py").is_file():
+        # 装到运行时后 _dev/ 不再分发（面向贡献者的脚手架），
+        # 此时安装用例无从取材 —— 跳过而不是失败。
+        return True, SKIP
     sys.path.insert(0, str(HERE / "_dev"))
     try:
         import _install as I
@@ -3550,6 +3582,10 @@ def t_install_copy_slims_and_runs():
 
 def t_install_no_clobber():
     """已存在同名技能时必须拒绝覆盖（保护用户已有安装）。"""
+    if not (HERE / "_dev" / "_install.py").is_file():
+        # 装到运行时后 _dev/ 不再分发（面向贡献者的脚手架），
+        # 此时安装用例无从取材 —— 跳过而不是失败。
+        return True, SKIP
     sys.path.insert(0, str(HERE / "_dev"))
     try:
         import _install as I
@@ -3707,9 +3743,19 @@ def main():
         case(name, fn)
 
     total = len(RESULTS)
-    passed = sum(1 for r in RESULTS if r["ok"])
-    skipped = sum(1 for r in RESULTS if r["detail"].startswith("跳过"))
-    failed = [r for r in RESULTS if not r["ok"] and not r["detail"].startswith("跳过")]
+    # 跳过有两种来源：① 用例返回 SKIP 标记（环境不具备，如装到运行时后
+    # 不再分发 _dev/）；② 用例自己返回 detail 以「跳过」开头（找不到
+    # 本机样本）。两者都必须**显式计入 skipped 并从 passed 里剔除** ——
+    # 否则会出现"通过 4/4 跳过 4"这种自相矛盾的输出，且跳过会被
+    # 误当成通过（假绿）。
+    skipped = sum(1 for r in RESULTS
+                  if r.get("skipped") or r["detail"].startswith("跳过"))
+    passed = sum(1 for r in RESULTS
+                 if r["ok"] and not r.get("skipped")
+                 and not r["detail"].startswith("跳过"))
+    failed = [r for r in RESULTS
+              if not r["ok"] and not r.get("skipped")
+              and not r["detail"].startswith("跳过")]
     dur = round(time.time() - t0, 2)
 
     print(f"\n{'=' * 64}")
