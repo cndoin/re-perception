@@ -531,13 +531,21 @@ def match_functions(fa: list[dict], fb: list[dict],
     """
     两份二进制的函数级差分：按指纹找最佳匹配。
     采用「先按 simhash 粗筛，再按复合分精排」的两级策略，避免 O(n²) 全比对。
+
+    比对次数上限为 max_pairs * 50。**一旦触顶就提前收工**，此时
+    match_rate_a / match_rate_b 只反映「已比过的那部分」，不代表真实相似度 ——
+    所以返回值里必须给出 partial / truncated_note，调用方要据此判读。
     """
     # 粗筛桶：simhash 前 16 位相同才进精排（近似最近邻）
     buckets: dict[int, list[dict]] = {}
     for f in fb:
         buckets.setdefault(f["fingerprint"].get("simhash", 0) >> 48, []).append(f)
 
+    # 比对预算：粗筛后仍可能剩大量候选，这里给一个硬上限防止 O(n²) 爆炸。
+    # 触顶时结果降级为「片段结论」，见下方 partial / truncated_note。
+    budget = max(1, max_pairs) * 50
     matches, cmp_count = [], 0
+    partial = False
     for a in fa:
         ah = a["fingerprint"].get("simhash", 0)
         cands = buckets.get(ah >> 48, [])
@@ -546,9 +554,9 @@ def match_functions(fa: list[dict], fb: list[dict],
         best, best_score, best_dist = None, 0.0, None
         a_vma = _as_vma(a["start_vma"])
         for b in cands:
-            cmp_count += 1
-            if cmp_count > max_pairs * 50:
+            if cmp_count >= budget:
                 break
+            cmp_count += 1
             r = compare_funcs(a["fingerprint"], b["fingerprint"])
             # 分数相同时优先配对「地址相同」的那个：指纹相同的短函数很常见
             # （例如一堆只含 ret 的 stub），不这样做会让自比对都配错人。
@@ -564,7 +572,10 @@ def match_functions(fa: list[dict], fb: list[dict],
                 "b": hex(_as_vma(best["start_vma"])), "b_name": best["name"],
                 "score": round(best_score, 4),
             })
-        if cmp_count > max_pairs * 50:
+        if cmp_count >= budget:
+            # 预算耗尽：剩下的函数根本没比过，必须显式标注，
+            # 否则低分会被误读成「确实不像」。
+            partial = True
             break
 
     matched_a = {m["a"] for m in matches}
@@ -573,7 +584,7 @@ def match_functions(fa: list[dict], fb: list[dict],
     def _hx(f):
         return hex(_as_vma(f["start_vma"]))
 
-    return {
+    out = {
         "total_a": len(fa), "total_b": len(fb),
         "matched": len(matches),
         "comparisons": cmp_count,
@@ -582,4 +593,13 @@ def match_functions(fa: list[dict], fb: list[dict],
         "unmatched_a": [_hx(f) for f in fa if _hx(f) not in matched_a][:200],
         "unmatched_b": [_hx(f) for f in fb if _hx(f) not in matched_b][:200],
         "matches": sorted(matches, key=lambda m: -m["score"])[:max_pairs],
+        # partial=True 时上面所有比率只覆盖「已比过的函数」。
+        # 单独标出来，避免调用方把被预算截断的低分当成真实相似度。
+        "partial": partial,
     }
+    if partial:
+        out["truncated_note"] = (
+            "比对预算 %d 次已用尽，只比了前 %d 次；match_rate_a / match_rate_b "
+            "仅代表已比对的部分，不是整体相似度。提高 --max-pairs 可得完整结果。"
+            % (budget, cmp_count))
+    return out

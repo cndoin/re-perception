@@ -3623,6 +3623,97 @@ def t_install_no_clobber():
     shutil.rmtree(sandbox, ignore_errors=True)
     return True, "已存在时拒绝覆盖；--force 先备份且备份含原内容"
 
+def t_diff_partial_flag():
+    """
+    match_functions 触到比对预算时必须标 partial + truncated_note。
+
+    原缺陷：cmp_count 超过 max_pairs*50 就 break，返回值里没有任何标记。
+    调用方看到 match_rate_a 偏低，会读成「两个二进制只有 12% 像」，
+    实际是「比到一半就停了」。与已修的 function_count:0 同一类缺陷。
+
+    这条用例是**双向**的：既要证明触顶时有标记，也要证明没触顶时
+    标记不出现（否则永久 partial=True 等于把标记变成噪音）。
+    """
+    import lib_code as LC
+
+    def mkfuncs(n, base=0x140001000):
+        """构造 n 个指纹相同的函数，保证它们全部落进同一个 simhash 桶。"""
+        out = []
+        for i in range(n):
+            out.append({
+                "name": "f%d" % i,
+                "start_vma": hex(base + i * 0x10),
+                "end_vma": hex(base + i * 0x10 + 0x10),
+                "calls": [],
+                "fingerprint": {"simhash": 0xABCDEF0123456789, "size": 1,
+                                "mnemonics": ["ret"]},
+            })
+        return out
+
+    fa, fb = mkfuncs(60), mkfuncs(60)
+
+    # 1) 预算极小 -> 必然触顶 -> 必须标 partial
+    small = LC.match_functions(fa, fb, max_pairs=1)   # budget = 1*50 = 50
+    if not small.get("partial"):
+        return False, "比对预算触顶却没标 partial（comparisons=%r）" % small.get("comparisons")
+    if not small.get("truncated_note"):
+        return False, "partial=True 但缺 truncated_note，调用方无从知道原因"
+    if small["comparisons"] > 50:
+        return False, "超出预算仍在比对：comparisons=%d > 50" % small["comparisons"]
+
+    # 2) 预算充足 -> 不得标 partial（防止标记退化成恒真噪音）
+    big = LC.match_functions(fa, fb, max_pairs=100000)
+    if big.get("partial"):
+        return False, "预算充足却标了 partial（comparisons=%r）" % big.get("comparisons")
+    if big.get("truncated_note"):
+        return False, "预算充足却带了 truncated_note"
+
+    return True, ("触顶时标 partial（comparisons=%d）+ truncated_note，"
+                  "充足时不误标（comparisons=%d）"
+                  % (small["comparisons"], big["comparisons"]))
+
+
+def t_axml_truncated_window_reports():
+    """
+    _axml_strings 扫描窗口被截断且窗口内无 manifest 时，必须报错而非返回空。
+
+    原缺陷：blob 被截到 1 MB；若 AndroidManifest.xml 的中央目录条目落在
+    1 MB 之后，循环走完 find 返回 -1 → pool 为空 → 返回 **{}**，
+    即 permissions: [] / package_like: []，**连 _note 都没有**。
+    调用方会读成「这个 APK 不申请任何权限」—— 全库最危险的静默失败。
+
+    反向也要验：正常小文件在窗口内找不到 manifest 时，仍应安静返回 {}，
+    不能被这条守卫误报成错误。
+    """
+    import lib_formats as LF
+
+    class _R:
+        """最小 Reader 替身：只用得到 size 与 read(off, n)。"""
+        def __init__(self, data):
+            self._d = data
+            self.size = len(data)
+
+        def read(self, off, n):
+            return self._d[off:off + n]
+
+    # 1) 大于 1 MB 且窗口内无 manifest -> 必须 _error
+    big = b"\x00" * (LF.__dict__.get("_SCAN_CAP", 1 << 20) + 4096)
+    got = LF._axml_strings(_R(big))
+    if "_error" not in got:
+        return False, ("大文件且窗口内无 manifest，却返回 %r —— "
+                       "调用方会读成「无权限」" % (got,))
+    if not got["_error"].strip():
+        return False, "_error 是空串，等于没说"
+
+    # 2) 小文件且无 manifest -> 仍应安静返回 {}（不得误报）
+    small = LF._axml_strings(_R(b"plain text, not a zip"))
+    if small:
+        return False, "小文件无 manifest 时应返回 {}，实际 %r" % (small,)
+
+    return True, "截断窗口内无 manifest 时明确 _error；小文件仍安静返回 {}"
+
+
+
 
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
@@ -3717,6 +3808,8 @@ def main():
         ("稳定性：case 索引形状容错", t_case_index_shape_tolerance),
         ("稳定性：journal 有界读取", t_case_journal_bounded_read),
         ("稳定性：规则特征树深度守卫", t_rules_feature_depth_guard),
+        ("稳定性：差分比对截断如实标注", t_diff_partial_flag),
+        ("稳定性：AXML 截断窗口不伪装成空", t_axml_truncated_window_reports),
         ("安装：运行时路径合规", t_install_paths_in_spec),
         ("安装：验证器能识别坏安装", t_install_verify_detects_broken),
         ("安装：复制可用且裁剪开发产物", t_install_copy_slims_and_runs),

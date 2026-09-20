@@ -1595,10 +1595,16 @@ def _axml_strings(r: Reader) -> dict:
     看起来"正常"的垃圾串，属于「失败被上报为成功」。这里把失败写进
     返回值，让上层能看见。
     """
-    blob = r.read(0, min(r.size, 1 << 20))
+    # 扫描窗口上限 1 MB：AXML 的中央目录通常在前部，但**不保证**。
+    # 被截断时必须显式记账（truncated_scan），否则「找不到 AndroidManifest」
+    # 会退化成「这个 APK 没有权限」，属于最危险的静默失败。
+    scan_cap = 1 << 20
+    truncated_scan = r.size > scan_cap
+    blob = r.read(0, min(r.size, scan_cap))
     idx = 0
     pool = []
     note = None
+    found_manifest = False
     while True:
         i = blob.find(b"PK\x03\x04", idx)
         if i < 0:
@@ -1606,6 +1612,7 @@ def _axml_strings(r: Reader) -> dict:
         nlen, elen = struct.unpack_from("<HH", blob, i + 26)
         nm = blob[i + 30: i + 30 + nlen].decode("utf-8", "replace")
         if nm == "AndroidManifest.xml":
+            found_manifest = True
             csize = struct.unpack_from("<I", blob, i + 18)[0]
             method = struct.unpack_from("<H", blob, i + 8)[0]
             data_off = i + 30 + nlen + elen
@@ -1627,8 +1634,16 @@ def _axml_strings(r: Reader) -> dict:
             pool = _axml_pool(raw)
             break
         idx = i + 4
+    if truncated_scan and not found_manifest:
+        # 窗口被截断且窗口内没找到 manifest —— 无法判定，必须说出来。
+        return {"_error": "扫描窗口 %d 字节内未找到 AndroidManifest.xml，"
+                          "但文件共 %d 字节（已截断）。可能是中央目录位于 "
+                          "1MB 之后，也可能是该文件不是 APK。"
+                          % (scan_cap, r.size)}
     if not pool:
-        return {"_note": note} if note else {}
+        if note:
+            return {"_note": note}
+        return {}
     perms = sorted({s for s in pool if s.startswith("android.permission.")})
     pkg = sorted({s for s in pool if re.fullmatch(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){2,}", s) and "." in s})
     res = {"permissions": perms[:80], "package_like": pkg[:40], "pool_size": len(pool)}
