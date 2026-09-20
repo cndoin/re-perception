@@ -169,17 +169,24 @@ class CodeIndex:
 
 def find_functions(idx: CodeIndex, seeds: list[int] | None = None,
                    symbols: dict[int, str] | None = None,
-                   max_functions: int = 20000) -> list[dict]:
+                   max_functions: int = 20000,
+                   stats: dict | None = None) -> list[dict]:
     """
     识别函数。seeds / symbols 用 **VMA** 传入。
 
     返回按入口地址升序的函数列表，每项含：
         start_vma / end_vma / size / insn_count / bb / calls / fingerprint / name
+
+    stats（可选dict）：把「隐性丢数据」写出去，调用方负责呈现给用户：
+        skipped_seeds       —— 因达到 max_functions 而没处理的种子个数
+        truncated_functions —— 遍历预算内没走完的函数 VMA 列表
+    不给 stats 时这些信息仍会被丢弃，这是调用方的选择而不是悄悄发生。
     """
     if seeds is None:
         seeds = []
     if symbols is None:
         symbols = {}
+    skipped_seeds: list[int] = []
 
     # ---- 第一遍：线性扫描，收集 call 目标作为候选入口 ----
     lin = idx.linear_scan()
@@ -232,14 +239,21 @@ def find_functions(idx: CodeIndex, seeds: list[int] | None = None,
     owned: dict[int, int] = {}      # off -> 归属函数入口 off
     funcs: dict[int, set[int]] = {}  # 入口 off -> 函数体偏移集合
 
+    truncated_entries: list[int] = []
     for entry in seed_offs:
         if len(funcs) >= max_functions:
-            break
+            # 【已修 bug】旧代码这里直接 break，外面只看到 N 个函数，
+            # 完全不知道还有一批种子被丢掉了 —— 报告里的 function_count
+            # 会被读成「全文件就这么多函数」。改为登记下来。
+            skipped_seeds.append(entry)
+            continue
         if entry in owned:
             continue
-        body = _walk(idx, entry, entry_set, owned)
+        body, hit_limit = _walk(idx, entry, entry_set, owned)
         if not body:
             continue
+        if hit_limit:
+            truncated_entries.append(entry)
         for o in body:
             owned.setdefault(o, entry)
         funcs[entry] = body
@@ -268,6 +282,9 @@ def find_functions(idx: CodeIndex, seeds: list[int] | None = None,
             "fingerprint": fp,
             "_offs": offs,
         })
+    if isinstance(stats, dict):
+        stats["skipped_seeds"] = len(skipped_seeds)
+        stats["truncated_functions"] = [idx.off2vma(e) for e in truncated_entries]
     return out
 
 
@@ -283,8 +300,13 @@ def _auto_name(idx: CodeIndex, insns: list[Insn], vma: int) -> str:
 
 
 def _walk(idx: CodeIndex, entry: int, entry_set: set[int],
-          owned: dict[int, int]) -> set[int]:
-    """从 entry 递归下降，返回函数体偏移集合。"""
+          owned: dict[int, int]) -> "tuple[set[int], bool]":
+    """从 entry 递归下降，返回 (函数体偏移集合, 是否撞上遍历预算而截断)。
+
+    【已修 bug】旧实现撞到预算时 `return body` 返回的是**半个函数体**，
+    调用方无法区分「走完了」和「没走完」，照单全收当成完整函数 —— 于是
+    insn_count / bb_count / calls 全是偏小的假数字，还没有任何提示。
+    """
     body: set[int] = set()
     stack = [entry]
     guard = 0
@@ -303,7 +325,7 @@ def _walk(idx: CodeIndex, entry: int, entry_set: set[int],
             body.add(off)
             guard += 1
             if guard > limit:
-                return body
+                return body, True
 
             if ins.kind in _END_KINDS:
                 break
@@ -328,7 +350,7 @@ def _walk(idx: CodeIndex, entry: int, entry_set: set[int],
             off += ins.size
             if off >= idx.size:
                 break
-    return body
+    return body, False
 
 
 # ---------------------------------------------------------------- 基本块 / CFG
@@ -459,9 +481,31 @@ def build_xrefs(idx: CodeIndex, funcs: list[dict]) -> dict:
         "callers": {hex(k): [hex(v) for v in vs] for k, vs in callers.items()},
         "callees": {hex(k): [hex(v) for v in vs] for k, vs in callees.items()},
         "caller_count": len(callers),
+        # 【已修 bug】旧实现 `any(c is None for c in [None])` 是没写完的占位
+        # 脚手架：它对每个 f 恒为 True，于是 unresolved_calls 恒等于
+        # len(funcs) —— 每个函数都被无条件记一次「未解析调用」，xref 把一串
+        # 编造的数字交给了用户，而真实值是 0（find_functions 里 calls 只在
+        # ins.target 非 None 时才 append）。
+        # 真正的「未解析」= 连内存操作数地址都算不出来的间接调用
+        # （call rax / call qword ptr [rax+8] 这类，目标运行时才定）。
+        #
+        # 有 mem_ref 的那一类（MSVC 的 call qword ptr [rip+x]）**不算**
+        # 未解析：它的目标下游能靠 IAT/thunk 表还原。notepad.exe 实测：
+        # 这类有 1373 条，真正无法确定的为 0 条。若只给一个合计数，等于把
+        # 「可还原」说成「没解析出来」—— 和编造成功一样是编造，只是方向相反。
+        # 因此拆成两个字段各自给数。
         "unresolved_calls": sum(
-            1 for f in funcs for i in [0]
-            if any(c is None for c in [None])  # 占位，保持结构稳定
+            1 for f in funcs
+            for ins in (idx.insn.get(o) for o in (f.get("_offs") or []))
+            if ins is not None and ins.kind == K_CALL
+            and ins.target is None and ins.mem_ref is None
+        ),
+        # 目标未知但**留有线索**（引用了 IAT 槽位/thunk，下游可还原）
+        "indirect_calls": sum(
+            1 for f in funcs
+            for ins in (idx.insn.get(o) for o in (f.get("_offs") or []))
+            if ins is not None and ins.kind == K_CALL
+            and ins.target is None and ins.mem_ref is not None
         ),
     }
 
@@ -471,7 +515,8 @@ def build_xrefs(idx: CodeIndex, funcs: list[dict]) -> dict:
 def analyze(idx: CodeIndex, seeds: list[int] | None = None,
             symbols: dict[int, str] | None = None) -> dict:
     """对一块代码区做完整分析，返回可 JSON 化结果。"""
-    funcs = find_functions(idx, seeds=seeds, symbols=symbols)
+    _st: dict = {}
+    funcs = find_functions(idx, seeds=seeds, symbols=symbols, stats=_st)
     total_insn = len(idx.insn)
     covered = sum(f["insn_count"] for f in funcs)
     out = {
@@ -496,6 +541,20 @@ def analyze(idx: CodeIndex, seeds: list[int] | None = None,
             "指令预算 %d 已用尽，只分析了前 %d 条指令；function_count / coverage "
             "仅代表该片段。提高 --max-insns 或指定 --section 可得完整结果。"
             % (idx.max_insns, total_insn))
+    if _st.get("skipped_seeds"):
+        out["function_seed_truncated"] = True
+        out["function_seed_skipped"] = _st["skipped_seeds"]
+        out["function_seed_note"] = (
+            "还有 %d 个候选入口没处理（达到 max_functions 上限），"
+            "function_count 不是全文件的函数总数。" % _st["skipped_seeds"])
+    if _st.get("truncated_functions"):
+        _tv = _st["truncated_functions"]
+        out["functions_truncated"] = [hex(v) for v in _tv]
+        _shown = "、".join(hex(v) for v in _tv[:8])
+        out["functions_truncated_note"] = (
+            "%d 个函数在遍历预算内没走完，它们的 insn_count / bb_count / calls "
+            "都比真实值小：%s%s。提高 --max-insns 或指定 --section 可缓解。"
+            % (len(_tv), _shown, " 等" if len(_tv) > 8 else ""))
     for f in funcs:
         d = {k: v for k, v in f.items() if k != "_offs"}
         d["start_vma"] = hex(d["start_vma"])
