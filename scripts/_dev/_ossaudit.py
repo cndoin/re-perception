@@ -55,6 +55,14 @@ i1 = st_src.index("    t0 = time.time()", i0)
 cases_block = st_src[i0:i1]
 SELFTEST_N = len(re.findall(r'^\s*\(\"', cases_block, re.M))
 
+# e2e 用例数：同样是静态数 —— 统计顶层 case(...) 调用。
+# 注意 e2e 的用例是**条件注册**的（有些只在 Windows 上跑），
+# 所以这里数出来的是"源码里写了几条"，本机实跑数是它的子集。
+# 文档里写的是实跑数，因此只做"文档数 <= 源码条数"的方向性校验，
+# 避免把平台裁剪误判成漂移（实测：源码 37 条，本机实跑 36 条）。
+_e2e_src = read("scripts/_dev/_e2e.py")
+E2E_SRC_N = len(re.findall(r'^\s*case\(', _e2e_src, re.M))
+
 # 外部工具数
 try:
     tools = LT.TOOLS if hasattr(LT, "TOOLS") else None
@@ -71,12 +79,17 @@ print("=== 实测事实 ===")
 print("  CATALOG 条目（编排层）:", CATALOG_N)
 print("  CLI 子命令（re.py 注册）:", CLI_N, sorted(subs))
 print("  selftest 用例:", SELFTEST_N)
+print("  e2e 用例（源码条数，实跑可能因平台裁剪少几条）:", E2E_SRC_N)
 print("  外部工具表条目:", TOOLS_N)
 print()
 
 # ---------------------------------------------------------------- 2. 文档声明 vs 实测
 DOCS = ["README.md", "CONTRIBUTING.md", "SKILL.md", "CHANGELOG.md",
-        "scripts/_dev/README.md"]
+        "scripts/_dev/README.md",
+        # 英文文档与安装/发布手册 —— 之前漏在外面，正是"编造的数字"能藏身的地方
+        "README.en.md", "INSTALL.md", "INSTALL.en.md",
+        "CONTRIBUTING.en.md", "PUBLISHING.md", "PUBLISHING.en.md",
+        ".github/PULL_REQUEST_TEMPLATE.md"]
 
 # 允许出现的"历史数字"位置：CHANGELOG 是历史记录，旧数字是正常的
 HISTORY_OK = {"CHANGELOG.md"}
@@ -85,7 +98,23 @@ claims = {
     # (文档里的数字正则, 实测值, 说明)
     "selftest 用例数": (r"(\d+)\s*个自检用例", SELFTEST_N),
     "selftest 全量用例": (r"全量自检（约 \d+ 秒，(\d+) 个用例）", SELFTEST_N),
+    "selftest N/N 形式": (r"\*\*(\d+)/\d+\*\*", SELFTEST_N),
+    "selftest N/N 纯文本": (r"通过\s+(\d+)/\d+", SELFTEST_N),
+    # 注意：不能写成裸的 "(\d+) 个用例" —— README 里 "0 个用例" 说的是
+    # 性能测试的取样，不是自检条数（实测误报过）。必须锚定"自检"字样。
+    # 只保留"自检 ... N 个用例"这一个方向。反向的"(\d+) 个用例 ... 通过"
+    # 会命中 README:117 那句「静默跑 0 个用例是错误，不是通过」——
+    # 那是设计说明，不是数字声明（实测误报过，故不收录反向模式）。
+    "selftest 个用例": (r"自检[^。\n]{0,12}?(\d+)\s*个用例", SELFTEST_N),
+    "selftest cases": (r"(\d+)\s+(?:self-test|cases|test cases)", SELFTEST_N),
     "子命令数": (r"(\d+)\s*个子命令", CLI_N),
+    "子命令数 en": (r"(\d+)\s+subcommands", CLI_N),
+}
+
+# e2e 用例数：文档写的是本机实跑数，源码条数是它的上界（平台裁剪）
+# 只在"文档数 > 源码条数"时报 —— 那说明这个数根本没处来。
+E2E_CLAIMS = {
+    "e2e 用例数": r"(\d+)\s*(?:项端到端|end-to-end integration checks)",
 }
 
 for doc in DOCS:
@@ -99,6 +128,22 @@ for doc in DOCS:
                 ln = txt[:m.start()].count("\n") + 1
                 rep("文档数字过期", "高", "%s:%d" % (doc, ln),
                     "%s 写的是 %d，实际 %d（%r）" % (label, got, real, m.group(0)))
+
+# e2e 用例数：只查上界（文档数 > 源码条数 = 这个数没处来）
+for doc in DOCS:
+    if not os.path.isfile(os.path.join(ROOT, doc)):
+        continue
+    txt = read(doc)
+    for label, pat in E2E_CLAIMS.items():
+        for m in re.finditer(pat, txt):
+            got = int(m.group(1))
+            # 源码条数只是下界：有的 case 在循环里被跑多次（实测 35 条源码
+            # 跑出 36 次）。给 20% 余量，只抓"数量级不对"的编造数字。
+            if got > E2E_SRC_N * 1.2 and doc not in HISTORY_OK:
+                ln = txt[:m.start()].count("\n") + 1
+                rep("文档数字过期", "高", "%s:%d" % (doc, ln),
+                    "%s 写的是 %d，源码里只有 %d 条（%r）"
+                    % (label, got, E2E_SRC_N, m.group(0)))
 
 # 命令数表格行数（README "命令一览"）
 # 从标题扫到下一个同级标题为止 —— 不假设"标题后紧跟空行+表格"这种脆弱排版。
