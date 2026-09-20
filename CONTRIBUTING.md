@@ -44,15 +44,22 @@ python _dev/_e2e.py
 scripts/
   re.py              CLI 唯一入口（26 个子命令：21 分析 + 5 编排）
   lib_*.py           按职责拆分的分析库
-  _quirk.py          上游 dbghelp 已知缺陷的归一化表（生产模块，勿挪）
+  _quirk.py          dbghelp 已知缺陷清单（**参考文档**，须随发布分发）
   selftest.py        自检用例集
   _dev/              开发脚手架，不随发布分发
 ```
 
-`_` 前缀**不代表**「可以随便挪」：
-`_quirk.py` 是生产模块，被 `lib_symbols.py` 引用。判断标准是「有没有被生产
-代码 import」，不是文件名。`_dev/_lint.py` 里有专门的护栏（护栏 9/10）会在
-你误挪时报警。
+`_` 前缀**不代表**「可以随便挪」。判断标准是「有没有被运行时/用户需要」，
+不是文件名，也不是「有没有被 import」：
+
+- `_quirk.py` **没有任何生产模块 import 它** —— 它是 dbghelp 已知缺陷的
+  参考文档，被 `README.md` / `CHANGELOG.md` 引用，用户读技能时需要它，
+  因此**必须随发布分发**，不能挪进 `_dev/`。
+- `_dev/` 下的东西才真的不分发（见 `_dev/_install.py` 的 `_EXCLUDE_DIRS`）。
+
+`_dev/_lint.py` 有专门的护栏（护栏 9/10）会在你误挪时报警；护栏 9 的判据
+是**导入方的身份**，别改成「被导入模块在 `_dev/`」—— 那样护栏会整体失效
+（负向测试能当场抓到）。
 
 ## 提交规范
 
@@ -89,7 +96,8 @@ fix: 修复 funcs 在指令预算用尽时报 function_count=0 的误导性输�
 
 - 首选验证参照是 `dbghelp!UnDecorateSymbolName`（Windows 自带，用
   `ctypes` 调用）。但它**自身有至少 6 个已知缺陷**，清单在
-  `_quirk.py` 的模块 docstring 里。
+  `scripts/_quirk.py` 的模块 docstring 里（该文件是参考文档，不是运行时
+  模块 —— 没有任何代码 import 它）。
 - 因此「与 dbghelp 逐字一致」**不是**正确性标准。目标是与正确语义一致，
   并明确记录哪些差异是 dbghelp 的错。
 - C++/CX 的 `^` 帽（hat）扩展 `$AA`–`$AD` 在 LLVM 里**完全没有**，是本

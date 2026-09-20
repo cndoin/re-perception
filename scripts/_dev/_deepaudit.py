@@ -15,7 +15,7 @@ _lint.py 管的是"确定的坏味道"（裸 except、可变默认参数等）�
   G. 循环里 setdefault / list 追加导致无界增长
   H. 同一 try 块内先 makedirs 后 open —— 失败时清理逻辑误伤（已知踩过）
   I. 返回 None 与返回空集合混用 —— 调用方 .get() 会 AttributeError
-  J. `_quirk.py` 这类被依赖模块的导入完整性
+  J. `_quirk.py` 这类 `_` 前缀发布物文件的导入/存在完整性
 
 只报告，不修。修由人来判断。
 """
@@ -279,7 +279,7 @@ def main() -> int:
     target = sys.argv[1] if len(sys.argv) > 1 else SCRIPTS
     files = [f for f in sorted(os.listdir(target))
              if f.endswith(".py") and not f.startswith("_dev")]
-    # 含 _ 前缀的生产模块（如 _quirk.py）
+    # 含 _ 前缀的发布物文件（如 _quirk.py：参考文档，须随发布分发）
     files = sorted(set(files) | {f for f in os.listdir(target)
                                  if f.endswith(".py") and f.startswith("_")
                                  and f != "__init__.py"})

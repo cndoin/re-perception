@@ -757,6 +757,8 @@ semantics（每个函数干嘛）→ capability（具备哪些能力）`。
   已补齐，并新增 `t_json_ok_contract` 用例防止再次漂移。
 - **`_quirk.canon` 里的归一化掩盖真 bug**：`re.sub(r">\s*>", ">>", s)` 把
   真实的空格问题压平了。删除后得分不变，反证引擎本身正确。
+  （勘误：`canon()` 及整个 `_quirk.py` 的代码部分此后已删除 —— 它从无调用方。
+  该文件现为纯参考文档，只保留 dbghelp 缺陷清单。）
 - **`selftest` 的依赖检查误报标准库**：`import os, sys, json` 解析出
   `mod='os,'`（带逗号）导致查表失败。改为逗号拆分 + `as` / 相对导入处理。
 - **`Reader.__init__` 半构造对象泄漏句柄**：`open()` 失败时会留下已构造

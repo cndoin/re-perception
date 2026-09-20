@@ -40,7 +40,9 @@ curl -L -o _ref/ItaniumDemangle.cpp \
 Tab 缩进，外加两条护栏：
 
 - **护栏 9**：`_` 前缀模块被生产代码 import，但文件不在 `scripts/` 下。
-  曾经把 `_quirk.py` 误当脚手架挪走，靠这条拦住。
+  曾经把 `_quirk.py` 误当脚手架挪走，靠这条拦住。注意判据是**导入方的
+  身份**（只有测试文件才允许 import `_dev/`），不是「被导入模块在
+  `_dev/`」—— 后者会让护栏整体失效。
 - **护栏 10**：生产模块 import 失败。
 
 行尾写 `# lint:ok <理由>` 可豁免单行（用于已审阅的刻意行为）。
@@ -144,4 +146,5 @@ python _dev/_t_rules.py C:\Windows\System32\notepad.exe
 > 开源整理时移除。如需回溯，见 `git log`（或联系维护者）。
 
 > 注：`_quirk.py` 曾经也在 `_dev/` 下（当时被误判为脚手架），现已回归
-> `scripts/`——它是**生产模块**，被 `lib_symbols.py` 引用。
+> `scripts/` —— 它是**参考文档**（dbghelp 已知缺陷清单），虽无任何代码
+> import 它，但用户读技能时需要，必须随发布分发。

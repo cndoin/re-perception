@@ -151,9 +151,10 @@ MSVC 一路以 `dbghelp!UnDecorateSymbolName` 为逐字对齐目标，**在 61,2
 ```
 
 「dbghelp 怪癖」指 dbghelp 自身已用最小用例证实的缺陷（CV 前不写空格、
-变量尾 `__ptr64` 重复、返回值位指针丢 `const` 等），详见 `scripts/_quirk.py`。
+变量尾 `__ptr64` 重复、返回值位指针丢 `const` 等），逐条清单与最小用例见
+`scripts/_quirk.py`（参考文档，无任何代码 import 它）。
 **这 67 处不一致全部归因于 dbghelp 的缺陷，而非引擎的语法缺口**——本项目
-不做「向缺陷对齐」，理由记录在 `_quirk.py` 的模块 docstring 里。
+不做「向缺陷对齐」，理由同样记录在该文件的模块 docstring 里。
 
 > C++/CX 的 `^` 帽（hat）扩展 `$AA`–`$AD` 在 LLVM 里完全没有，是本项目自行
 > 逆向出来的 2-bit CV 阶梯。详见 `references/research.md`。
@@ -203,7 +204,7 @@ reverse-engineering/
     ├── lib_rules.py             # 能力规则引擎（自带 YAML 子集解析 + 特征匹配）
     ├── lib_agent.py             # 工具编排：意图→命令检索 / 工作流 / 状态 / 转移图
     ├── lib_tools.py             # 工具链探测 + 分析计划
-    ├── _quirk.py                # dbghelp 已知缺陷归一化表（生产模块）
+    ├── _quirk.py                # dbghelp 已知缺陷清单（参考文档，非运行时模块）
     ├── selftest.py              # 自检套件（85 个用例，含 4 个安装用例）
     └── _dev/                    # 开发脚手架（不随发布分发）
         └── _install.py          # 跨运行时安装器（--auto 探测 / --verify 回验）
