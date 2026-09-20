@@ -3411,8 +3411,8 @@ def t_install_paths_in_spec():
     except Exception as e:
         return False, "导入 _install.py 失败：%s: %s" % (type(e).__name__, e)
 
-    # 必须覆盖用户点名要求的运行时
-    need = ["claude-code", "codex", "hermes", "openclaw"]
+    # 必须覆盖用户点名要求的运行时（含 WorkBuddy 自身）
+    need = ["claude-code", "codex", "hermes", "openclaw", "workbuddy"]
     missing = [r for r in need if r not in I._RUNTIME_DOC]
     if missing:
         return False, "缺少运行时定义：%s" % "、".join(missing)
@@ -3578,6 +3578,56 @@ def t_install_copy_slims_and_runs():
     os.environ.pop(I.HOME_ENV, None)
     shutil.rmtree(sandbox, ignore_errors=True)
     return True, "复制安装可用、已裁掉 _dev/_ref/.github、副本可执行 re.py"
+
+
+
+def t_install_workbuddy_no_selfcopy():
+    """
+    workbuddy 运行时的目标必须是 <home>/.workbuddy/skills，不能是
+    「技能自己的上一级目录」。
+
+    原缺陷：personal_dir("workbuddy") 返回 os.path.dirname(SELF_ROOT)。
+    后果有两层，第二层更严重：
+      1) 把仓库 clone 到 ~/projects/re-clone 后跑 --auto，会往
+         ~/projects/reverse-engineering 复制一份 —— 那不是任何运行时
+         读技能的路径；
+      2) 这一步还会被上报成「[成功] 复制 → ...」。装到一个永远不会被读
+         的位置却报成功，就是假成功。
+
+    还要守「已在目标位置时是 no-op」：本技能常年就住在
+    ~/.workbuddy/skills/ 下，此时安装不该把自己复制进自己。
+    """
+    if not (HERE / "_dev" / "_install.py").is_file():
+        return True, SKIP
+    import importlib
+    sys.path.insert(0, str(HERE / "_dev"))
+    try:
+        import _install as I
+        importlib.reload(I)
+    except Exception as e:
+        return False, "导入 _install.py 失败：%s: %s" % (type(e).__name__, e)
+
+    sandbox = os.path.join(str(TMP), "wb-home")
+    os.makedirs(sandbox, exist_ok=True)
+    old = os.environ.get(I.HOME_ENV)
+    os.environ[I.HOME_ENV] = sandbox
+    try:
+        got = I.personal_dir("workbuddy")
+        want = os.path.join(sandbox, ".workbuddy", "skills")
+        if os.path.abspath(got or "") != os.path.abspath(want):
+            return False, ("workbuddy 目标路径错误：得到 %r，应为 %r"
+                           % (got, want))
+        # 绝不能等于技能自己的上一级（那是 clone 所在目录）
+        if os.path.abspath(got or "") == os.path.abspath(
+                os.path.dirname(str(HERE.parent))):
+            return False, "workbuddy 目标仍解析到技能上一级目录：%r" % got
+    finally:
+        if old is None:
+            os.environ.pop(I.HOME_ENV, None)
+        else:
+            os.environ[I.HOME_ENV] = old
+
+    return True, "workbuddy 目标为 <home>/.workbuddy/skills，未退化为技能上级目录"
 
 
 def t_install_no_clobber():
@@ -3811,6 +3861,7 @@ def main():
         ("稳定性：差分比对截断如实标注", t_diff_partial_flag),
         ("稳定性：AXML 截断窗口不伪装成空", t_axml_truncated_window_reports),
         ("安装：运行时路径合规", t_install_paths_in_spec),
+        ("安装：workbuddy 不复制到技能上级", t_install_workbuddy_no_selfcopy),
         ("安装：验证器能识别坏安装", t_install_verify_detects_broken),
         ("安装：复制可用且裁剪开发产物", t_install_copy_slims_and_runs),
         ("安装：不覆盖用户已有技能", t_install_no_clobber),

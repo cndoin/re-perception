@@ -97,8 +97,14 @@ def personal_dir(rt: str) -> str | None:
     if rt == "gemini":
         return os.path.join(_home(), ".gemini", "skills")
     if rt == "workbuddy":
-        # 本技能当前所在位置就是 WorkBuddy 的技能根
-        return os.path.dirname(SELF_ROOT)
+        # WorkBuddy 的技能根固定是 <home>/.workbuddy/skills。
+        #
+        # 【已修 bug】原实现返回 os.path.dirname(SELF_ROOT)，即「技能自己的
+        # 上一级目录」。那是开发者的 clone 位置，不是任何运行时读技能的路径，
+        # 而安装器会因此往那里**再复制一份**并上报成功 —— 假成功。
+        # 现在一律返回规范路径；若技能本就在那里，install_one 的幂等分支会
+        # 直接回报「已就绪」而不复制。
+        return os.path.join(_home(), ".workbuddy", "skills")
     return None
 
 
@@ -200,7 +206,14 @@ def install_one(rt: str, scope: str, project_root: str, mode: str,
 
     dest = os.path.join(target_root, SKILL_NAME)
 
-    # 已存在且指向自己 → 幂等
+    # 幂等：目标已经是本技能自己（无论符号链接还是实体目录）→ 不重复安装。
+    # 这一支对 workbuddy 尤其重要：本技能常常就住在 ~/.workbuddy/skills/
+    # 下，此时「安装」应当是 no-op，而不是把自己复制进自己。
+    try:
+        if os.path.exists(dest) and os.path.samefile(dest, SELF_ROOT):
+            return True, f"已就绪（技能已在此位置）→ {dest}"
+    except OSError:
+        pass
     if os.path.islink(dest):
         try:
             if os.path.realpath(dest) == os.path.realpath(SELF_ROOT):
