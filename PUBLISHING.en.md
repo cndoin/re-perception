@@ -44,8 +44,8 @@ history** and is a well-known source of spam and social engineering. Choose one:
 git log --format='%an <%ae>' | sort -u
 
 # Option A: switch to GitHub's noreply address (recommended)
-git config user.name "going-ahead"
-git config user.email "<your-github-user-id>+going-ahead@users.noreply.github.com"
+git config user.name "cndoin"
+git config user.email "121801556+cndoin@users.noreply.github.com"
 
 # Option B: keep it as-is
 ```
@@ -55,7 +55,7 @@ afterwards disrupts everyone else's clones):
 
 ```bash
 git filter-branch --env-filter '
-export GIT_AUTHOR_EMAIL="356803749+going-ahead@users.noreply.github.com"
+export GIT_AUTHOR_EMAIL="121801556+cndoin@users.noreply.github.com"
 export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 ' --tag-name-filter cat -- --all
 ```
@@ -130,7 +130,7 @@ cd <project-dir>
 git status
 
 # 2) Set your identity (see 1.1)
-git config user.name  "going-ahead"
+git config user.name  "cndoin"
 git config user.email "your-address"
 
 # 3) Add the remote (your own repository URL)

@@ -1,3 +1,5 @@
+![re-perception 封面](assets/re-perception-hero.png)
+
 # 逆向工程工具箱（reverse-engineering skill）
 
 让 AI 按「正常逆向工程师的流程」去分析**任何**未知文件：识别 → 指纹 → 静态 → 动态 →
@@ -233,4 +235,3 @@ reverse-engineering/
 - 授权与合规提醒：[USE-POLICY.md](USE-POLICY.md)（**非许可证**）
 - 合规红线（中/美/欧盟 + 自查清单）：`references/legal.md`
 - 漏洞披露：[SECURITY.md](SECURITY.md)
-

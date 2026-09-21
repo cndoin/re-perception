@@ -1,3 +1,5 @@
+![re-perception hero](assets/re-perception-hero.png)
+
 # Reverse Engineering Toolbox — an Agent Skill
 
 Give any AI agent the workflow of a **real reverse engineer** for **any** unknown

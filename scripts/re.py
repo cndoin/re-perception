@@ -45,11 +45,18 @@ re.py —— 逆向工程工具箱 CLI（Reverse Engineering Toolkit）
 
 from __future__ import annotations
 
+# Keep the documented ``re.py`` entrypoint without shadowing the standard
+# library module of the same name during interpreter startup (Python 3.14+).
+import sys
+_SCRIPT_PATH = sys.path.pop(0) if sys.path else None
+
 import argparse
 import json
 import os
-import sys
 import time
+
+if _SCRIPT_PATH is not None:
+    sys.path.insert(0, _SCRIPT_PATH)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

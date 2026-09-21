@@ -41,8 +41,8 @@ python _dev/_ossaudit.py        # 0 项
 git log --format='%an <%ae>' | sort -u
 
 # 方案 A：改用 GitHub 的 noreply 邮箱（推荐）
-git config user.name "going-ahead"
-git config user.email "<你的GitHub用户ID>+going-ahead@users.noreply.github.com"
+git config user.name "cndoin"
+git config user.email "121801556+cndoin@users.noreply.github.com"
 
 # 方案 B：保持现状
 ```
@@ -52,7 +52,7 @@ git config user.email "<你的GitHub用户ID>+going-ahead@users.noreply.github.c
 ```bash
 # 只改写全部提交的作者信息（谨慎，会重写历史）
 git filter-branch --env-filter '
-export GIT_AUTHOR_EMAIL="356803749+going-ahead@users.noreply.github.com"
+export GIT_AUTHOR_EMAIL="121801556+cndoin@users.noreply.github.com"
 export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 ' --tag-name-filter cat -- --all
 ```
@@ -122,7 +122,7 @@ cd <项目目录>
 git status
 
 # 2) 配好作者身份（见 1.1）
-git config user.name  "going-ahead"
+git config user.name  "cndoin"
 git config user.email "你的邮箱"
 
 # 3) 把 .github/ISSUE_TEMPLATE/config.yml 里的 OWNER/REPO 换成真名

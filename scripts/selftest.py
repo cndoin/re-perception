@@ -16,6 +16,11 @@ selftest.py —— 逆向工具箱自检套件
 
 from __future__ import annotations
 
+# Avoid the sibling CLI file ``re.py`` shadowing Python's standard-library
+# ``re`` module during startup (observable on Python 3.14+).
+import sys
+_SCRIPT_PATH = sys.path.pop(0) if sys.path else None
+
 import argparse
 import json
 import os
@@ -24,11 +29,13 @@ import re
 import shutil
 import struct
 import subprocess
-import sys
 import time
 import zipfile
 from datetime import datetime
 from pathlib import Path
+
+if _SCRIPT_PATH is not None:
+    sys.path.insert(0, _SCRIPT_PATH)
 
 HERE = Path(__file__).resolve().parent
 SKILL = HERE.parent          # 技能包根目录（rules/ 在这里）
@@ -3353,6 +3360,7 @@ def t_rules_feature_depth_guard():
     # 注意：probe 里也有 %s（用于打印异常类型），所以整块**不能用 % 格式化**，
     # 否则 "%s" 会被外层当成占位符吃掉。这里改用拼接注入路径。
     probe = (
+        "import re\n"
         "import sys; sys.path.insert(0, " + repr(HERE_) + ")\n"
         "import lib_rules as LR\n"
         "node = {'or': [{'mnemonic': 'nop'}]}\n"
@@ -3376,7 +3384,7 @@ def t_rules_feature_depth_guard():
         "    print('OTHER:%s:%s' % (type(e).__name__, e))\n"
     )
     try:
-        p = subprocess.run([_sys.executable, "-c", probe], capture_output=True,
+        p = subprocess.run([_sys.executable, "-I", "-c", probe], capture_output=True,
                            text=True, encoding="utf-8", errors="replace", timeout=120,
                            cwd=HERE_)
         out = (p.stdout or "").strip().splitlines()
