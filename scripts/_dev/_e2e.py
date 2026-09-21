@@ -205,16 +205,25 @@ def main():
             return "顶层不是对象"
         if not o.get("ok"):
             return "降级路径下 ok 不为 true"
-        if not o.get("writable_fallback"):
-            return "未标出 writable_fallback（静默换位置＝假成功）"
-        if not o.get("note"):
-            return "缺少 note 说明降级原因"
-        # 报告必须真的落在降级目录里（cwd），而不是别处
         rp = o.get("report")
         if not rp or not os.path.isfile(rp):
             return "返回的 report 路径不存在：%r" % rp
-        if os.path.dirname(os.path.abspath(rp)) != os.path.abspath(FALLBACK_CWD):
-            return "降级报告不在 cwd 下：%r" % rp
+        if o.get("writable_fallback"):
+            if not o.get("note"):
+                return "缺少 note 说明降级原因"
+            # 报告必须真的落在降级目录里（cwd），而不是别处
+            if os.path.dirname(os.path.abspath(rp)) != os.path.abspath(FALLBACK_CWD):
+                return "降级报告不在 cwd 下：%r" % rp
+        else:
+            # GitHub 的 Windows runner 可能有权写 System32；此时没有发生降级，
+            # 直接写到目标旁边也是正确结果。清理测试自己生成的报告。
+            expected = os.path.abspath(exe + ".re-report.md")
+            if os.path.abspath(rp) != expected:
+                return "未降级但报告位置异常：%r" % rp
+            try:
+                os.unlink(rp)
+            except OSError:
+                pass
         return None
 
     case("report(受保护目录降级)", ["report", exe, "--json"],

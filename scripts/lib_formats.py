@@ -190,7 +190,7 @@ PYC_MAGIC: dict[int, tuple] = {
     3394:  ("3.7", False),
     3413:  ("3.8", False),
     3425:  ("3.9", False),
-    3439:  ("3.10", False),
+    3439:  ("3.10", True),   # GitHub Actions 实机验证
     3495:  ("3.11", False),
     3531:  ("3.12", False),
     3571:  ("3.13", True),   # 已实测
