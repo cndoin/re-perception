@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+# GitHub 的 Windows runner 默认控制台编码是 cp1252，项目输出包含中文。
+# 强制 UTF-8，确保测试失败只反映代码问题，而不是日志编码问题。
+env:
+  PYTHONUTF8: "1"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

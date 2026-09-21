@@ -2117,7 +2117,7 @@ def flow(stage: str | None = None, have: list[str] | None = None,
     heavy = [e["cmd"] for e in next_batch
              if CATALOG_BY_NAME.get(e["cmd"], {}).get("cost") == "heavy"]
     if heavy:
-        res["notes"].append(f'注意 {', '.join(heavy)} 开销较大，别重复跑。')
+        res["notes"].append('注意 %s 开销较大，别重复跑。' % ', '.join(heavy))
 
     return res
 
