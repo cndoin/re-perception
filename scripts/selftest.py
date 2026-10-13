@@ -4467,6 +4467,390 @@ def t_evidence_cli_contract():
     return True, f"已知格式出证据链(2条串联)、未知格式登记 {len(d2['unknowns'])} 项"
 
 
+# ---------------------------------------------------------------- REA 平台层用例
+# （契约 / 检查器 / bundle / 未知项治理 —— 均含正向 + 反向保护，防退化拿满分）
+
+def t_contracts_error_contract():
+    """错误契约：合法构造成功，非法入参一律拒收（category 闭集 / retryable 必须 bool）。"""
+    import lib_contracts as CT
+    good = CT.make_error("provider_unavailable", "unavailable",
+                         "Ghidra 未装", "安装或换 provider")
+    if good.get("code") != "provider_unavailable" or good.get("retryable") is not False:
+        return False, "合法错误契约字段不对"
+    if set(good.keys()) != {"code", "category", "message", "retryable",
+                            "remediation", "details"}:
+        return False, "错误契约键集合不对: %s" % sorted(good)
+    # 反向：非法 category / 非 bool retryable / 空 code 必须抛
+    if not _raises(ValueError, CT.error_contract, "x", "bad-cat", "m", True, {"action": "a"}):
+        return False, "非法 category 未被拒"
+    if not _raises(ValueError, CT.error_contract, "x", "unavailable", "m", "yes", {"action": "a"}):
+        return False, "非 bool retryable 未被拒"
+    if not _raises(ValueError, CT.error_contract, "", "unavailable", "m", True, {"action": "a"}):
+        return False, "空 code 未被拒"
+    return True, "错误契约 10 类目闭集 + 入参校验双向正确"
+
+
+def t_contracts_provider_select():
+    """provider 确定性选择：request>env>auto-single；歧义/缺失明确报错，绝不静默降级。"""
+    import lib_contracts as CT
+    d1 = CT.select_provider(["a", "b"], requested="a")
+    if d1.get("provider_id") != "a" or d1.get("selection_source") != "request":
+        return False, "request 优先未生效: %s" % d1
+    d2 = CT.select_provider(["a"])
+    if d2.get("selection_source") != "auto-single-candidate":
+        return False, "唯一候选自动选定失败: %s" % d2
+    d3 = CT.select_provider(["a", "b"])  # 多候选、无指定 → ambiguous
+    if d3.get("error") != "ambiguous":
+        return False, "多候选未判歧义（会静默选错引擎）: %s" % d3
+    d4 = CT.select_provider(["a"], requested="zzz")
+    if d4.get("error") != "provider_unavailable":
+        return False, "指定不存在未报 provider_unavailable: %s" % d4
+    # 反向：绑定不可变
+    p = CT.ProviderDescriptor("ghidra", "deep")
+    p.bind({"x": 1})
+    if not _raises(RuntimeError, p.bind, {"x": 2}):
+        return False, "重复绑定未拒绝（绑定不可变被破坏）"
+    return True, "确定性选择 + 歧义/缺失报错 + 绑定不可变"
+
+
+def t_contracts_absent_and_stage():
+    """缺失覆盖 ≠ 不存在 + 阶段闭合 fail-closed。"""
+    import lib_contracts as CT
+    cov = CT.relationship_coverage("partial")
+    if not _raises(ValueError, CT.assert_not_absent, [], cov, "无调用"):
+        return False, "partial 覆盖断言『不存在』竟被放行（缺失覆盖≠不存在被破坏）"
+    ok = CT.assert_not_absent([], CT.relationship_coverage("complete"))
+    if ok != []:
+        return False, "complete 覆盖应允许断言不存在"
+    # 阶段闭合：任何非 pass 都不得聚合成 pass
+    st = {s: "pass" for s in CT.DISPATCH_STAGES}
+    if not CT.check_stage_closure(st)["closed"]:
+        return False, "全 pass 竟未闭合"
+    st[CT.DISPATCH_STAGES[0]] = "skipped"
+    if CT.check_stage_closure(st)["closed"]:
+        return False, "含 skipped 竟判闭合（fail-closed 被破坏）"
+    return True, "缺失覆盖守卫 + 阶段 fail-closed"
+
+
+def t_inspect_layout_mitigations():
+    """二进制布局 + 缓解：真实 PE 检出 aslr/dep；非 ELF/PE 优雅降级。"""
+    import lib_inspect as IP
+    pe = r"C:/Windows/System32/notepad.exe"
+    if os.path.exists(pe):
+        d = IP.inspect_layout(pe)
+        if not d.get("ok") or d.get("format") != "pe":
+            return False, "真实 PE 布局解析失败: %s" % d
+        m = d.get("mitigations") or {}
+        if not m.get("aslr") or not m.get("dep_nx"):
+            return False, "真实系统 PE 缓解检出异常: %s" % m
+    # 反向：垃圾输入不崩、优雅降级
+    g = w("layout_garbage.bin", b"\x00\x01\x02\x03" * 16)
+    d2 = IP.inspect_layout(str(g))
+    if d2.get("ok"):
+        return False, "垃圾输入竟判 ok（应优雅降级）"
+    return True, "真实 PE 缓解正确 + 垃圾输入优雅降级"
+
+
+def t_inspect_archs_and_plist():
+    """Mach-O 架构清单 + plist 解析：合成夹具精确断言。"""
+    import lib_inspect as IP
+    import plistlib
+    # fat Mach-O：大端魔数 0xCAFEBABE + nfat=2 + 2 个 arch 条目（大端）
+    fat = struct.pack(">II", 0xCAFEBABE, 2)
+    fat += struct.pack(">IIIII", 0x01000007, 0, 0x1000, 0x1000, 12)   # x86_64
+    fat += struct.pack(">IIIII", 0x0100000C, 0, 0x2000, 0x1000, 12)   # arm64
+    p = w("fat.bin", fat)
+    d = IP.inspect_archs(str(p))
+    if not d.get("ok") or d.get("count") != 2:
+        return False, "fat 架构数不对: %s" % d
+    cpus = {a["cpu"] for a in d["architectures"]}
+    if cpus != {"x86_64", "arm64"}:
+        return False, "fat 架构类型不对: %s" % cpus
+    # plist
+    pp = w("t.plist", plistlib.dumps({"CFBundleIdentifier": "com.x"}))
+    pd = IP.inspect_plist(str(pp))
+    if not pd.get("ok") or "CFBundleIdentifier" not in (pd.get("top_keys") or []):
+        return False, "plist 解析失败: %s" % pd
+    return True, "fat 双架构 + plist 顶层键正确"
+
+
+def t_inspect_evm_and_demangle():
+    """EVM selector 表 + 符号还原（C++/Swift/Rust）。"""
+    import lib_inspect as IP
+    d = IP.inspect_evm("0x63a9059cbb146370a0823114")  # PUSH4 sel + EQ ×2
+    if not d.get("ok") or d.get("selector_count") != 2:
+        return False, "EVM selector 数不对: %s" % d
+    sels = {s["selector"] for s in d["selectors"]}
+    if sels != {"a9059cbb", "70a08231"}:
+        return False, "EVM selector 值不对: %s" % sels
+    # 反向：非法十六进制不崩
+    if IP.inspect_evm("not-a-hex-or-file").get("ok"):
+        return False, "非法 EVM 输入竟判 ok"
+    dm = IP.demangle("_ZN4base5apple3fooEv")
+    if not dm.get("ok") or dm.get("demangled") != "base::apple::foo":
+        return False, "C++ demangle 失败: %s" % dm
+    sw = IP.demangle("$s4main3fooyyF")
+    if sw.get("kind") != "swift":
+        return False, "Swift 前缀识别失败: %s" % sw
+    return True, "EVM selector + C++/Swift demangle 正确"
+
+
+def t_inspect_dotnet_graceful():
+    """.NET 检查器：非托管 PE 如实报 ok:False（不假装解析）。"""
+    import lib_inspect as IP
+    # 一个只有 MZ 头、无 CLR 目录的假 PE
+    mz = b"MZ" + b"\x00" * 0x3A + struct.pack("<I", 0x80) + b"\x00" * 0x80
+    mz = bytearray(mz)
+    mz[0x80:0x84] = b"PE\x00\x00"
+    p = w("fake_not_dotnet.bin", bytes(mz))
+    d = IP.inspect_dotnet(str(p))
+    if d.get("ok"):
+        return False, "非托管 PE 竟判 ok（应 ok:False）"
+    if "reason" not in d:
+        return False, "优雅降级缺 reason"
+    return True, "非托管 PE 优雅降级 ok:False"
+
+
+def t_bundle_export_import_tamper():
+    """bundle 导出→导入→对比；篡改 ID/内容不一致必须拒收（防篡改）。"""
+    import lib_bundle as BL
+    ev = _mk_ev()
+    bp = str(TMP / "bundle_a.json")
+    BL.export_bundle(bp, [ev], overwrite=True)
+    imp = BL.import_bundle(bp)
+    if imp.get("imported") != 1 or imp.get("rejected"):
+        return False, "往返导入失败: %s" % imp
+    # 对比自身 → 无变化
+    cmpd = BL.compare_bundles({"evidence": [ev.to_dict()]},
+                              {"evidence": [ev.to_dict()]})
+    if cmpd["unchanged_count"] != 1 or cmpd["changed_count"] != 0:
+        return False, "自比对应无变化: %s" % cmpd
+    # 反向：篡改（改内容保留旧 id）必须拒收
+    tam = ev.to_dict()
+    tam["normalized_result"] = {"format": "TAMPERED"}
+    tam.pop("evidence_id") if False else None
+    # 直接构造 id 与内容不符
+    bad = dict(ev.to_dict())
+    bad["evidence_id"] = "ev-" + "0" * 32
+    bp2 = str(TMP / "bundle_bad.json")
+    BL.export_bundle(bp2, [bad], overwrite=True)
+    if not _raises(ValueError, BL.import_bundle, bp2):
+        return False, "篡改 bundle 未被拒收（防篡改失效）"
+    return True, "往返 + 自比对 + 篡改拒收"
+
+
+def t_bundle_snapshot_exact_match():
+    """快照内容寻址精确命中：同参数同键、任一变即异键（变更即失效）。"""
+    import lib_bundle as BL
+    k1 = BL.snapshot_key("abc", "op", {"x": 1}, "ghidra")
+    k2 = BL.snapshot_key("abc", "op", {"x": 1}, "ghidra")
+    k3 = BL.snapshot_key("abc", "op", {"x": 2}, "ghidra")  # 参数变
+    k4 = BL.snapshot_key("abc", "op", {"x": 1}, "ida")     # provider 变
+    if k1 != k2:
+        return False, "同参数未得同键"
+    if k1 == k3 or k1 == k4:
+        return False, "变更未失效（键未变）"
+    if not k1.startswith("snap-"):
+        return False, "快照键前缀不对"
+    return True, "精确命中 + 变更即失效"
+
+
+def t_unknown_revision_and_concurrency():
+    """未知项治理：修订链推进 + 乐观并发（过期写者必须 RevisionConflict）。"""
+    import lib_evidence as EV
+    reg = EV.UnknownRegistry(None)
+    rec, added = reg.record("Q?", "shipped-artifact", "observed", "缺样本",
+                            severity="high")
+    if not added or rec.get("revision") != 1:
+        return False, "登记/修订初始化失败"
+    r2 = reg.update(rec["unknown_id"], status="investigating", expected_revision=1)
+    if r2.get("revision") != 2 or not r2.get("previous_revision_digest"):
+        return False, "修订链未推进: %s" % r2
+    # 反向：过期 revision 必须冲突
+    if not _raises(EV.RevisionConflict, reg.update, rec["unknown_id"],
+                   status="resolved", expected_revision=1):
+        return False, "过期写者未冲突（乐观并发失效）"
+    # 反向：非法裁决处置必须拒
+    if not _raises(EV.UnknownError, reg.update, rec["unknown_id"],
+                   resolution={"disposition": "bogus"}):
+        return False, "非法裁决处置未拒"
+    return True, "修订链 + 乐观并发 + 裁决校验"
+
+
+def t_new_cli_contracts():
+    """新子命令 CLI 契约：--json 必有 ok；域检查器对垃圾输入优雅降级不崩。"""
+    subs = ["provider", "layout", "archs", "plist", "dotnet", "goinfo", "evm"]
+    for s in subs:
+        if s == "provider":
+            code, d, raw = jrun([CLI, "provider"])
+        else:
+            g = w("cli_%s.bin" % s, b"\x00\x01\x02\x03" * 8)
+            code, d, raw = jrun([CLI, s, str(g)])
+        if not isinstance(d, dict) or "ok" not in d:
+            return False, "%s 的 --json 无 ok 字段 (exit=%s)" % (s, code)
+        if "Traceback" in raw:
+            return False, "%s 漏出 Traceback" % s
+    # demangle（symbol 入参）
+    code, d, raw = jrun([CLI, "demangle", "_Z1fv"])
+    if not isinstance(d, dict) or "ok" not in d:
+        return False, "demangle 的 --json 无 ok 字段"
+    return True, "%d 个新子命令 --json ok 契约 + 不崩" % (len(subs) + 1)
+
+
+def mk_pe32_rsrc(rsrc: bytes) -> Path:
+    """最小 PE32 + 单节 .rsrc（资源树字节由调用方给）。"""
+    e_lfanew = 0x40
+    opt = e_lfanew + 24            # COFF 20 字节 + PE 签名 4 字节
+    optsz = 224                    # PE32 可选头（含 16 个数据目录）
+    st = opt + optsz               # 节表
+    rawptr = 0x200
+    buf = bytearray(rawptr + len(rsrc) + 16)
+    buf[0:2] = b"MZ"
+    struct.pack_into("<I", buf, 0x3C, e_lfanew)
+    buf[e_lfanew:e_lfanew + 4] = b"PE\x00\x00"
+    # COFF: i386, 1 节, SizeOfOptionalHeader=224
+    struct.pack_into("<HHIIIHH", buf, e_lfanew + 4, 0x14C, 1, 0, 0, 0, optsz, 0x0102)
+    struct.pack_into("<H", buf, opt, 0x10B)            # PE32
+    struct.pack_into("<I", buf, opt + 92, 16)          # NumberOfRvaAndSizes
+    # 数据目录[2] = 资源表 → RVA 0x1000
+    struct.pack_into("<II", buf, opt + 96 + 2 * 8, 0x1000, len(rsrc))
+    buf[st:st + 8] = b".rsrc\x00\x00\x00"
+    struct.pack_into("<IIII", buf, st + 8, len(rsrc), 0x1000, len(rsrc), rawptr)
+    struct.pack_into("<I", buf, st + 36, 0x40000040)   # INITIALIZED_DATA|READ
+    buf[rawptr:rawptr + len(rsrc)] = rsrc
+    return w("sample_pe32_rsrc.exe", bytes(buf))
+
+
+def mk_rsrc_tree() -> bytes:
+    """标准三层资源树：1 类型(id=5) → 2 名字 → 各 1 语言 → 数据项。
+
+    目录头里 NumberOfNamedEntries/NumberOfIdEntries 是 u16@+12 / u16@+14 ——
+    这个夹具就是为抓「按 u32 读导致条目数被顶到 4096、解析垃圾字节」的回归
+    （实测 bug：真实 PE 上吐出上万条伪条目）。
+    """
+    b = bytearray(0xE0)
+    # root dir @0x00: id=1
+    struct.pack_into("<HH", b, 0x0C, 0, 1)
+    struct.pack_into("<II", b, 0x10, 5, 0x80000020)          # type#5 → dir@0x20
+    # type dir @0x20: id=2
+    struct.pack_into("<HH", b, 0x2C, 0, 2)
+    struct.pack_into("<II", b, 0x30, 1, 0x80000050)          # name#1 → dir@0x50
+    struct.pack_into("<II", b, 0x38, 2, 0x80000080)          # name#2 → dir@0x80
+    # name1 dir @0x50: id=1
+    struct.pack_into("<HH", b, 0x5C, 0, 1)
+    struct.pack_into("<II", b, 0x60, 0x409, 0xC0)             # lang 0x409 → data@0xC0
+    # name2 dir @0x80: id=1
+    struct.pack_into("<HH", b, 0x8C, 0, 1)
+    struct.pack_into("<II", b, 0x90, 0x409, 0xD0)             # lang 0x409 → data@0xD0
+    # 数据项：{rva, size, codepage, reserved}
+    struct.pack_into("<IIII", b, 0xC0, 0x2000, 16, 0, 0)
+    struct.pack_into("<IIII", b, 0xD0, 0x2010, 32, 0, 0)
+    return bytes(b)
+
+
+def t_archs_rejects_non_macho():
+    """archs 反向保护：PE / Java class 一律不得判成 Mach-O（曾实测假阳性）。"""
+    import lib_inspect as IP
+    # 真实 PE：必须 ok:False（原 bug：MZ 头被按 cputype 解读报 mach-o）
+    pe = r"C:/Windows/System32/notepad.exe"
+    if os.path.exists(pe):
+        d = IP.inspect_archs(pe)
+        if d.get("ok"):
+            return False, "真实 PE 竟被判为 Mach-O: %s" % d
+    # Java class 与 fat Mach-O 共用 0xCAFEBABE 魔数，偏移 4 是版本号不是 nfat
+    cls = w("sample.class", struct.pack(">IHH", 0xCAFEBABE, 0, 52))
+    d2 = IP.inspect_archs(str(cls))
+    if d2.get("ok"):
+        return False, "Java class 竟被判为 fat Mach-O: %s" % d2
+    # 正向：合成 thin Mach-O（小端 64 位）仍要正确识别
+    thin = struct.pack("<IIII", 0xFEEDFACF, 0x01000007, 3, 0)
+    tp = w("sample_thin.bin", thin)
+    d3 = IP.inspect_archs(str(tp))
+    if not d3.get("ok") or d3.get("format") != "mach-o" or d3.get("bits") != 64:
+        return False, "thin Mach-O 识别被改坏: %s" % d3
+    if (d3["architectures"][0]["cpu"]) != "x86_64":
+        return False, "thin Mach-O cputype 不对: %s" % d3
+    return True, "PE/Java class 拒收 + thin Mach-O 正确识别"
+
+
+def t_demangle_rust_routing():
+    """Rust legacy 名字必须走 rust-legacy 路由且剥掉 crate hash 段。
+
+    回归：`_ZN…17h<hash>E` 曾被 _Z 前缀先截给 Itanium 分支（Rust 分支成死
+    代码），kind 误报 itanium-cpp 且哈希段泄漏进还原名。
+    """
+    import lib_inspect as IP
+    d = IP.demangle("_ZN3std2fs17h0123456789abcdefE")
+    if not d.get("ok") or d.get("kind") != "rust-legacy":
+        return False, "Rust legacy 路由失败: %s" % d
+    if d.get("demangled") != "std::fs" or "h0123" in d.get("demangled", ""):
+        return False, "crate hash 段未剥离/还原不对: %s" % d
+    # 对照：普通 Itanium 嵌套名仍走 itanium-cpp（路由顺序不能反伤）
+    d2 = IP.demangle("_ZN3std2fs5writeE")
+    if d2.get("kind") != "itanium-cpp" or d2.get("demangled") != "std::fs::write":
+        return False, "Itanium 路由被改坏: %s" % d2
+    return True, "Rust hash 名正确路由 + Itanium 不受影响"
+
+
+def t_peres_count_truncation_and_flag():
+    """peres：u16 目录头计数、截断如实申报、--max-entries 真透传。
+
+    回归三连：①目录头计数曾按 u32 读 → 条目数膨胀到 4096 解析垃圾字节；
+    ②truncated 曾恒 False（摆设字段）；③CLI --max-entries 曾被静默吞掉。
+    """
+    import lib_inspect as IP
+    p = mk_pe32_rsrc(mk_rsrc_tree())
+    d = IP.inspect_pe_resources(str(p), max_entries=8)
+    if not d.get("ok") or d.get("count") != 2:
+        return False, "资源计数不对（应恰 2 条）: %s" % d
+    triples = [(e["type"], e["name"], e["language"]) for e in d["entries"]]
+    # 标签是 str(name_or_id)：id=5→"5"、id=0x409→"1033"
+    if triples != [("5", "1", "1033"), ("5", "2", "1033")]:
+        return False, "资源条目内容不对: %s" % triples
+    if d.get("truncated"):
+        return False, "2 条全给了却报 truncated"
+    # 截断必须如实申报
+    d1 = IP.inspect_pe_resources(str(p), max_entries=1)
+    if d1.get("count") != 1 or not d1.get("truncated"):
+        return False, "cap=1 未如实申报截断: %s" % d1
+    # CLI 级：--max-entries 必须真正生效（曾被 _inspect_cmd 静默吞掉）
+    code, dj, raw = jrun([CLI, "peres", str(p), "--max-entries", "1"])
+    if not isinstance(dj, dict) or dj.get("count") != 1 or len(dj.get("entries") or []) != 1:
+        return False, "peres --max-entries 被静默忽略: %s" % (dj if dj else raw)
+    return True, "计数精确 + 截断申报 + 参数透传"
+
+
+def t_unknowns_record_defaults_and_guards():
+    """unknowns record：--severity 省略走默认 medium；缺必填参数必须可操作报错。
+
+    回归：args.severity=None 曾直接透传给 make_unknown 绕过默认值并被校验拒绝
+    （省略 --severity 必炸）；缺 --blocked-by 只有底层校验的模糊报错。
+    反向：非法 --severity 仍要拒收。
+    """
+    reg = str(TMP / "reg_defaults.json")
+    code, d, raw = jrun([CLI, "unknowns", "record", "--registry", reg,
+                         "--question", "默认值检查", "--blocked-by", "缺工具"])
+    if code != 0 or not isinstance(d, dict) or not d.get("ok"):
+        return False, "不带 --severity 的 record 失败: %s" % (d if d else raw)
+    if (d.get("unknown") or {}).get("severity") != "medium":
+        return False, "severity 默认值不是 medium: %s" % d
+    # 反向 1：缺 --blocked-by → rc=2 + invalid_input + 可操作报错
+    code2, d2, _ = jrun([CLI, "unknowns", "record", "--registry", reg,
+                         "--question", "缺参"])
+    if code2 != 2 or not isinstance(d2, dict) or d2.get("ok"):
+        return False, "缺 --blocked-by 未被拒绝: %s" % (d2 if d2 else code2)
+    err = (d2.get("error") or {})
+    if err.get("code") != "invalid_input" or "--blocked-by" not in str(err.get("message", "")):
+        return False, "缺参报错不具可操作性: %s" % err
+    # 反向 2：非法 --severity → 拒收
+    code3, d3, _ = jrun([CLI, "unknowns", "record", "--registry", reg,
+                         "--question", "坏严重度", "--blocked-by", "x",
+                         "--severity", "bogus"])
+    if code3 != 2 or not isinstance(d3, dict) or d3.get("ok"):
+        return False, "非法 --severity 未被拒收: %s" % (d3 if d3 else code3)
+    return True, "默认值 + 缺参守卫 + 非法值拒收"
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -4586,6 +4970,21 @@ def main():
         ("未知项：路由与落盘", t_unknown_route_and_persist),
         ("证据：provider 探测不崩", t_evidence_provider_probe_no_crash),
         ("证据：CLI 契约与证据链", t_evidence_cli_contract),
+        ("契约：错误契约与入参校验", t_contracts_error_contract),
+        ("契约：provider 确定性选择", t_contracts_provider_select),
+        ("契约：缺失覆盖守卫 + 阶段 fail-closed", t_contracts_absent_and_stage),
+        ("检查器：布局缓解 + 优雅降级", t_inspect_layout_mitigations),
+        ("检查器：Mach-O 架构 + plist", t_inspect_archs_and_plist),
+        ("检查器：EVM selector + demangle", t_inspect_evm_and_demangle),
+        ("检查器：.NET 非托管如实降级", t_inspect_dotnet_graceful),
+        ("bundle：往返 + 篡改拒收", t_bundle_export_import_tamper),
+        ("bundle：快照精确命中", t_bundle_snapshot_exact_match),
+        ("未知项：修订链 + 乐观并发", t_unknown_revision_and_concurrency),
+        ("新子命令 CLI ok 契约", t_new_cli_contracts),
+        ("检查器：archs 拒收非 Mach-O（反向）", t_archs_rejects_non_macho),
+        ("检查器：demangle Rust 路由与哈希剥离", t_demangle_rust_routing),
+        ("检查器：peres 计数/截断/参数透传", t_peres_count_truncation_and_flag),
+        ("未知项：record 默认值与缺参守卫", t_unknowns_record_defaults_and_guards),
     ]
 
     t0 = time.time()

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""端到端功能测试：把 27 个子命令全部在真实样本上跑一遍。
+"""端到端功能测试：把 38 个子命令全部在真实样本上跑一遍。
 
 判定标准（不是"跑完就算过"）：
   * 退出码必须属于该命令的合法集合
@@ -75,9 +75,13 @@ def case(name, args, expect_rc=(0,), need_json=True, check=None,
 
 
 def need(obj, *keys):
-    """断言 dict 里这些键都在（支持 'a.b' 形式）。"""
-    cur = obj
+    """断言 dict 里这些键都在（支持 'a.b' 形式）。
+
+    每个键都从 obj 顶层重新下钻 —— 曾经 cur 不重置、逐键累积下钻，
+    多键断言第二个键起永远报缺字段（首次多键使用即暴露）。
+    """
     for k in keys:
+        cur = obj
         for part in k.split("."):
             if not isinstance(cur, dict) or part not in cur:
                 return "缺字段 %s" % k
@@ -338,6 +342,108 @@ def main():
          expect_rc=(3,))
     case("info(不存在)", ["info", "Z:/__no_such_file__", "--json"], expect_rc=(3,))
     case("identify(目录)", ["identify", SCRIPTS, "--json"], expect_rc=(3, 4))
+
+    # ---------- 补充检查器：布局 / PE 资源 / 架构 / plist / .NET / Go / EVM / demangle ----------
+    def _peres_ok(o, p):
+        m = need(o, "ok", "count", "entries")
+        if m:
+            return m
+        if len(o.get("entries") or []) > 8:
+            return "entries 超出 --max-entries=8"
+        return None
+
+    def _degraded(o, p):
+        # 反向保护：非目标格式必须 ok:False + reason 申报，不许假阳性
+        if o.get("ok") is not False:
+            return "非目标格式竟判 ok（假阳性）: %s" % str(o)[:150]
+        return need(o, "reason")
+
+    def _dm_rust(o, p):
+        if o.get("kind") != "rust-legacy":
+            return "Rust 名字未走 rust-legacy 路由: %s" % o.get("kind")
+        if "h0123" in (o.get("demangled") or ""):
+            return "crate hash 泄漏进还原名: %s" % o.get("demangled")
+        return None
+
+    case("layout(PE 布局缓解)", ["layout", exe, "--json"],
+         check=lambda o, p: need(o, "ok", "format", "mitigations"))
+    case("peres(PE 资源树)", ["peres", exe, "--json", "--max-entries", "8"],
+         check=_peres_ok)
+    case("archs(PE 反向降级)", ["archs", exe, "--json"], expect_rc=(3,),
+         check=_degraded)
+    case("plist(PE 反向降级)", ["plist", exe, "--json"], expect_rc=(3,),
+         check=_degraded)
+    case("dotnet(原生 PE 降级)", ["dotnet", exe, "--json"], expect_rc=(3,),
+         check=_degraded)
+    case("goinfo(非 Go 降级)", ["goinfo", exe, "--json"], expect_rc=(3,),
+         check=_degraded)
+    case("evm(hex dispatch)", ["evm", "0x63a9059cbb14", "--json"],
+         check=lambda o, p: need(o, "ok", "selectors"))
+    case("demangle(Itanium)", ["demangle", "_ZN3std2fs5writeE", "--json"],
+         check=lambda o, p: need(o, "ok", "demangled"))
+    case("demangle(Rust legacy)", ["demangle", "_ZN3std2fs17h0123456789abcdefE",
+                                   "--json"], check=_dm_rust)
+
+    # ---------- 分析补全：capability / obfstr / symbols ----------
+    case("capability(能力规则)", ["capability", exe, "--json", "--limit", "20"],
+         timeout=300, check=lambda o, p: need(o, "ok"))
+    case("obfstr(混淆串)", ["obfstr", exe, "--json", "--limit", "20"],
+         timeout=300, check=lambda o, p: need(o, "ok"))
+    case("symbols(符号)", ["symbols", exe, "--json", "--limit", "50"],
+         timeout=300, check=lambda o, p: need(o, "ok", "symbols"))
+
+    # ---------- 平台契约层：provider / unknowns / bundle ----------
+    case("provider(选择与探测)", ["provider", "--json"],
+         check=lambda o, p: need(o, "ok", "selection", "probes"))
+    reg = os.path.join(RPT, "reg.json")
+    case("unknowns(list)", ["unknowns", "list", "--registry", reg, "--json"],
+         check=lambda o, p: need(o, "ok", "count", "unknowns"))
+    case("unknowns(record)", ["unknowns", "record", "--registry", reg,
+                              "--question", "e2e：该样本是否加壳？",
+                              "--blocked-by", "缺动态环境", "--json"],
+         check=lambda o, p: need(o, "ok", "unknown.unknown_id"))
+    b1 = os.path.join(RPT, "bundle_a.json")
+    case("bundle(export)", ["bundle", "export", "--target", exe, "--out", b1,
+                            "--json"], timeout=300,
+         check=lambda o, p: need(o, "ok", "digest", "count"))
+    case("bundle(import)", ["bundle", "import", "--infile", b1, "--lenient",
+                            "--json"], timeout=300,
+         check=lambda o, p: need(o, "ok"))
+    case("bundle(compare)", ["bundle", "compare", "--a", b1, "--b", b1, "--json"],
+         timeout=300,
+         check=lambda o, p: need(o, "ok", "unchanged_count", "changed_count"))
+
+    # ---------- 编排元工具：case 状态目录 / result / flow / require / toolgraph ----------
+    case_dir = os.path.join(RPT, "case_e2e")
+    case("case(init)", ["case", "init", "--dir", case_dir, "--target", exe, "--json"],
+         check=lambda o, p: need(o, "ok", "case_dir"))
+    # 用 identify 的输出当存档样本：小而无截断 —— result 的分类是逐字面的，
+    # 截断输出会被如实归类 partial（ok:false），不适合当"成功转述"用例。
+    # （magic 不接 target，是魔数表命令 —— 拿它当载荷会得到 argparse 空输出。）
+    pr = run(["identify", exe, "--json"])
+    str_out = os.path.join(RPT, "identify_out.json")
+    with open(str_out, "w", encoding="utf-8") as f:
+        f.write(pr.stdout)
+    case("case(save)", ["case", "save", "--dir", case_dir, "--cmd", "identify",
+                        "--from-file", str_out, "--target", exe, "--json"],
+         check=lambda o, p: need(o, "ok", "artifact"))
+    case("case(load)", ["case", "load", "--dir", case_dir, "--cmd", "identify",
+                        "--target", exe, "--json"],
+         check=lambda o, p: need(o, "ok", "summary"))
+    case("case(status)", ["case", "status", "--dir", case_dir, "--target", exe,
+                          "--json"],
+         check=lambda o, p: need(o, "ok", "have_count"))
+    case("case(journal)", ["case", "journal", "--dir", case_dir, "--json"],
+         check=lambda o, p: need(o, "ok", "count"))
+    case("result(摘要+分类)", ["result", "--from-file", str_out, "--cmd", "identify",
+                              "--exit-code", "0", "--json"],
+         check=lambda o, p: need(o, "ok", "kind", "next_action"))
+    case("flow(工作流)", ["flow", "--json"],
+         check=lambda o, p: need(o, "ok", "next_batch"))
+    case("require(意图检索)", ["require", "提取字符串并找可疑 IP", "--json"],
+         check=lambda o, p: need(o, "ok", "recommendations"))
+    case("toolgraph(转移图)", ["toolgraph", "--json"],
+         check=lambda o, p: need(o, "ok", "candidates"))
 
     print("=" * 72)
     for n, m in FAIL:
