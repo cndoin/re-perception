@@ -35,7 +35,7 @@ python re.py plan   "/path/to/unknown.bin" --json
 - 退出码： `0` 成功 / `2` 用法错误 / `3` 目标不可读 / `4` 分析出错
 - `--json` 下所有子命令都输出顶层 `ok` 字段，优先用它判断成败
 - 路径用正斜杠，含空格必须加引号
-- 自检：`python selftest.py`（128 个用例，期望全绿）
+- 自检：`python selftest.py`（129 个用例，期望全绿）
 - 静态体检：`python _dev/_lint.py`（期望 `生产 0 处`，退出码 0）
 - 安装到本机 AI：`python _dev/_install.py --auto --verify`（先看装到哪，再 `--auto` 实装）
 - 稳定性压测：`python _dev/_fuzz.py` 与 `python _dev/_fuzzlib.py`（期望 0 缺陷）
@@ -419,6 +419,7 @@ capa 风格的规则库折算成"这样本能做什么"，并直接给出 ATT&CK
 | `scripts/lib_apk.py` | **应用逆向**：APK/IPA——AXML Manifest 语义解析（包名/权限/组件/导出面/签名块）、DEX 摘要、Info.plist |
 | `scripts/lib_iso.py` | **镜像逆向**：ISO9660 卷/目录解析（PVD/Joliet/UDF 侦察）+ 路径清洗安全提取 |
 | `scripts/lib_netio.py` | **网络面**：应用内接口 / 端口接口 / 连接网络地址三入口提取（置信分级 + 假阳性防护） |
+| `scripts/lib_paths.py` | **路径安全裁决点（唯一）**：提取类命令的成员名→宿主路径清洗 + 「最终路径必须落在输出目录内」断言（iso/fsx 共用同一实现） |
 | `scripts/lib_fsx.py` | **固件与复刻**：嵌入文件系统签名扫描（binwalk 式）+ 流式解压提取 + 确定性系统复刻（清单/打包/回验） |
 | `scripts/_quirk.py` | dbghelp 已知缺陷清单（**参考文档**，须随发布分发，勿挪进 `_dev/`） |
 | `rules/*.yml` | **能力规则库**（capa 格式）：4 个文件共 20 条，跨 7 个 capa 命名空间（进程/加密/网络/反分析/加载/发现/持久化），带 ATT&CK 映射 |

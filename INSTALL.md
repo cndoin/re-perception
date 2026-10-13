@@ -105,4 +105,4 @@ ln -s <SKILL> ~/.claude/skills/reverse-engineering
 
 - **Python 3.10+**，仅标准库 —— **不需要 `pip install` 任何东西**
 - 外部工具（Ghidra / jadx / Frida 等）可选，`re.py doctor` 会告诉你本机有哪些
-- 装完自测：`python <技能目录>/scripts/selftest.py`（期望 **128/128** 全绿）
+- 装完自测：`python <技能目录>/scripts/selftest.py`（期望 **129/129** 全绿）
