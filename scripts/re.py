@@ -31,6 +31,7 @@ re.py —— 逆向工程工具箱 CLI（Reverse Engineering Toolkit）
   capability 能力识别（capa 风格规则库 → 行为结论 + ATT&CK）
   symbols   符号恢复（C++/MSVC/Rust demangle + Go pclntab）
   obfstr    混淆字符串恢复（栈字符串 + XOR 解密循环）
+  evidence  把分析发现包装成可溯源证据 + 登记残余未知项（证据契约层）
   require   按自然语言意图检索该用哪些子命令（AI 选路入口）
   flow      分阶段工作流编排：现在该跑哪些（可并行的同批给出）
   case      分析状态目录：结果落盘、复用、过期检测
@@ -51,6 +52,7 @@ import sys
 _SCRIPT_PATH = sys.path.pop(0) if sys.path else None
 
 import argparse
+import hashlib
 import json
 import os
 import time
@@ -67,9 +69,10 @@ import lib_disasm as D           # noqa: E402
 import lib_names as N            # noqa: E402
 import lib_obfstr as OS          # noqa: E402
 import lib_agent as AG           # noqa: E402
+import lib_evidence as EV        # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.3.8"
+VERSION = "1.4.0"
 
 
 # ---------------------------------------------------------------- 输出
@@ -1993,6 +1996,156 @@ def plan_leads(st: dict) -> dict:
 # ---------------------------------------------------------------- 参数解析
 
 
+def _sha256_file(path: str) -> str:
+    """流式算文件摘要（内存有界，与本工具箱风格一致）。"""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _evidence_bundle(target: str, ident: dict) -> dict:
+    """把一次 identify 的发现包装成「证据 + 残余未知项 + 裁决」。
+
+    这是 REA 证据模型在真实分析输出上的落地，刻意示范三件事：
+      ① confidence 分层 —— 魔数字节是 observed（直读的事实），格式判定是
+         derived（由魔数映射推导、可复算），二者用 evidence_links 串成证据链；
+      ② limitations 必填 —— 每条证据都写清边界，结论再确定也不省略；
+      ③ 未知格式 / 解析错误不硬凑证据，而是登记残余未知项（带路由信号）。
+    """
+    fmt = ident.get("format") or "unknown"
+    try:
+        subject = {
+            "name": os.path.basename(target),
+            "digest": {"sha256": _sha256_file(target)},
+            "format": fmt if fmt in EV.SUBJECT_FORMATS else "unknown",
+            "local_path": os.path.abspath(target),
+        }
+    except OSError:
+        # 目标读不到就别造证据（造出来也是假的），走空证据 + 未知项。
+        subject = None
+
+    provider_identify = {"id": "identify", "name": "re-perception 格式识别",
+                         "version": "1"}
+    evidence_objs = []
+    unknowns = []
+
+    # --- 证据 A：魔数观测（observed，直读原始事实）---
+    magic_hex = ident.get("magic_hex")
+    if magic_hex:
+        ev_magic = EV.create_evidence(
+            provider=provider_identify,
+            predicate_type="re-perception.identify.magic",
+            operation="identify",
+            parameters={"target": os.path.basename(target), "phase": "magic"},
+            normalized_result={"magic_hex": magic_hex,
+                               "magic_ascii": ident.get("magic_ascii")},
+            confidence="observed",
+            authority="shipped-artifact",
+            subject=subject,
+            limitations=["仅是文件头若干字节的观测，未解释其语义"],
+        )
+        evidence_objs.append(ev_magic)
+
+    # --- 证据 B：格式判定（derived，由魔数映射推导，链到证据 A）---
+    if fmt != "unknown":
+        links = [evidence_objs[0].evidence_id] if evidence_objs else []
+        ev_fmt = EV.create_evidence(
+            provider=provider_identify,
+            predicate_type="re-perception.identify.format",
+            operation="identify",
+            parameters={"target": os.path.basename(target), "phase": "format"},
+            normalized_result={
+                "format": fmt, "category": ident.get("category"),
+                "arch": ident.get("arch"), "bits": ident.get("bits"),
+                "endian": ident.get("endian"), "label": ident.get("label"),
+            },
+            confidence="derived",
+            authority="shipped-artifact",
+            subject=subject,
+            limitations=["由魔数/文件头映射推导，未做深度结构验证",
+                         "加壳或混淆可能伪装真实格式"],
+            evidence_links=links,
+        )
+        evidence_objs.append(ev_fmt)
+    else:
+        # 未知格式不硬凑证据 → 登记未知项，标清要什么证据才能定。
+        unknowns.append(EV.make_unknown(
+            "目标文件的格式未能识别，它到底是什么类型？",
+            "shipped-artifact", "observed",
+            "魔数未命中已知格式库，需更深结构探测或动态分析",
+        ))
+
+    # --- 解析错误 → 残余未知项（不硬凑证据）---
+    errs = list(ident.get("errors") or [])
+    det = ident.get("detail")
+    if isinstance(det, dict):
+        errs += list(det.get("errors") or [])
+    if errs:
+        unknowns.append(EV.make_unknown(
+            "目标文件的结构解析是否完整？",
+            "shipped-artifact", "observed",
+            "解析器报错，结构可能截断或畸形：" + "；".join(errs[:3]),
+        ))
+
+    verdict = EV.adjudicate(evidence_objs)
+    return {
+        "subject": subject,
+        "evidence": [e.to_dict() for e in evidence_objs],
+        "unknowns": unknowns,
+        "adjudication": verdict,
+    }
+
+
+def cmd_evidence(args):
+    """证据契约层：把 identify 的发现包装成可溯源证据 + 登记残余未知项。"""
+    need_path(args.target, args.json)
+    ident = F.identify(args.target, deep=not args.no_deep)
+    ident["ok"] = _ident_ok(ident)[0]
+    bundle = _evidence_bundle(args.target, ident)
+    reg = EV.build_default_registry()
+    d = {
+        "target": args.target,
+        "subject": bundle["subject"],
+        "evidence": bundle["evidence"],
+        "unknowns": bundle["unknowns"],
+        "adjudication": bundle["adjudication"],
+        "providers": EV.probe_all(reg),
+        "ok": True,   # 证据契约层本身跑通即 ok；结论强弱看 adjudication
+    }
+    if not args.json:
+        print(_fmt_evidence(d))
+        return EXIT_OK
+    emit(d, True)
+    return EXIT_OK
+
+
+def _fmt_evidence(d: dict) -> str:
+    lines = ["证据契约层 · %s" % d.get("target")]
+    subj = d.get("subject") or {}
+    if subj.get("digest"):
+        lines.append("  subject: %s  sha256=%s" % (
+            subj.get("format"), subj["digest"]["sha256"][:16]))
+    for e in d.get("evidence", []):
+        lines.append("  [%s] %s  conf=%s auth=%s" % (
+            e.get("evidence_id", "")[:10], e.get("predicate_type"),
+            e.get("confidence"), e.get("authority")))
+        for lim in (e.get("limitations") or [])[:2]:
+            lines.append("        边界: %s" % lim)
+    for u in d.get("unknowns", []):
+        lines.append("  [未知] %s" % u.get("question"))
+        lines.append("        需要 %s 证据，因：%s" % (
+            u.get("required_authority"), u.get("blocked_by")))
+    adj = d.get("adjudication") or {}
+    lines.append("  裁决: 独立源 %d/%d  强度 %s" % (
+        adj.get("independent_sources", 0), adj.get("count", 0),
+        adj.get("strength")))
+    for r in adj.get("blocked_reasons", []):
+        lines.append("        ⚠ %s" % r)
+    return "\n".join(lines)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="re.py", description="逆向工程工具箱（零第三方依赖）",
@@ -2194,6 +2347,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--limit", type=int, default=200, help="每类最多输出多少条")
     s.add_argument("--no-stack", action="store_true", help="跳过栈字符串恢复")
     s.add_argument("--no-xor", action="store_true", help="跳过 XOR 解密循环分析")
+
+    s = add("evidence", "把分析发现包装成可溯源证据 + 登记残余未知项", cmd_evidence)
+    s.add_argument("target")
+    s.add_argument("--no-deep", action="store_true", help="只做魔数识别，不做结构解析")
 
     return p
 

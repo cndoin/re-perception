@@ -479,6 +479,24 @@ CATALOG: list[dict] = [
         "formats": ["pe", "elf", "macho"],
         "risky": False,
     },
+    {
+        "name": "evidence",
+        'summary': '把分析发现包装成可溯源证据 + 登记残余未知项（证据契约层）',
+        "answers": [
+            '这条结论有多可信', '证据是什么', '有什么依据', '来源是哪',
+            '这个判断可靠吗', '把发现变成证据', '溯源一下', '证据链', '审计凭据',
+        ],
+        'keywords': ['证据', '溯源', '可信', '依据', '来源', 'evidence', 'provenance',
+                     '证据链', '审计', 'audit', '可信度', '未知项', 'confidence', '边界'],
+        "args": ["<目标>"],
+        "flags": [],
+        "needs": ["path"],
+        "produces": ["evidence", "unknowns", "adjudication", "subject", "providers"],
+        "cost": "cheap",
+        "stage": "deliver",
+        "formats": None,
+        "risky": False,
+    },
 ]
 
 CATALOG_BY_NAME: dict[str, dict] = {t["name"]: t for t in CATALOG}
@@ -1987,6 +2005,10 @@ FLOW: list[dict] = [
      'yields': '基本块、边、循环'},
 
     # ---- 阶段 5：交付 ----
+    {"id": "evidence", "cmd": "evidence", "stage": "deliver", "batch": 8,
+     "deps": ["prior:triage"],
+     'why': '把发现包装成可溯源证据（内容哈希 ID + 边界 + 强度）并登记残余未知项',
+     'yields': '证据链 + 残余未知项 + 裁决（审计凭据）'},
     {"id": "report", "cmd": "report", "stage": "deliver", "batch": 9,
      "deps": ["prior:triage"],
      'why': '生成报告骨架；AI 在此基础上补结论',
