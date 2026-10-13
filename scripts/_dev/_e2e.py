@@ -445,6 +445,150 @@ def main():
     case("toolgraph(转移图)", ["toolgraph", "--json"],
          check=lambda o, p: need(o, "ok", "candidates"))
 
+    # ---------- 应用 / 镜像 / 网络面（APK/IPA/ISO/接口/端口/网络/固件/复刻） ----------
+    import gzip as _gzip
+    import io as _io
+    import struct as _st
+    import tarfile as _tf
+    import zipfile as _zf
+
+    def _axml_min():
+        """最小 AXML manifest（字符串池 + manifest/application 两层元素）。"""
+        strs = ["manifest", "package", "com.e2e.t", "application", "name"]
+        n = len(strs)
+        offs, blob = [], b""
+        for s in strs:
+            offs.append(len(blob))   # offsets 必须逐串累加真实字节偏移
+            blob += _st.pack("<H", len(s)) + s.encode("utf-16-le") + b"\x00\x00"
+        while len(blob) % 4:
+            blob += b"\x00"
+        start = 28 + 4 * n
+        pool = _st.pack("<HHI", 0x0001, 28, start + len(blob)) + \
+            _st.pack("<IIIII", n, 0, 0, start, 0) + \
+            b"".join(_st.pack("<I", o) for o in offs) + blob
+
+        def el(kind, name_i, attrs):
+            if kind == 0x0102:
+                body = _st.pack("<IIHHHHHH", 0xFFFFFFFF, name_i, 20, 20, len(attrs),
+                                0, 0, 0) + b"".join(attrs)
+            else:
+                body = _st.pack("<II", 0xFFFFFFFF, name_i)
+            return _st.pack("<HHI", kind, 0x10, 16 + len(body)) + b"\x00" * 8 + body
+
+        def at(name_i, val_i):
+            return _st.pack("<IIIHBBI", 0xFFFFFFFF, name_i, val_i, 8, 0, 0x03, val_i)
+
+        c = el(0x0102, 0, [at(1, 2)])            # <manifest package=...>
+        c += el(0x0102, 3, [at(4, 2)])           # <application name=...>
+        c += el(0x0103, 3, [])                   # </application>
+        c += el(0x0103, 0, [])                   # </manifest>
+        return _st.pack("<HHI", 0x0003, 8, 8 + len(pool) + len(c)) + pool + c
+
+    apk_f = os.path.join(RPT, "e2e.apk")
+    with _zf.ZipFile(apk_f, "w") as zf:
+        zf.writestr("AndroidManifest.xml", _axml_min())
+        zf.writestr("classes.dex", b"dex\n035\x00" + b"\x00" * (0x70 - 8))
+    ipa_f = os.path.join(RPT, "e2e.ipa")
+    import plistlib as _pl
+    with _zf.ZipFile(ipa_f, "w") as zf:
+        zf.writestr("Payload/T.app/Info.plist", _pl.dumps(
+            {"CFBundleIdentifier": "com.e2e.t", "CFBundleExecutable": "T",
+             "MinimumOSVersion": "14.0"}))
+    # ISO9660 最小镜像（PVD + 根目录 + 一个文件）
+    iso_f = os.path.join(RPT, "e2e.iso")
+
+    def _b32(v):
+        return _st.pack("<I", v) + _st.pack(">I", v)
+
+    def _b16(v):
+        return _st.pack("<H", v) + _st.pack(">H", v)
+
+    def _drec(name, lba, size, isdir):
+        nb = len(name)
+        rl = 33 + nb + ((33 + nb) % 2)
+        b = bytearray(rl)
+        b[0] = rl
+        b[2:10] = _b32(lba)
+        b[10:18] = _b32(size)
+        b[25] = 0x02 if isdir else 0
+        b[28:32] = _b16(1)
+        b[32] = nb
+        b[33:33 + nb] = name
+        return bytes(b)
+
+    SECT, nsec = 2048, 24
+    img = bytearray(nsec * SECT)
+    pvd = bytearray(SECT)
+    pvd[0] = 1
+    pvd[1:6] = b"CD001"
+    pvd[6] = 1
+    pvd[40:46] = b"E2EISO"
+    pvd[80:88] = _b32(nsec)
+    pvd[120:124] = _b16(1)
+    pvd[128:132] = _b16(SECT)
+    rr = _drec(b"\x00", 20, SECT, True)
+    pvd[156:156 + len(rr)] = rr
+    img[16 * SECT:17 * SECT] = pvd
+    term = bytearray(SECT)
+    term[0] = 255
+    term[1:6] = b"CD001"
+    img[17 * SECT:18 * SECT] = term
+    dird = bytearray(SECT)
+    pos = 0
+    for nm, lba, sz, dd in [(b"\x00", 20, SECT, True), (b"\x01", 20, SECT, True),
+                            (b"F.TXT;1", 21, 3, False)]:
+        r = _drec(nm, lba, sz, dd)
+        dird[pos:pos + len(r)] = r
+        pos += len(r)
+    img[20 * SECT:21 * SECT] = dird
+    img[21 * SECT:21 * SECT + 3] = b"e2e"
+    with open(iso_f, "wb") as f:
+        f.write(bytes(img))
+    # 固件（内嵌 gzip + tar）
+    fw_f = os.path.join(RPT, "e2e_fw.bin")
+    bio = _io.BytesIO()
+    with _tf.open(fileobj=bio, mode="w") as tf:
+        ti = _tf.TarInfo("x.txt")
+        ti.size = 2
+        tf.addfile(ti, _io.BytesIO(b"ok"))
+    with open(fw_f, "wb") as f:
+        f.write(b"\x00" * 128 + _gzip.compress(b"z" * 40) + bio.getvalue())
+    # 复刻源树
+    tree = os.path.join(RPT, "e2e_tree")
+    os.makedirs(os.path.join(tree, "sub"), exist_ok=True)
+    with open(os.path.join(tree, "sub", "f.bin"), "wb") as f:
+        f.write(b"\x01\x02")
+
+    case("apk(APK 逆向)", ["apk", apk_f, "--json"],
+         check=lambda o, p: need(o, "ok", "manifest", "dex") or
+         (None if o["manifest"].get("package") == "com.e2e.t" else "包名不对"))
+    case("ipa(IPA 逆向)", ["ipa", ipa_f, "--json"],
+         check=lambda o, p: need(o, "ok", "info_plist") or
+         (None if o["info_plist"].get("bundle_id") == "com.e2e.t" else "bundle 不对"))
+    case("iso(镜像清单)", ["iso", iso_f, "--json"],
+         check=lambda o, p: need(o, "ok", "entries") or
+         (None if any(e["path"] == "F.TXT" for e in o["entries"]) else "目录项漏"))
+    iso_out = os.path.join(RPT, "e2e_iso_out")
+    case("iso(提取)", ["iso", iso_f, "--extract", iso_out, "--json"],
+         check=lambda o, p: need(o, "ok", "extracted"))
+    case("endpoints(应用内接口)", ["endpoints", exe, "--json"],
+         check=lambda o, p: need(o, "ok", "counts"))
+    case("ports(端口接口)", ["ports", exe, "--json"],
+         check=lambda o, p: need(o, "ok", "counts", "explicit_ports", "derived_ports"))
+    case("netaddr(网络地址)", ["netaddr", exe, "--json"],
+         check=lambda o, p: need(o, "ok", "counts", "urls", "ipv4", "domains"))
+    case("fsx(固件扫描)", ["fsx", fw_f, "--json"],
+         check=lambda o, p: need(o, "ok", "hits") or
+         (None if any(h["key"] == "gzip" for h in o["hits"]) else "gzip 漏报"))
+    fx_out = os.path.join(RPT, "e2e_fsx_out")
+    case("fsx(嵌入提取)", ["fsx", fw_f, "--extract", fx_out, "--json"],
+         check=lambda o, p: need(o, "ok", "extracted"))
+    case("replica(确定性清单)", ["replica", tree, "--json"],
+         check=lambda o, p: need(o, "ok", "manifest", "tree_sha256"))
+    rep_tar = os.path.join(RPT, "e2e_replica.tar")
+    case("replica(复刻打包)", ["replica", tree, "--build", rep_tar, "--json"],
+         check=lambda o, p: need(o, "ok", "out_sha256"))
+
     print("=" * 72)
     for n, m in FAIL:
         print("FAIL  %-32s %s" % (n, m))

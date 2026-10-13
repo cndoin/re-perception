@@ -4851,6 +4851,379 @@ def t_unknowns_record_defaults_and_guards():
     return True, "默认值 + 缺参守卫 + 非法值拒收"
 
 
+# ---------------------------------------------------------------- 应用/镜像/网络面 回归
+
+
+def _axml_str_pool(strings):
+    import struct as _s
+    n = len(strings)
+    offsets, blob = [], b""
+    for t in strings:
+        offsets.append(len(blob))
+        blob += _s.pack("<H", len(t)) + t.encode("utf-16-le") + b"\x00\x00"
+    while len(blob) % 4:
+        blob += b"\x00"
+    start = 28 + 4 * n
+    out = _s.pack("<HHI", 0x0001, 28, start + len(blob)) + \
+        _s.pack("<IIIII", n, 0, 0, start, 0)
+    out += b"".join(_s.pack("<I", o) for o in offsets) + blob
+    return out
+
+
+def _axml_attr(name_i, val_i, vtype=0x03, vdata=None):
+    import struct as _s
+    # 字符串值走 rawValue+data 双索引；数值/布尔走 Res_value.data
+    if vtype == 0x03:
+        raw, data = val_i, val_i
+    else:
+        raw, data = 0xFFFFFFFF, (val_i if vdata is None else vdata)
+    return _s.pack("<IIIHBBI", 0xFFFFFFFF, name_i, raw, 8, 0, vtype, data)
+
+
+def _axml_el(kind, name_i, attrs):
+    import struct as _s
+    if kind == 0x0102:
+        body = _s.pack("<IIHHHHHH", 0xFFFFFFFF, name_i, 20, 20, len(attrs), 0, 0, 0) \
+            + b"".join(attrs)
+    else:
+        body = _s.pack("<II", 0xFFFFFFFF, name_i)
+    return _s.pack("<HHI", kind, 0x10, 16 + len(body)) + b"\x00" * 8 + body
+
+
+def _mk_axml_manifest():
+    strs = ["manifest", "package", "com.example.t", "versionCode", "versionName",
+            "9.9", "uses-permission", "name", "android.permission.INTERNET",
+            "uses-sdk", "minSdkVersion", "targetSdkVersion", "application",
+            "activity", "exported", "intent-filter", "action",
+            "android.intent.action.MAIN", "provider"]
+    ix = {s: i for i, s in enumerate(strs)}
+    c = b""
+    c += _axml_el(0x0102, ix["manifest"], [
+        _axml_attr(ix["package"], ix["com.example.t"]),
+        _axml_attr(ix["versionCode"], 7, 0x10),
+        _axml_attr(ix["versionName"], ix["9.9"])])
+    c += _axml_el(0x0102, ix["uses-permission"],
+                  [_axml_attr(ix["name"], ix["android.permission.INTERNET"])])
+    c += _axml_el(0x0103, ix["uses-permission"], [])
+    c += _axml_el(0x0102, ix["uses-sdk"], [
+        _axml_attr(ix["minSdkVersion"], 21, 0x10),
+        _axml_attr(ix["targetSdkVersion"], 34, 0x10)])
+    c += _axml_el(0x0103, ix["uses-sdk"], [])
+    c += _axml_el(0x0102, ix["application"], [])
+    # activity：exported 缺省 + intent-filter → 默认导出（intent-filter-default）
+    c += _axml_el(0x0102, ix["activity"], [_axml_attr(ix["name"], ix["com.example.t"])])
+    c += _axml_el(0x0102, ix["intent-filter"], [])
+    c += _axml_el(0x0102, ix["action"],
+                  [_axml_attr(ix["name"], ix["android.intent.action.MAIN"])])
+    c += _axml_el(0x0103, ix["action"], [])
+    c += _axml_el(0x0103, ix["intent-filter"], [])
+    c += _axml_el(0x0103, ix["activity"], [])
+    # provider：exported 显式 false
+    c += _axml_el(0x0102, ix["provider"], [
+        _axml_attr(ix["name"], ix["com.example.t"]),
+        _axml_attr(ix["exported"], 0, 0x12)])
+    c += _axml_el(0x0103, ix["provider"], [])
+    c += _axml_el(0x0103, ix["application"], [])
+    c += _axml_el(0x0103, ix["manifest"], [])
+    pool = _axml_str_pool(strs)
+    import struct as _s
+    return _s.pack("<HHI", 0x0003, 8, 8 + len(pool) + len(c)) + pool + c
+
+
+def _mk_apk_fixture():
+    import zipfile as zfmod
+    p = TMP / "fixture.apk"
+    dex = bytearray(0x70)
+    dex[0:8] = b"dex\n035\x00"
+    import struct as _s
+    _s.pack_into("<I", dex, 96, 1)  # class_defs_size
+    with zfmod.ZipFile(p, "w") as zf:
+        zf.writestr("AndroidManifest.xml", _mk_axml_manifest())
+        zf.writestr("classes.dex", bytes(dex))
+        zf.writestr("lib/arm64-v8a/libt.so", b"\x7fELF" + b"\x00" * 20)
+        zf.writestr("META-INF/CERT.RSA", b"\x30\x82" + b"\x00" * 40)
+    return p
+
+
+def _mk_iso_fixture():
+    import struct as _s
+
+    def both32(v):
+        return _s.pack("<I", v) + _s.pack(">I", v)
+
+    def both16(v):
+        return _s.pack("<H", v) + _s.pack(">H", v)
+
+    def rec(name, lba, size, isdir):
+        nb = len(name)
+        rl = 33 + nb + ((33 + nb) % 2)
+        b = bytearray(rl)
+        b[0] = rl
+        b[2:10] = both32(lba)
+        b[10:18] = both32(size)
+        b[25] = 0x02 if isdir else 0
+        b[28:32] = both16(1)
+        b[32] = nb
+        b[33:33 + nb] = name
+        return bytes(b)
+
+    SECT, nb = 2048, 24
+    img = bytearray(nb * SECT)
+    pvd = bytearray(SECT)
+    pvd[0] = 1
+    pvd[1:6] = b"CD001"
+    pvd[6] = 1
+    pvd[40:49] = b"TEST_ISO9"
+    pvd[80:88] = both32(nb)
+    pvd[120:124] = both16(1)
+    pvd[128:132] = both16(SECT)
+    rr = rec(b"\x00", 20, SECT, True)
+    pvd[156:156 + len(rr)] = rr
+    img[16 * SECT:17 * SECT] = pvd
+    term = bytearray(SECT)
+    term[0] = 255
+    term[1:6] = b"CD001"
+    img[17 * SECT:18 * SECT] = term
+    dird = bytearray(SECT)
+    pos = 0
+    for nm, lba, sz, d in [(b"\x00", 20, SECT, True), (b"\x01", 20, SECT, True),
+                           (b"A.TXT;1", 21, 6, False)]:
+        r = rec(nm, lba, sz, d)
+        dird[pos:pos + len(r)] = r
+        pos += len(r)
+    img[20 * SECT:21 * SECT] = dird
+    img[21 * SECT:21 * SECT + 6] = b"data\n\x00"
+    p = TMP / "fixture.iso"
+    p.write_bytes(bytes(img))
+    return p
+
+
+def t_apk_manifest_semantics():
+    """APK：AXML manifest 语义（包名/权限/SDK/组件导出）+ 拒收普通 ZIP。
+
+    导出状态双路：intent-filter 缺省导出 vs 显式 exported=false。
+    反向：普通 ZIP 不许报 APK（假阳性防护）。
+    """
+    import lib_apk as AK
+    p = _mk_apk_fixture()
+    d = AK.inspect_apk(str(p))
+    if not d.get("ok"):
+        return False, "APK 解析失败: %s" % d
+    m = d.get("manifest", {})
+    if m.get("package") != "com.example.t" or m.get("version_code") != 7:
+        return False, "包名/版本不对: %s" % {k: m.get(k) for k in ("package", "version_code")}
+    if "android.permission.INTERNET" not in m.get("permissions", []):
+        return False, "权限漏报: %s" % m.get("permissions")
+    if m.get("sdk", {}).get("minSdkVersion") != 21:
+        return False, "SDK 不对: %s" % m.get("sdk")
+    comps = m.get("components", [])
+    act = next((c for c in comps if c["type"] == "activity"), {})
+    prov = next((c for c in comps if c["type"] == "provider"), {})
+    if act.get("exported") is not True or act.get("exported_source") != "intent-filter-default":
+        return False, "intent-filter 缺省导出没算对: %s" % act
+    if prov.get("exported") not in (False, 0) or prov.get("exported_source") != "explicit":
+        return False, "显式 exported=false 没算对: %s" % prov
+    if not (d.get("dex") and d["dex"][0].get("parse_ok")):
+        return False, "内嵌 DEX 没解析: %s" % d.get("dex")
+    if d.get("native_libs", {}).get("arm64-v8a") != ["libt.so"]:
+        return False, "原生库清单不对: %s" % d.get("native_libs")
+    if not d.get("signing", {}).get("v1_present"):
+        return False, "v1 签名形态漏报: %s" % d.get("signing")
+    # 反向：普通 ZIP 拒收
+    import zipfile as zfmod
+    plain = TMP / "plain.zip"
+    with zfmod.ZipFile(plain, "w") as zf:
+        zf.writestr("a.txt", "x")
+    d2 = AK.inspect_apk(str(plain))
+    if d2.get("ok"):
+        return False, "普通 ZIP 被误判成 APK: %s" % d2
+    return True, "manifest 语义 + 导出双路 + ZIP 拒收"
+
+
+def t_ipa_bundle_semantics():
+    """IPA：Info.plist 语义 + 框架/provisioning + 拒收普通 ZIP。"""
+    import plistlib
+    import zipfile as zfmod
+    import lib_apk as AK
+    p = TMP / "fixture.ipa"
+    info = {"CFBundleIdentifier": "com.example.ios", "CFBundleExecutable": "T",
+            "CFBundleShortVersionString": "3.1", "MinimumOSVersion": "15.0",
+            "CFBundleURLTypes": [{"CFBundleURLSchemes": ["ex"]}]}
+    with zfmod.ZipFile(p, "w") as zf:
+        zf.writestr("Payload/T.app/Info.plist", plistlib.dumps(info))
+        zf.writestr("Payload/T.app/Frameworks/F.framework/F", b"MZ")
+        zf.writestr("Payload/T.app/embedded.mobileprovision", b"p")
+    d = AK.inspect_ipa(str(p))
+    if not d.get("ok"):
+        return False, "IPA 解析失败: %s" % d
+    ip = d.get("info_plist", {})
+    if ip.get("bundle_id") != "com.example.ios" or ip.get("min_os") != "15.0":
+        return False, "plist 语义不对: %s" % ip
+    if ip.get("url_schemes") != ["ex"] or "F.framework" not in d.get("frameworks", []):
+        return False, "scheme/框架漏报: %s" % (ip.get("url_schemes"), d.get("frameworks"))
+    if not d.get("provisioning", {}).get("embedded_mobileprovision"):
+        return False, "provisioning 漏报: %s" % d.get("provisioning")
+    plain = TMP / "plain2.zip"
+    with zfmod.ZipFile(plain, "w") as zf:
+        zf.writestr("a.txt", "x")
+    if AK.inspect_ipa(str(plain)).get("ok"):
+        return False, "普通 ZIP 被误判成 IPA"
+    return True, "plist 语义 + 框架 + ZIP 拒收"
+
+
+def t_iso9660_roundtrip():
+    """ISO9660：清单 + 提取回环 + 非 ISO 拒收。"""
+    import lib_iso as IS
+    p = _mk_iso_fixture()
+    d = IS.inspect_iso(str(p))
+    if not d.get("ok") or d.get("volume_id") != "TEST_ISO9":
+        return False, "卷信息不对: %s" % d
+    if not any(e["path"] == "A.TXT" and e["size"] == 6 for e in d.get("entries", [])):
+        return False, "目录项不对: %s" % d.get("entries")
+    out = TMP / "iso_out"
+    d2 = IS.iso_extract(str(p), str(out))
+    if not d2.get("ok"):
+        return False, "提取失败: %s" % d2
+    got = (out / "A.TXT").read_bytes()
+    if got != b"data\n\x00":
+        return False, "提取内容不对: %r" % got
+    # 反向：非 ISO 拒收
+    d3 = IS.inspect_iso(str(_mk_apk_fixture()))
+    if d3.get("ok"):
+        return False, "APK 被误判成 ISO"
+    return True, "清单 + 提取回环 + 拒收"
+
+
+def t_netio_guards_and_coverage():
+    """netio 三入口：接口/端口/网络地址全覆盖 + 版本号假阳性防护。"""
+    import lib_netio as NET
+    blob = (b"url https://api.example.com:8443/v1/users\n"
+            b"ip 203.0.113.7:8080 and 10.0.0.5:22\n"
+            b"mail a@example.com\n"
+            b"bad 9.1.2.3.4 and 1.2.3.4.5\n"
+            b"port=5432\n"
+            b"pipe \\\\.\\pipe\\svc1\n"
+            b"rpc mypkg.Svc/Do\n"
+            b"com Word.Application\n"
+            b"asmx /graphql and x.Svc.svc\n"
+            b"uri content://com.example.t/t\n"
+            b"intent android.intent.action.BOOT_COMPLETED\n"
+            b"unc \\\\srv\\share\n") * 2
+    p = w("netio.bin", blob)
+    na = NET.extract_netaddrs(str(p))
+    if not na.get("ok"):
+        return False, "netaddr 失败: %s" % na
+    ip4 = {u["value"]: u.get("scope") for u in na.get("ipv4", [])}
+    if "203.0.113.7" not in ip4 or "10.0.0.5" not in ip4:
+        return False, "IP 漏报: %s" % ip4
+    if "9.1.2.3" in ip4 or "1.2.3.4" in ip4:
+        return False, "版本号样式假阳性: %s" % ip4
+    if ip4.get("10.0.0.5") != "private" or ip4.get("203.0.113.7") != "public":
+        return False, "scope 标注不对: %s" % ip4
+    if not any(e["value"] == "a@example.com" for e in na.get("emails", [])):
+        return False, "email 漏报（单点域名）: %s" % na.get("emails")
+    if not any("fileserver" in u.get("host", "") or "srv" == u.get("host")
+               for u in na.get("unc", [])):
+        return False, "UNC 漏报: %s" % na.get("unc")
+    po = NET.extract_ports(str(p))
+    ex = {r["port"] for r in po.get("explicit_ports", [])}
+    if not {8443, 8080, 5432, 22} <= ex:
+        return False, "显式端口漏报: %s" % sorted(ex)
+    de = {r["port"] for r in po.get("derived_ports", [])}
+    if 443 not in de or any(r.get("confidence") != "derived" for r in po.get("derived_ports", [])):
+        return False, "派生端口/置信标注不对: %s" % po.get("derived_ports")
+    ep = NET.extract_endpoints(str(p))
+    if not ep.get("ok"):
+        return False, "endpoints 失败: %s" % ep
+    need = [
+        (any("/v1/users" in x["value"] for x in ep.get("api_paths", [])), "api 路径"),
+        (any("svc1" in x["value"] for x in ep.get("named_pipes", [])), "命名管道"),
+        (any(x["value"] == "mypkg.Svc/Do" for x in ep.get("grpc_services", [])), "grpc"),
+        (any(x["value"] == "Word.Application" for x in ep.get("com_progid", [])), "COM ProgID"),
+        (any(x["value"].endswith(".svc") for x in ep.get("soap_wsdl", [])), "soap"),
+        (any(x["value"].startswith("content://") for x in ep.get("content_uris", [])), "content uri"),
+        (any("BOOT_COMPLETED" in x["value"] for x in ep.get("intent_actions", [])), "intent"),
+    ]
+    for okv, label in need:
+        if not okv:
+            return False, "接口面漏报: %s（%s）" % (label, ep.get("counts"))
+    # 反向：纯英文散文不许爆炸
+    p2 = w("english.txt", b"The quick brown fox jumps over the lazy dog. " * 60)
+    ep2 = NET.extract_endpoints(str(p2))
+    tot = sum(len(ep2.get(k, [])) for k in
+              ("api_paths", "content_uris", "intent_actions", "named_pipes",
+               "com_progid", "dotnet_types", "java_types", "grpc_services", "soap_wsdl"))
+    if tot > 3:
+        return False, "纯英文文本误报 %d 条: %s" % (tot, ep2.get("java_types"))
+    return True, "接口/端口/网络地址全覆盖 + 版本号/散文双反向"
+
+
+def t_fsx_scan_extract_honesty():
+    """fsx：嵌入 gzip/tar 扫描提取回环 + 只检不冒充（SquashFS）。"""
+    import gzip
+    import io
+    import tarfile
+    import lib_fsx as FX
+    gz = gzip.compress(b"payload-" * 30)
+    bio = io.BytesIO()
+    with tarfile.open(fileobj=bio, mode="w") as tf:
+        ti = tarfile.TarInfo("etc/x")
+        ti.size = 3
+        tf.addfile(ti, io.BytesIO(b"y\nz"))
+    p = w("fw.bin", b"\x00" * 256 + b"hsqs" + b"\x00" * 64 + gz +
+          b"\xff" * 32 + bio.getvalue())
+    d = FX.scan_embedded(str(p))
+    if not d.get("ok"):
+        return False, "扫描失败: %s" % d
+    keys = {h["key"] for h in d.get("hits", [])}
+    if not {"squashfs", "gzip", "tar"} <= keys:
+        return False, "签名漏报: %s" % sorted(keys)
+    if "squashfs" not in d.get("detected_only", []):
+        return False, "SquashFS 未如实标只检不提: %s" % d.get("detected_only")
+    out = TMP / "fsx_out"
+    d2 = FX.extract_embedded(str(p), str(out))
+    if not d2.get("ok") or d2.get("extracted_count", 0) < 2:
+        return False, "提取失败: %s" % d2
+    found = []
+    for fp in out.rglob("*"):
+        if fp.is_file():
+            found.append(fp.read_bytes())
+    if not any(b"payload-payload" in b for b in found):
+        return False, "gzip 内容不对: %s" % found[:2]
+    if not any(b"y\nz" == b for b in found):
+        return False, "tar 成员内容不对: %s" % found[:3]
+    return True, "扫描/提取回环 + SquashFS 诚实降级"
+
+
+def t_replica_roundtrip_and_tamper():
+    """replica：清单/打包/回环 + 篡改检出。"""
+    import json
+    import lib_fsx as FX
+    root = TMP / "tree"
+    (root / "etc").mkdir(parents=True, exist_ok=True)
+    (root / "etc" / "a").write_bytes(b"one")
+    (root / "b").write_bytes(b"two")
+    m = FX.replica_manifest(str(root))
+    if not m.get("ok") or m.get("file_count") != 2 or not m.get("tree_sha256"):
+        return False, "清单不对: %s" % m
+    tar_p = TMP / "tree.tar"
+    b = FX.replica_build(str(root), str(tar_p))
+    if not b.get("ok") or not tar_p.is_file():
+        return False, "打包失败: %s" % b
+    v = FX.replica_verify(str(root), m)
+    if not v.get("match"):
+        return False, "原树回验不过: %s" % v
+    (root / "b").write_bytes(b"TAMPER")
+    v2 = FX.replica_verify(str(root), m)
+    if v2.get("match") or "b" not in v2.get("changed", []):
+        return False, "篡改未检出: %s" % v2
+    # CLI 级 ok 契约
+    code, dj, raw = jrun([CLI, "replica", str(root), "--json"])
+    if not isinstance(dj, dict) or "ok" not in dj or "manifest" not in dj:
+        return False, "replica CLI 契约不对: %s" % (dj if dj else raw)
+    return True, "清单/打包/回验 + 篡改检出"
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -4985,6 +5358,12 @@ def main():
         ("检查器：demangle Rust 路由与哈希剥离", t_demangle_rust_routing),
         ("检查器：peres 计数/截断/参数透传", t_peres_count_truncation_and_flag),
         ("未知项：record 默认值与缺参守卫", t_unknowns_record_defaults_and_guards),
+        ("APK manifest 语义与导出双路", t_apk_manifest_semantics),
+        ("IPA plist 语义与框架清单", t_ipa_bundle_semantics),
+        ("ISO9660 清单与提取回环", t_iso9660_roundtrip),
+        ("接口/端口/网络地址全覆盖+反向", t_netio_guards_and_coverage),
+        ("fsx 扫描提取回环与诚实降级", t_fsx_scan_extract_honesty),
+        ("replica 复刻回环与篡改检出", t_replica_roundtrip_and_tamper),
     ]
 
     t0 = time.time()
