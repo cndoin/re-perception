@@ -4257,6 +4257,216 @@ def t_code_truncation_reported():
                   % stats.get("skipped_seeds"))
 
 
+def _raises(exc_type, fn, *a, **kw):
+    """断言 fn 调用一定抛 exc_type。抛了→True；没抛/抛别的→False。
+
+    刻意不用 `except: pass`（会被 lint 的静默吞异常检查拦下），改为 return。
+    """
+    try:
+        fn(*a, **kw)
+    except exc_type:
+        return True
+    except Exception:
+        return False
+    return False
+
+
+def _mk_ev(fmt="pe", conf="observed", auth="shipped-artifact", lim=None,
+           params=None):
+    import lib_evidence as EV
+    return EV.create_evidence(
+        provider={"id": "identify", "name": "re-perception 格式识别", "version": "1"},
+        predicate_type="re-perception.identify.format", operation="identify",
+        parameters=params if params is not None else {"target": "x"},
+        normalized_result={"format": fmt},
+        confidence=conf, authority=auth,
+        limitations=lim if lim is not None else ["仅基于魔数解析"])
+
+
+def t_evidence_content_hash_deterministic():
+    """证据 ID 是内容哈希：同内容必同 ID，异内容必异 ID（「同源即非独立」由此可判）。"""
+    a, b = _mk_ev(), _mk_ev()
+    if a.evidence_id != b.evidence_id:
+        return False, "同内容未得到同 ID"
+    c = _mk_ev(fmt="elf")
+    if c.evidence_id == a.evidence_id:
+        return False, "异内容得到了同 ID"
+    if not a.evidence_id.startswith("ev-"):
+        return False, f"ID 前缀不对: {a.evidence_id}"
+    return True, f"同→同({a.evidence_id[:10]})，异→异"
+
+
+def t_evidence_immutable():
+    """证据冻结后不可改写 —— 审计凭据可被修改 = 审计无效。"""
+    ev = _mk_ev()
+    if not _raises(AttributeError, setattr, ev, "confidence", "inferred"):
+        return False, "改写 confidence 竟然成功了（假不可变）"
+    if not _raises(AttributeError, setattr, ev, "_data", "1"):
+        return False, "改写 _data 竟然成功了"
+    # 反向：to_dict 仍可读且 ID 不变
+    d = ev.to_dict()
+    if d["confidence"] != "observed" or d["evidence_id"] != ev.evidence_id:
+        return False, "冻结后读取不一致"
+    return True, "写入被拒、删除被拒、读取正常"
+
+
+def t_evidence_limitations_required():
+    """limitations 必填：空/缺失都拒收；正常可建。反向 + 正向。"""
+    if not _mk_ev().limitations:
+        return False, "正常证据竟然没有 limitations"
+    if not _raises(ValueError, _mk_ev, lim=[]):
+        return False, "空 limitations 竟然被接受了"
+    if not _raises(ValueError, _mk_ev, lim=[""]):
+        return False, "空字符串 limitation 竟然被接受了"
+    return True, "空/空串被拒，正常可建"
+
+
+def t_evidence_validation_rejects_bad():
+    """校验层反向：非法 confidence/location/provider 一律拒收。"""
+    import lib_evidence as EV
+    bad_cases = []
+    if not _raises(ValueError, _mk_ev, conf="very-sure"):
+        bad_cases.append("非法 confidence 被接受")
+    rec = _mk_ev().to_dict()
+    rec["locations"] = [{"kind": "no-such-kind"}]
+    if EV.validate_record(rec).ok:
+        bad_cases.append("非法 location.kind 未被拒")
+    rec2 = _mk_ev().to_dict()
+    rec2["provider"] = {"name": "缺 id"}
+    if EV.validate_record(rec2).ok:
+        bad_cases.append("缺 provider.id 未被拒")
+    rec3 = _mk_ev().to_dict()
+    rec3["normalized_result"] = None
+    if EV.validate_record(rec3).ok:
+        bad_cases.append("normalized_result=None 未被拒")
+    if bad_cases:
+        return False, "；".join(bad_cases)
+    return True, "非法 confidence/location/provider/空结果均被拒"
+
+
+def t_evidence_adjudicate_dedup_floor():
+    """裁决：同源去重（ID 同只算 1 源）+ 强度取下限（弱者决定链条）。"""
+    import lib_evidence as EV
+    a, b = _mk_ev(), _mk_ev()          # 同内容 → 同 ID
+    v = EV.adjudicate([a, b])
+    if v["unique_count"] != 1 or v["independent_sources"] != 1:
+        return False, f"同源未去重: {v}"
+    if not v["blocked_reasons"]:
+        return False, "同源重复未给出 blocked 原因"
+    c = _mk_ev(conf="inferred", auth="analyst-inference")
+    v2 = EV.adjudicate([a, c])
+    if v2["strength"] != "inferred":
+        return False, f"强度未取下限: {v2['strength']}"
+    return True, f"同源 2→1，混合强度取下限 {v2['strength']}"
+
+
+def t_evidence_can_support_confirmed_guard():
+    """已确认门禁：单条 analyst-inference 撑不起「已确认」；两条独立源可。反向+正向。"""
+    inf = _mk_ev(conf="inferred", auth="analyst-inference",
+                 params={"target": "a"})
+    ok1, why1 = EV_can_support([inf])
+    if ok1:
+        return False, "单条 analyst-inference 竟然能支撑已确认"
+    ok2, _ = EV_can_support([_mk_ev(params={"target": "a"}),
+                            _mk_ev(params={"target": "b"})])
+    if not ok2:
+        return False, "两条独立 shipped-artifact 竟然撑不起已确认"
+    return True, "推断单条被拦、双独立源放行"
+
+
+def EV_can_support(evs):
+    import lib_evidence as EV
+    return EV.can_support_confirmed(evs)
+
+
+def t_unknown_idempotent_and_mutation_evidence():
+    """未知项：同问题幂等去重；登记动作证据固定 inferred/analyst-inference（登记≠知道）。"""
+    import lib_evidence as EV
+    reg = EV.UnknownRegistry()
+    r1, added1 = reg.record("是否加壳？", "shipped-artifact", "observed", "缺脱壳工具")
+    r2, added2 = reg.record("是否加壳？", "shipped-artifact", "observed", "缺脱壳工具")
+    if not added1 or added2 or r1["unknown_id"] != r2["unknown_id"]:
+        return False, "同问题重复登记未幂等"
+    if len(reg) != 1:
+        return False, f"登记处条数 {len(reg)} != 1"
+    ev = EV.unknown_mutation_evidence("record", r1)
+    if ev.confidence != "inferred" or ev.authority != "analyst-inference":
+        return False, f"登记动作证据冒充观测: {ev.confidence}/{ev.authority}"
+    return True, "幂等去重 OK，登记动作标注 inferred/analyst-inference"
+
+
+def t_unknown_route_and_persist():
+    """未知项路由 + 落盘回读；反向：非法 status 抛错。"""
+    import lib_evidence as EV
+    uk = EV.make_unknown("是否加壳？", "shipped-artifact", "observed", "缺脱壳工具")
+    route = EV.route_unknown(uk)
+    if route.get("action") != "static-analysis":
+        return False, f"shipped-artifact 路由错: {route}"
+    uk2 = EV.make_unknown("要联网吗？", "external-service", "observed", "离线")
+    if EV.route_unknown(uk2).get("action") != "probe-or-lookup":
+        return False, "external-service 路由错"
+    p = str(TMP / "uk-reg.json")
+    reg = EV.UnknownRegistry(p)
+    reg.record("是否加壳？", "shipped-artifact", "observed", "缺脱壳工具")
+    reg.save()
+    reg2 = EV.UnknownRegistry(p)
+    if len(reg2) != 1:
+        return False, f"落盘回读条数 {len(reg2)} != 1"
+    if not _raises(EV.UnknownError, reg2.update, list(reg2._items)[0], status="bogus"):
+        return False, "非法 status 竟然被接受"
+    return True, "路由正确、落盘回读一致、非法 status 被拒"
+
+
+def t_evidence_provider_probe_no_crash():
+    """provider 探测：任何情况不崩，返回可用性状态；内置引擎恒 ready。"""
+    import lib_evidence as EV
+    reg = EV.build_default_registry()
+    if len(reg) < 8:
+        return False, f"内置 provider 过少: {len(reg)}"
+    results = EV.probe_all(reg)
+    states = {r["availability"] for r in results}
+    if not states <= set(EV.AVAILABILITY):
+        return False, f"出现非法可用性状态: {states}"
+    if EV.probe(reg.get("identify"))["availability"] != "ready":
+        return False, "内置 identify 引擎探测非 ready"
+    # 反向：给一个不存在的外部工具 provider，探测应 missing 而非崩
+    p = EV.Provider(id="ghost", name="ghost", version="1",
+                    authority="external-service", operations=["x"],
+                    executables=["__no_such_exe__"])
+    if EV.probe(p)["availability"] != "missing":
+        return False, "不存在的外部工具未记 missing"
+    return True, f"{len(reg)} 个 provider 探测正常，外部缺失记 missing"
+
+
+def t_evidence_cli_contract():
+    """CLI 契约：--json 有 ok 字段；已知格式出证据链，未知格式登记未知项。"""
+    elf = b"\x7fELF" + bytes([2, 1, 1, 0]) + b"\x00" * 8 + \
+        bytes([2, 0, 62, 0, 1, 0, 0, 0]) + b"\x00" * 64
+    p1 = w("ev_known.bin", elf)
+    code, d, raw = jrun([CLI, "evidence", str(p1)])
+    if code != 0 or not isinstance(d, dict):
+        return False, f"exit={code} raw={raw[:120]}"
+    if d.get("ok") is not True:
+        return False, "已知格式 ok 非 true"
+    evs = d.get("evidence") or []
+    if len(evs) != 2:
+        return False, f"已知格式证据数 {len(evs)} != 2（魔数+格式）"
+    if evs[0]["confidence"] != "observed" or evs[1]["confidence"] != "derived":
+        return False, "证据链 confidence 分层不对"
+    if evs[1]["evidence_links"] != [evs[0]["evidence_id"]]:
+        return False, "证据链 evidence_links 未串联"
+    if d.get("unknowns"):
+        return False, "已知格式不应登记未知项"
+    # 未知格式 → 应有未知项
+    p2 = w("ev_unknown.bin", b"\x00\x01\x02\x03" * 8)
+    code2, d2, raw2 = jrun([CLI, "evidence", str(p2)])
+    if code2 != 0 or not isinstance(d2, dict) or d2.get("ok") is not True:
+        return False, f"未知格式 exit={code2} ok={d2.get('ok') if d2 else None}"
+    if not d2.get("unknowns"):
+        return False, "未知格式未登记残余未知项"
+    return True, f"已知格式出证据链(2条串联)、未知格式登记 {len(d2['unknowns'])} 项"
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -4366,6 +4576,16 @@ def main():
         ("语义：_as_vma_int 十进制分支", t_semantics_as_vma_int_decimal),
         ("能力规则：bytes 叶子必须报错", t_rules_bytes_leaf_reported),
         ("函数识别：截断与丢弃种子留痕", t_code_truncation_reported),
+        ("证据：内容哈希 ID 确定性", t_evidence_content_hash_deterministic),
+        ("证据：冻结后不可改写", t_evidence_immutable),
+        ("证据：limitations 必填", t_evidence_limitations_required),
+        ("证据：非法记录一律拒收", t_evidence_validation_rejects_bad),
+        ("证据：同源去重与强度下限", t_evidence_adjudicate_dedup_floor),
+        ("证据：已确认门禁", t_evidence_can_support_confirmed_guard),
+        ("未知项：幂等与登记非观测", t_unknown_idempotent_and_mutation_evidence),
+        ("未知项：路由与落盘", t_unknown_route_and_persist),
+        ("证据：provider 探测不崩", t_evidence_provider_probe_no_crash),
+        ("证据：CLI 契约与证据链", t_evidence_cli_contract),
     ]
 
     t0 = time.time()

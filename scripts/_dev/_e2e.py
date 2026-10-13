@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""端到端功能测试：把 26 个子命令全部在真实样本上跑一遍。
+"""端到端功能测试：把 27 个子命令全部在真实样本上跑一遍。
 
 判定标准（不是"跑完就算过"）：
   * 退出码必须属于该命令的合法集合
@@ -228,6 +228,43 @@ def main():
 
     case("report(受保护目录降级)", ["report", exe, "--json"],
          check=_report_fallback_ok, timeout=300, cwd=FALLBACK_CWD)
+
+    # ---------- evidence（证据契约层，REA 移植） ----------
+    # 把 identify 的发现包装成可溯源证据（内容哈希 ID ev-<sha256[:32]> +
+    # confidence 三分 observed/derived/inferred + limitations 必填），
+    # 并登记残余未知项。这里验"证据契约层在真实 PE 上跑得通、产出结构
+    # 完整、ID 形态正确、证据链强度取下限"，不验结论强弱本身。
+    #
+    # 【断言字段取自实测】ID 字段名是 evidence_id（不是 id），confidence
+    # 取值是 observed/derived/inferred，limitations 是非空 list —— 这些都
+    # 在写用例前实跑过 notepad.exe 确认，避免臆测字段名造成假失败。
+    def _evidence_e2e_ok(o, p):
+        if not isinstance(o, dict):
+            return "顶层不是对象"
+        if not o.get("ok"):
+            return "证据契约层 ok 不为 true"
+        evs = o.get("evidence")
+        if not isinstance(evs, list) or not evs:
+            return "evidence 不是非空列表：%r" % (evs,)
+        for e in evs:
+            if not isinstance(e, dict):
+                return "证据项不是对象：%r" % (e,)
+            eid = e.get("evidence_id")
+            if not (isinstance(eid, str) and eid.startswith("ev-")):
+                return "证据 ID 形态异常：%r" % (eid,)
+            if e.get("confidence") not in ("observed", "derived", "inferred"):
+                return "证据 confidence 非法：%r" % (e.get("confidence"),)
+            if not isinstance(e.get("limitations"), list) or not e.get("limitations"):
+                return "证据缺 limitations（必填）：%r" % eid
+        adj = o.get("adjudication")
+        if not isinstance(adj, dict) or "strength" not in adj:
+            return "adjudication 缺 strength：%r" % (adj,)
+        if not isinstance(o.get("unknowns"), list):
+            return "unknowns 不是列表：%r" % (o.get("unknowns"),)
+        return None
+
+    case("evidence", ["evidence", exe, "--json"],
+         check=_evidence_e2e_ok, timeout=300)
 
     # ---------- disasm ----------
     case("disasm", ["disasm", exe, "--json", "--max-insns", "200"])
