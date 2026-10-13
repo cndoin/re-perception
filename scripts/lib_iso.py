@@ -19,6 +19,8 @@ import os
 import re
 import struct
 
+import lib_paths as PT
+
 __all__ = ["inspect_iso", "iso_extract"]
 
 _SECTOR = 2048
@@ -213,9 +215,10 @@ def iso_extract(path: str, out_dir: str, max_files: int = 200,
     for e in info.get("entries", []):
         if e["dir"] or len(extracted) >= max_files:
             continue
-        # 路径安全：逐段清洗，拒绝 .. 与绝对路径与盘符
-        parts = [p for p in e["path"].split("/") if p and p not in (".", "..")]
-        if any(re.match(r"^[A-Za-z]:", p) or p.startswith("\\") for p in parts):
+        # 路径安全：交给全库唯一裁决点（lib_paths），与 fsx 提取同一套语义，
+        # 并且会断言"拼接后的最终路径确实落在 out_dir 之内"。
+        parts = PT.safe_parts(e["path"])
+        if parts is None:
             skipped.append({"path": e["path"], "why": "路径穿越防护"})
             continue
         if total + (e["size"] or 0) > max_total:
@@ -226,7 +229,10 @@ def iso_extract(path: str, out_dir: str, max_files: int = 200,
         if len(blob) != (e["size"] or 0):
             skipped.append({"path": e["path"], "why": "数据越界（镜像截断）"})
             continue
-        dest = os.path.join(out_dir, *parts)
+        dest, why = PT.safe_join(out_dir, parts)
+        if dest is None:
+            skipped.append({"path": e["path"], "why": why or "路径穿越防护"})
+            continue
         os.makedirs(os.path.dirname(dest) or out_dir, exist_ok=True)
         with open(dest, "wb") as f:
             f.write(blob)

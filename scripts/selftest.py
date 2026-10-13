@@ -5224,6 +5224,48 @@ def t_replica_roundtrip_and_tamper():
     return True, "清单/打包/回验 + 篡改检出"
 
 
+def t_path_traversal_gate():
+    """提取类命令的唯一路径裁决点：正向放行 + 反向必须拦。
+
+    为什么必须单独测：lib_iso 与 lib_fsx 曾各写一份清洗且语义不同
+    （是否把 `\\` 当分隔符），这是典型的「多裁决点」缺陷。收敛到
+    lib_paths 后，这里既测「该拦的拦得住」，也测「两个模块真的在用同一个点」。
+    """
+    import lib_paths as PT
+    # 反向：这些名字必须被拒或部分剥离后仍不许出 out_dir
+    must_reject = ["C:/windows/system.ini", "C:\\windows\\system.ini",
+                   "NUL", "CON.txt", "aux"]
+    for name in must_reject:
+        if PT.safe_parts(name) is not None:
+            return False, "危险名未被拒: %r" % name
+    # 正向：正常相对路径要能过
+    ok = PT.safe_parts("sub/deep/f.txt")
+    if ok != ["sub", "deep", "f.txt"]:
+        return False, "正常路径被误伤: %r" % (ok,)
+    # 反向：`..` 必须剥掉，且最终路径必须落在 out_dir 内
+    out = TMP / "outx"
+    out.mkdir(parents=True, exist_ok=True)
+    parts = PT.safe_parts("../../evil.bin")
+    dest, reason = PT.safe_join(str(out), parts or [])
+    if parts and dest is not None and reason is None:
+        # 允许落盘的前提：必须还在 out 之内（.. 已被剥离所以应该安全）
+        import os
+        if os.path.commonpath([os.path.abspath(str(out)), dest]) != \
+                os.path.abspath(str(out)):
+            return False, "穿越未被 final 断言拦住: %s" % dest
+    d2, r2 = PT.safe_join(str(out), ["..", "..", "evil"])
+    if d2 is not None or "escapes" not in (r2 or ""):
+        return False, "escapes 未被拦: %s %s" % (d2, r2)
+    # 两个提取模块必须都用同一个裁决点
+    import lib_fsx as FX
+    import lib_iso as ISOX
+    src_f = open(FX.__file__, encoding="utf-8").read()
+    src_i = open(ISOX.__file__, encoding="utf-8").read()
+    if "lib_paths" not in src_f or "lib_paths" not in src_i:
+        return False, "仍有模块没走 lib_paths 裁决点"
+    return True, "裁决点：拒 %d 个危险名 + 最终路径断言 + 双模块同源" % len(must_reject)
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -5364,6 +5406,7 @@ def main():
         ("接口/端口/网络地址全覆盖+反向", t_netio_guards_and_coverage),
         ("fsx 扫描提取回环与诚实降级", t_fsx_scan_extract_honesty),
         ("replica 复刻回环与篡改检出", t_replica_roundtrip_and_tamper),
+        ("提取路径安全裁决点（穿越反向用例）", t_path_traversal_gate),
     ]
 
     t0 = time.time()

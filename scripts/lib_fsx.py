@@ -27,6 +27,8 @@ import re
 import struct
 import tarfile
 import zipfile
+
+import lib_paths as PT
 import zlib
 
 __all__ = ["scan_embedded", "extract_embedded",
@@ -142,10 +144,23 @@ def scan_embedded(path: str, max_hits: int = 200, window: int = 64 * 1024) -> di
 
 
 def _safe_parts(name: str):
-    parts = [p for p in name.replace("\\", "/").split("/") if p and p not in (".", "..")]
-    if any(re.match(r"^[A-Za-z]:", p) for p in parts):
-        return None
-    return parts
+    """路径切片 —— 委托全库唯一裁决点 lib_paths.safe_parts。
+
+    原先这里与 lib_iso 各有一份且语义不同（是否把 `\\` 当分隔符），
+    已收敛到 lib_paths：两处同一实现同一套用例，且多了最终路径断言。
+    """
+    return PT.safe_parts(name)
+
+
+def _write_member(out_dir: str, parts, payload: bytes):
+    """安全落盘：唯一出口，做最终路径断言。返回 (dest, reason)。"""
+    dest, reason = PT.safe_join(out_dir, parts)
+    if dest is None:
+        return None, reason or "path rejected"
+    os.makedirs(os.path.dirname(dest) or out_dir, exist_ok=True)
+    with open(dest, "wb") as f:
+        f.write(payload)
+    return dest, None
 
 
 def _extract_cpio_newc(blob: bytes, out_dir: str, budget: dict):
@@ -165,10 +180,10 @@ def _extract_cpio_newc(blob: bytes, out_dir: str, budget: dict):
             break
         parts = _safe_parts(name)
         if parts:
-            dest = os.path.join(out_dir, *parts)
-            os.makedirs(os.path.dirname(dest) or out_dir, exist_ok=True)
-            with open(dest, "wb") as f:
-                f.write(blob[hdr_end:data_end])
+            _d, why = _write_member(out_dir, parts, blob[hdr_end:data_end])
+            if _d is None:
+                pos = (data_end + 3) & ~3
+                continue
             files.append({"path": name, "size": filesize})
             budget["files"] += 1
             budget["bytes"] += filesize
@@ -213,10 +228,9 @@ def extract_embedded(path: str, out_dir: str, max_files: int = 200,
                         parts = _safe_parts(zi.filename)
                         if not parts or zi.is_dir() or zi.file_size > max_total:
                             continue
-                        dest = os.path.join(sub, *parts)
-                        os.makedirs(os.path.dirname(dest) or sub, exist_ok=True)
-                        with open(dest, "wb") as f:
-                            f.write(zf.read(zi))
+                        _d, _why = _write_member(sub, parts, zf.read(zi))
+                        if _d is None:
+                            continue
                         budget["files"] += 1
                         budget["bytes"] += zi.file_size
                 extracted.append({"offset": off, "key": key, "out": sub})
@@ -233,8 +247,9 @@ def extract_embedded(path: str, out_dir: str, max_files: int = 200,
                         src = tf.extractfile(ti)
                         if src is None:
                             continue
-                        with open(dest, "wb") as f:
-                            f.write(src.read())
+                        _d, _why = _write_member(sub, parts, src.read())
+                        if _d is None:
+                            continue
                         budget["files"] += 1
                         budget["bytes"] += ti.size
                 extracted.append({"offset": off, "key": key, "out": sub})
