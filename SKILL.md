@@ -1,10 +1,10 @@
 ---
 name: reverse-engineering
-description: 全平台逆向工程工具箱——AI 驱动的通用逆向工作流。识别任何未知文件（PE/ELF/Mach-O/DEX/APK/JAR/pyc/WASM/SQLite/固件/私有格式），提取字符串与熵证据，解析导入表与结构，还原 C++/MSVC 修饰符号，反汇编与反编译辅助，判定加壳与加固厂商，做差分实验与文件雕刻，并自动排出下一步分析计划、生成 Markdown 报告。零第三方依赖，纯标准库，流式扫描支持 GB 级文件。当用户说"逆向他""分析这个 exe/apk/bin""这程序在干什么""脱壳""提取字符串""看导入表""还原符号""反汇编""这个固件里有什么""还原这个私有格式""逆向协议"时使用。This skill should be used when reverse engineering any binary, application, firmware or unknown file format.
+description: 全平台逆向工程工具箱——AI 驱动的通用逆向工作流。识别任何未知文件（PE/ELF/Mach-O/DEX/APK/IPA/JAR/pyc/WASM/SQLite/ISO9660 镜像/固件/私有格式），提取字符串与熵证据，解析导入表与结构，还原 C++/MSVC 修饰符号，反汇编与反编译辅助，判定加壳与加固厂商，提取应用内接口/端口/网络地址，扫描固件嵌入文件系统并支持确定性系统复刻，做差分实验与文件雕刻，并自动排出下一步分析计划、生成 Markdown 报告。零第三方依赖，纯标准库，流式扫描支持 GB 级文件。当用户说"逆向他""分析这个 exe/apk/bin/iso""这程序在干什么""脱壳""提取字符串""看导入表""还原符号""反汇编""这个固件里有什么""还原这个私有格式""逆向协议""APK 里有什么权限和组件""这个应用连哪些地址""复刻这个目录"时使用。This skill should be used when reverse engineering any binary, application, firmware, disc image or unknown file format.
 license: MIT
 compatibility: 只依赖 Python 3.10+ 标准库，无需 pip install。Windows / Linux / macOS 均可运行；部分实机验证用例需要本机存在 PE/ELF 样本，缺失时自动跳过。
 metadata:
-  version: "1.4.0"
+  version: "1.6.0"
   author: 寇豆码
   category: security
   tags: [reverse-engineering, binary-analysis, disassembly, pe, elf, malware-analysis]
@@ -35,7 +35,7 @@ python re.py plan   "/path/to/unknown.bin" --json
 - 退出码： `0` 成功 / `2` 用法错误 / `3` 目标不可读 / `4` 分析出错
 - `--json` 下所有子命令都输出顶层 `ok` 字段，优先用它判断成败
 - 路径用正斜杠，含空格必须加引号
-- 自检：`python selftest.py`（107 个用例，期望全绿）
+- 自检：`python selftest.py`（128 个用例，期望全绿）
 - 静态体检：`python _dev/_lint.py`（期望 `生产 0 处`，退出码 0）
 - 安装到本机 AI：`python _dev/_install.py --auto --verify`（先看装到哪，再 `--auto` 实装）
 - 稳定性压测：`python _dev/_fuzz.py` 与 `python _dev/_fuzzlib.py`（期望 0 缺陷）
@@ -416,6 +416,10 @@ capa 风格的规则库折算成"这样本能做什么"，并直接给出 ATT&CK
 | `scripts/lib_contracts.py` | **平台契约**：错误契约（10 类目）+ Provider 抽象（确定性选择/失败不降级）+ 阶段闭合 + 「缺失覆盖≠不存在」守卫 |
 | `scripts/lib_bundle.py` | **可复用/可重放**：证据 bundle 导出/导入/对比（防篡改）+ 内容寻址快照 |
 | `scripts/lib_inspect.py` | **补充检查器**：布局缓解 / PE 资源树 / Mach-O 架构 / plist / .NET 元数据 / Go buildinfo / EVM selector / demangle |
+| `scripts/lib_apk.py` | **应用逆向**：APK/IPA——AXML Manifest 语义解析（包名/权限/组件/导出面/签名块）、DEX 摘要、Info.plist |
+| `scripts/lib_iso.py` | **镜像逆向**：ISO9660 卷/目录解析（PVD/Joliet/UDF 侦察）+ 路径清洗安全提取 |
+| `scripts/lib_netio.py` | **网络面**：应用内接口 / 端口接口 / 连接网络地址三入口提取（置信分级 + 假阳性防护） |
+| `scripts/lib_fsx.py` | **固件与复刻**：嵌入文件系统签名扫描（binwalk 式）+ 流式解压提取 + 确定性系统复刻（清单/打包/回验） |
 | `scripts/_quirk.py` | dbghelp 已知缺陷清单（**参考文档**，须随发布分发，勿挪进 `_dev/`） |
 | `rules/*.yml` | **能力规则库**（capa 格式）：4 个文件共 20 条，跨 7 个 capa 命名空间（进程/加密/网络/反分析/加载/发现/持久化），带 ATT&CK 映射 |
 | `scripts/selftest.py` | 自检套件（正确性 + 稳定性 + 性能，共 107 个用例，含 74 条 x86 + 18 条 ARM64 黄金指令向量） |

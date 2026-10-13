@@ -3,6 +3,58 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.6.0] — 2026-10-13
+
+应用 / 镜像 / 网络面 / 固件复刻四域补齐：**子命令 38 → 46**。
+选型前先做开源普查（20 个分类查询、去重 2120 个仓库、按 star 比对
+Top 300，证据留档 `references/open-source-survey.md`），头部项目
+（jadx / Apktool / MobSF / binwalk / ipatool 等）的功能点逐项映射到
+本工具落点后再实现。
+
+### 新增
+
+- **应用逆向（2 个子命令）**：
+  - `apk`：Android APK 逆向——AXML（二进制 XML）完整解析与 Manifest 语义
+    （包名 / versionCode / versionName / 权限含 -sdk-23 / uses-sdk /
+    application 属性 / 组件 activity/service/receiver/provider 及导出面推断
+    / queries）、DEX 摘要、原生库（lib/<abi>/*.so）、v1/v2 签名块探测。
+  - `ipa`：iOS IPA 逆向——Payload/*.app 定位、Info.plist（XML/二进制）、
+    bundle id / 最低系统 / URL scheme、Frameworks/PlugIns/dylibs、
+    embedded.mobileprovision。
+- **镜像逆向（1 个子命令）**：
+  - `iso`：ISO9660 光盘镜像清单与提取——PVD 解析（卷标/空间/创建日期）、
+    Joliet SVD 检测、UDF 侦察、目录递归遍历（防环、`;1` 版本后缀剥离）、
+    提取带路径清洗（拒 `..`/绝对路径）与容量上限。
+- **网络面（3 个子命令）**——逆向接口三入口一个不落：
+  - `endpoints`：应用内接口（API 路径 / Content URI / Intent Action /
+    Windows 命名管道 / COM ProgID / .NET·Java 类型 / gRPC / SOAP-WSDL）；
+  - `ports`：端口接口（显式端口 + 协议默认端口配对 21 组，置信度
+    observed/derived 分级）；
+  - `netaddr`：连接网络地址（URL / IPv4 / IPv6 / 域名 / 邮箱 / UNC），
+    带假阳性防护（版本号样式排除）与 IPv4 作用域标注
+    （loopback/private/link-local/multicast/public）。
+- **固件与复刻（2 个子命令）**：
+  - `fsx`：固件/嵌入文件系统签名扫描（24 条签名，binwalk 式偏移魔数语义：
+    tar 的 `ustar` 在 +257，结构起点 = 魔数位置 − 偏移）+ 嵌入提取
+    （流式解压器，尾部垃圾不炸；zip/tar/cpio 成员路径清洗）。
+    诚实降级：SquashFS/JFFS2/CramFS/UBI 等只检不冒充提取
+    （`extractable:false` + reason）。
+  - `replica`：系统复刻——确定性清单（sha256 字典序 + tree_sha256）、
+    可重现打包（mtime=0/uid=gid=0/路径排序，同树必同哈希）、
+    回验与篡改检出（added/removed/changed）。
+
+### 新增（支撑）
+
+- 生产模块：`lib_apk.py`（AXML 字符串池/属性/元素栈式重建 + Manifest 语义）、
+  `lib_iso.py`（both-endian 解析 + 目录记录不跨扇区语义）、
+  `lib_netio.py`（三入口提取 + 假阳性防护）、
+  `lib_fsx.py`（签名扫描 + 流式解压 + 确定性 tar）。
+- 测试：selftest 122 → 128 个用例、e2e 64 → 75 项（含 APK/IPA/ISO/固件
+  字节级合成夹具与真实 F-Droid APK 实测：29 权限 / 61 组件）。
+- 文档：`references/open-source-survey.md`（普查口径 + 能力矩阵 + Top 300 表）；
+  双语 README 增 OS × 六运行时（Claude Code / Codex CLI / Hermes / OpenClaw /
+  Cursor / Gemini CLI）兼容矩阵。
+
 ## [1.5.0] — 2026-10-13
 
 平台契约层 + 补充检查器：把「依赖重型外部工具的域」与「纯标准库可解析的域」

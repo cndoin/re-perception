@@ -13,11 +13,11 @@
 ```bash
 cd scripts
 
-python re.py --version          # 应输出 1.4.0
-python selftest.py              # 107/107 全绿
+python re.py --version          # 应输出 1.6.0
+python selftest.py              # 128/128 全绿
 python _dev/_lint.py            # 生产 0 处告警
 python _dev/_undefined.py       # 0 处问题
-python _dev/_e2e.py             # 36/36
+python _dev/_e2e.py             # 75/75
 python _dev/_ossaudit.py        # 0 项
 ```
 
@@ -149,15 +149,15 @@ git push -u origin main
 有 Release 的项目显得「可交付」，而且给使用者一个明确的版本锚点。
 
 ```bash
-git tag -a v1.5.0 -m "1.5.0 — 平台契约层与补充检查器：provider 槽位 / 证据 bundle / 布局缓解与资源检查"
-git push origin v1.5.0
+git tag -a v1.6.0 -m "1.6.0 — 应用/镜像/网络面/固件复刻：APK/IPA 逆向、ISO9660、接口/端口/网络地址、固件扫描与系统复刻"
+git push origin v1.6.0
 ```
 
 然后在 GitHub 上 **Draft a new release**：
 
-- **Tag**：`v1.5.0`
-- **Title**：`1.5.0 — 平台契约层与补充检查器：provider 槽位 / 证据 bundle / 布局缓解与资源检查`
-- **Describe**：把 `CHANGELOG.md` 里 `[1.5.0]` 整段粘过去
+- **Tag**：`v1.6.0`
+- **Title**：`1.6.0 — 应用/镜像/网络面/固件复刻：APK/IPA 逆向、ISO9660、接口/端口/网络地址、固件扫描与系统复刻`
+- **Describe**：把 `CHANGELOG.md` 里 `[1.6.0]` 整段粘过去
 
 > 本项目的 CHANGELOG 是按 Keep a Changelog 格式写的，直接可当 Release Notes。
 > 这是它写那么详细的原因之一。
@@ -171,7 +171,7 @@ git push origin v1.5.0
 | Job | 平台 | 作用 |
 |---|---|---|
 | `selftest` | ubuntu / windows / macos × py3.10 / py3.13 | 全量自检 + lint + 未定义名 |
-| `e2e` | **windows-latest** | 38 个子命令跑真实系统二进制 |
+| `e2e` | **windows-latest** | 46 个子命令跑真实系统二进制 |
 | `no-third-party` | ubuntu | 独立一道门，防止混进 pip 包 |
 
 **首次推送后务必去 Actions 页看结果。** 本地绿不等于 CI 绿 —— 本项目的
@@ -194,7 +194,7 @@ git push origin v1.5.0
    建议放在 README 显眼处：
 
    - MSVC demangle 在 **61,248 条真实系统 DLL 导出符号**上实测 99.89% 一致；
-   - **122 个自检用例 + 64 项端到端**，且每个回归用例都做了「撤回修复必须
+   - **128 个自检用例 + 75 项端到端**，且每个回归用例都做了「撤回修复必须
      变红」的反向验证。
 
 ---

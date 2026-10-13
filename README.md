@@ -17,7 +17,7 @@ model & verify → document.
   100 MB file takes roughly one second.
 - **Read-only analysis** — never writes to the target, never patches it, never
   generates registration codes.
-- **Ships with its own test harness** — 122 self-test cases + 64 end-to-end
+- **Ships with its own test harness** — 128 self-test cases + 75 end-to-end
   integration checks; all must pass before a commit is allowed.
 
 > ⚠️ **Authorized use only.** Only reverse-engineer targets you own or have
@@ -70,6 +70,22 @@ python _dev/_install.py --auto               # install into all detected runtime
 On Windows, `~` means `%USERPROFILE%`. Full instructions, manual installation and
 a troubleshooting table live in **[INSTALL.md](INSTALL.md)**.
 
+### OS × runtime compatibility
+
+The toolkit is pure Python stdlib (3.10+), so every runtime runs on every OS —
+no compile step, no binary wheels:
+
+| OS \ Runtime | Claude Code | Codex CLI | Hermes | OpenClaw | Cursor | Gemini CLI |
+|---|---|---|---|---|---|---|
+| Windows | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| macOS | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Linux | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+Verified paths: `os.path.join` / `os.sep` throughout (no hardcoded `C:\`),
+streaming I/O with no mmap tricks, and every format parser tested against
+byte-level synthetic fixtures on Windows (the other two OSes share the same
+stdlib surface; PE/ELF/Mach-O fixtures are OS-independent).
+
 > After installing, **start a new session**. Most runtimes scan skills at session
 > startup, so a skill installed mid-session will not load until the next one.
 
@@ -103,7 +119,7 @@ runs through the whole codebase: a failure must never be reported as a success.
 
 ## Commands
 
-There are **38 subcommands** in three layers: **30 analysis commands** (the
+There are **46 subcommands** in three layers: **38 analysis commands** (the
 table below, schedulable by the orchestration layer), **3 platform/contract
 commands** (`provider` `unknowns` `bundle` — cross-cutting evidence-contract
 capabilities) and **5 orchestration/state commands** (`require` `flow` `case`
@@ -119,6 +135,14 @@ capabilities) and **5 orchestration/state commands** (`require` `flow` `case`
 | `info` | Deep structural parsing |
 | `triage` | **One-shot first pass** (identify + entropy + strings + IOCs + packer detection) |
 | `carve` | Carve embedded files by magic number (firmware / overlay analysis) |
+| `apk` | Android APK reverse engineering (AXML manifest semantics: package/version/permissions/components/exported surface/signing, DEX summary, native libs) |
+| `ipa` | iOS IPA reverse engineering (Info.plist / bundle / frameworks / provisioning) |
+| `iso` | ISO9660 disc image inventory & extraction (incl. Joliet, UDF probe) |
+| `fsx` | Firmware / embedded-filesystem signature scan & extraction (binwalk-style) |
+| `replica` | System replication (deterministic manifest / reproducible pack / verify & tamper detection) |
+| `endpoints` | In-application interfaces (API paths / IPC / Intent actions / COM ProgIDs / gRPC / SOAP) |
+| `ports` | Port interfaces (explicit ports + protocol default-port pairing, observed vs derived confidence) |
+| `netaddr` | Network addresses (URL / IPv4 / IPv6 / domain / email / UNC, with scope annotation) |
 | `diff` | Byte-level diff of two files (version comparison / reversing private formats) |
 | `plan` | Generate a step-by-step analysis plan, trimmed to the local toolchain |
 | `report` | Produce a Markdown analysis report |
@@ -179,10 +203,10 @@ a runnable check. Recommendations are not accepted because they sound right.
 ## Self-testing and gates
 
 ```bash
-python selftest.py                     # full self-test (122 cases, ~115 s)
+python selftest.py                     # full self-test (128 cases, ~112 s)
 python selftest.py --only 性能          # run one category only
 python _dev/_lint.py                   # static audit (syntax / swallowed exceptions / hardcoded paths)
-python _dev/_e2e.py                    # end-to-end: all 38 subcommands against real PE files
+python _dev/_e2e.py                    # end-to-end: all 46 subcommands against real PE files
 python _dev/_ossaudit.py               # open-source compliance self-audit
 ```
 
@@ -285,6 +309,7 @@ reverse-engineering/
 │   ├── research.md              # paper index, organised by "where you're stuck"
 │   ├── ai-calling-protocol.md   # how an AI picks tools: intent lookup / summary layer / orchestration
 │   ├── top-tier-tools.md        # tools and habits of top reverse engineers, with an "AI reachability" column
+│   ├── open-source-survey.md    # open-source survey (2120 repos) + capability matrix behind the new commands
 │   └── legal.md                 # compliance red lines (CN / US / EU + self-check list)
 ├── rules/                       # capability rule library (capa-style, loaded by `capability`)
 │   ├── anti-analysis.yml        # anti-debugging / anti-analysis
@@ -295,7 +320,7 @@ reverse-engineering/
 │   ├── frida-templates.js       # Frida hook templates (native / Android / iOS / plaintext capture / unpacking)
 │   └── notes-template.md        # analysis notes template
 └── scripts/
-    ├── re.py                    # CLI entry point (38 subcommands)
+    ├── re.py                    # CLI entry point (46 subcommands)
     ├── lib_formats.py           # magic-number library + per-format parsers
     ├── lib_analyze.py           # strings / entropy / IOCs / diffing / carving
     ├── lib_disasm.py            # disassembly dispatcher
@@ -313,9 +338,13 @@ reverse-engineering/
     ├── lib_contracts.py         # platform contracts: error contract + provider abstraction + stage closure
     ├── lib_bundle.py            # evidence bundle export/import/compare + snapshot reuse
     ├── lib_inspect.py           # extra inspectors: layout / PE resources / Mach-O / plist / .NET / Go / EVM
+    ├── lib_apk.py               # APK / IPA reverse engineering (AXML manifest semantics, DEX summary, Info.plist)
+    ├── lib_iso.py               # ISO9660 disc image parsing / inventory / safe extraction
+    ├── lib_netio.py             # interface / port / network-address extraction
+    ├── lib_fsx.py               # firmware signature scan, embedded extraction, deterministic replication
     ├── lib_tools.py             # toolchain probing + analysis plans
     ├── _quirk.py                # known dbghelp defects (reference doc, not a runtime module)
-    ├── selftest.py              # self-test suite (122 cases, incl. 5 installation cases)
+    ├── selftest.py              # self-test suite (128 cases, incl. 5 installation cases)
     └── _dev/                    # development scaffolding (not shipped in releases)
         └── _install.py          # cross-runtime installer (--auto detect / --verify re-check)
 ```

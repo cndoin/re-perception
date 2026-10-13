@@ -12,7 +12,7 @@
   .NET / Java / Python pyc / Web-WASM-Electron / 固件 / 私有格式 / SQLite
 - **内存有界、速度优先**：流式扫描，100MB 文件字符串扫描约 1 秒
 - **只读分析**：不写目标文件、不打补丁、不生成注册码
-- **自带自检**：122 个自检用例 + 64 项端到端集成，提交前必须全绿
+- **自带自检**：128 个自检用例 + 75 项端到端集成，提交前必须全绿
 
 > ⚠️ **仅限授权使用**。只对你自己拥有或已获书面授权的目标做逆向。
 > 授权提示见 [USE-POLICY.md](USE-POLICY.md)；法律条款见 [LICENSE](LICENSE)（MIT）。
@@ -45,6 +45,21 @@ python _dev/_install.py --auto               # 装到全部探测到的运行时
 
 完整说明、手工装法与常见坑见 **[INSTALL.md](INSTALL.md)**。
 
+### 操作系统 × 运行时兼容矩阵
+
+工具箱是纯 Python 标准库（3.10+），无编译步骤、无二进制 wheel，
+因此每个运行时在每个系统上都可用：
+
+| 系统 \ 运行时 | Claude Code | Codex CLI | Hermes | OpenClaw | Cursor | Gemini CLI |
+|---|---|---|---|---|---|---|
+| Windows | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| macOS | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Linux | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+可移植性依据：全库用 `os.path.join` / `os.sep`（无 `C:\` 硬编码）、
+流式 I/O 不依赖 mmap 等平台特性，各格式解析器用字节级合成夹具验证
+（PE/ELF/Mach-O 夹具与宿主系统无关）。
+
 > 装完请**重开一次新会话** —— 技能在会话启动时扫描，中途装的当轮不加载。
 
 ## 快速开始
@@ -67,7 +82,7 @@ AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法�
 
 ## 命令一览
 
-共 **38 个子命令**，分三层：**30 个分析命令**（下表的分析层，可被编排层调度）、
+共 **46 个子命令**，分三层：**38 个分析命令**（下表的分析层，可被编排层调度）、
 **3 个平台/契约命令**（`provider` `unknowns` `bundle`，证据契约层横切能力）
 与 **5 个编排/状态命令**（`require` `flow` `case` `result` `toolgraph`，供 AI 选路与缓存）。
 
@@ -81,6 +96,14 @@ AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法�
 | `info` | 深度结构解析 |
 | `triage` | **一站式初筛**（识别+熵+字符串+IOC+加壳判断） |
 | `carve` | 按魔数雕刻嵌入文件（固件/覆盖层分析） |
+| `apk` | Android APK 逆向（AXML Manifest 语义：包名/版本/权限/组件/导出面/签名，DEX 摘要，原生库） |
+| `ipa` | iOS IPA 逆向（Info.plist / Bundle / 框架 / provisioning） |
+| `iso` | ISO9660 光盘镜像清单与提取（含 Joliet、UDF 侦察） |
+| `fsx` | 固件/嵌入文件系统签名扫描与提取（binwalk 式） |
+| `replica` | 系统复刻（确定性清单 / 可重现打包 / 回验与篡改检出） |
+| `endpoints` | 应用内接口（API 路径 / IPC / Intent Action / COM ProgID / gRPC / SOAP） |
+| `ports` | 端口接口（显式端口 + 协议默认端口配对，observed/derived 置信分级） |
+| `netaddr` | 连接网络地址（URL / IPv4 / IPv6 / 域名 / 邮箱 / UNC，带作用域标注） |
 | `diff` | 两文件字节级差分（版本对比 / 私有格式破解） |
 | `plan` | 生成分步分析计划（按本机工具裁剪） |
 | `report` | 生成 Markdown 分析报告 |
@@ -115,10 +138,10 @@ AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法�
 ## 自检
 
 ```bash
-python selftest.py                     # 全量自检（122 个用例，约 115 秒）
+python selftest.py                     # 全量自检（128 个用例，约 112 秒）
 python selftest.py --only 性能          # 只跑某一类
 python _dev/_lint.py                   # 静态体检（语法/静默吞异常/硬编码路径）
-python _dev/_e2e.py                    # 端到端：38 个子命令在真实 PE 上全跑一遍
+python _dev/_e2e.py                    # 端到端：46 个子命令在真实 PE 上全跑一遍
 ```
 
 覆盖三条线：正确性（合成样本 + 实机文件）、稳定性（空文件/截断/位翻转变异/垃圾输入）、
@@ -210,6 +233,7 @@ reverse-engineering/
 │   ├── research.md              # 论文索引：按「卡在哪」组织（反编译/符号/BCSD/Agent/协议）
 │   ├── ai-calling-protocol.md   # AI 怎么挑工具：意图检索 / 摘要层 / 编排协议
 │   ├── top-tier-tools.md        # 顶尖逆向工程师的工具、套路与「AI 可达性」对照表
+│   ├── open-source-survey.md    # 开源普查（2120 仓库）与能力矩阵（新命令的选型依据）
 │   └── legal.md                 # 合规红线（中/美/欧盟 + 自查清单）
 ├── rules/                       # 能力规则库（capa 风格，`capability` 子命令加载）
 │   ├── anti-analysis.yml        # 反调试 / 反分析
@@ -220,7 +244,7 @@ reverse-engineering/
 │   ├── frida-templates.js       # Frida Hook 模板（Native/Android/iOS/抓明文/脱壳）
 │   └── notes-template.md        # 分析笔记模板
 └── scripts/
-    ├── re.py                    # CLI 入口（38 个子命令）
+    ├── re.py                    # CLI 入口（46 个子命令）
     ├── lib_formats.py           # 魔数库 + 各格式解析器
     ├── lib_analyze.py           # 字符串 / 熵 / IOC / 差分 / 雕刻
     ├── lib_disasm.py            # 反汇编调度
@@ -238,9 +262,13 @@ reverse-engineering/
     ├── lib_contracts.py         # 平台契约：错误契约 + Provider 抽象 + 阶段闭合 + 覆盖守卫
     ├── lib_bundle.py            # 证据 bundle 导出/导入/对比 + 快照复用（防篡改、可重放）
     ├── lib_inspect.py           # 补充检查器：布局缓解 / PE 资源 / Mach-O / plist / .NET / Go / EVM
+    ├── lib_apk.py               # APK / IPA 逆向（AXML Manifest 语义、DEX 摘要、Info.plist）
+    ├── lib_iso.py               # ISO9660 镜像解析 / 清单 / 安全提取
+    ├── lib_netio.py             # 接口 / 端口 / 网络地址提取
+    ├── lib_fsx.py               # 固件签名扫描、嵌入提取、确定性复刻
     ├── lib_tools.py             # 工具链探测 + 分析计划
     ├── _quirk.py                # dbghelp 已知缺陷清单（参考文档，非运行时模块）
-    ├── selftest.py              # 自检套件（122 个用例，含 5 个安装用例）
+    ├── selftest.py              # 自检套件（128 个用例，含 5 个安装用例）
     └── _dev/                    # 开发脚手架（不随发布分发）
         └── _install.py          # 跨运行时安装器（--auto 探测 / --verify 回验）
 ```
