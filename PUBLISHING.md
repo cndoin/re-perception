@@ -13,8 +13,8 @@
 ```bash
 cd scripts
 
-python re.py --version          # 应输出 1.3.8
-python selftest.py              # 97/97 全绿
+python re.py --version          # 应输出 1.4.0
+python selftest.py              # 107/107 全绿
 python _dev/_lint.py            # 生产 0 处告警
 python _dev/_undefined.py       # 0 处问题
 python _dev/_e2e.py             # 36/36
@@ -149,15 +149,15 @@ git push -u origin main
 有 Release 的项目显得「可交付」，而且给使用者一个明确的版本锚点。
 
 ```bash
-git tag -a v1.3.8 -m "1.3.8 — 逐工具体检，再挖 7 处静默缺陷"
-git push origin v1.3.8
+git tag -a v1.4.0 -m "1.4.0 — 融合 REA 证据契约层：可溯源证据 + 残余未知项"
+git push origin v1.4.0
 ```
 
 然后在 GitHub 上 **Draft a new release**：
 
-- **Tag**：`v1.3.8`
-- **Title**：`1.3.8 — 逐工具体检，再挖 7 处静默缺陷`
-- **Describe**：把 `CHANGELOG.md` 里 `[1.3.8]` 整段粘过去
+- **Tag**：`v1.4.0`
+- **Title**：`1.4.0 — 融合 REA 证据契约层：可溯源证据 + 残余未知项`
+- **Describe**：把 `CHANGELOG.md` 里 `[1.4.0]` 整段粘过去
 
 > 本项目的 CHANGELOG 是按 Keep a Changelog 格式写的，直接可当 Release Notes。
 > 这是它写那么详细的原因之一。
@@ -171,7 +171,7 @@ git push origin v1.3.8
 | Job | 平台 | 作用 |
 |---|---|---|
 | `selftest` | ubuntu / windows / macos × py3.10 / py3.13 | 全量自检 + lint + 未定义名 |
-| `e2e` | **windows-latest** | 26 个子命令跑真实系统二进制 |
+| `e2e` | **windows-latest** | 27 个子命令跑真实系统二进制 |
 | `no-third-party` | ubuntu | 独立一道门，防止混进 pip 包 |
 
 **首次推送后务必去 Actions 页看结果。** 本地绿不等于 CI 绿 —— 本项目的
@@ -194,7 +194,7 @@ git push origin v1.3.8
    建议放在 README 显眼处：
 
    - MSVC demangle 在 **61,248 条真实系统 DLL 导出符号**上实测 99.89% 一致；
-   - **97 个自检用例 + 36 项端到端**，且每个回归用例都做了「撤回修复必须
+   - **107 个自检用例 + 37 项端到端**，且每个回归用例都做了「撤回修复必须
      变红」的反向验证。
 
 ---

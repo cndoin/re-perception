@@ -13,8 +13,8 @@ Confirm all of the following before publishing:
 ```bash
 cd scripts
 
-python re.py --version          # should print 1.3.8
-python selftest.py              # 97/97 green
+python re.py --version          # should print 1.4.0
+python selftest.py              # 107/107 green
 python _dev/_lint.py            # zero findings in production files
 python _dev/_undefined.py       # zero problems
 python _dev/_e2e.py             # 36/36
@@ -152,15 +152,15 @@ A repository with releases reads as "deliverable", and it gives users a stable
 anchor point.
 
 ```bash
-git tag -a v1.3.8 -m "1.3.8 — per-tool verification, seven more silent defects found"
-git push origin v1.3.8
+git tag -a v1.4.0 -m "1.4.0 — integrate REA evidence contract: traceable evidence + residual unknowns"
+git push origin v1.4.0
 ```
 
 Then on GitHub use **Draft a new release**:
 
-- **Tag**: `v1.3.8`
-- **Title**: `1.3.8 — per-tool verification, seven more silent defects found`
-- **Describe**: paste the whole `[1.3.8]` block from `CHANGELOG.md`
+- **Tag**: `v1.4.0`
+- **Title**: `1.4.0 — integrate REA evidence contract: traceable evidence + residual unknowns`
+- **Describe**: paste the whole `[1.4.0]` block from `CHANGELOG.md`
 
 > The changelog follows Keep a Changelog, so it doubles as release notes
 > verbatim. That level of detail is one reason it is written the way it is.
@@ -174,7 +174,7 @@ Then on GitHub use **Draft a new release**:
 | Job | Platform | Purpose |
 |---|---|---|
 | `selftest` | ubuntu / windows / macos × py3.10 / py3.13 | Full self-test + lint + undefined names |
-| `e2e` | **windows-latest** | All 26 subcommands against real system binaries |
+| `e2e` | **windows-latest** | All 27 subcommands against real system binaries |
 | `no-third-party` | ubuntu | A separate gate so a pip package cannot sneak in |
 
 **Check the Actions tab after the first push.** Green locally does not imply green
@@ -200,7 +200,7 @@ permanently red; the workflow file says so in a comment).
 
    - MSVC demangling measured at 99.89% agreement across **61,248 real exported
      symbols from system DLLs**;
-   - **97 self-test cases + 36 end-to-end checks**, where every regression case
+   - **107 self-test cases + 37 end-to-end checks**, where every regression case
      was reverse-validated (withdrawing the fix must make it fail).
 
 ---

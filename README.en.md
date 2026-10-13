@@ -15,7 +15,7 @@ model & verify → document.
   100 MB file takes roughly one second.
 - **Read-only analysis** — never writes to the target, never patches it, never
   generates registration codes.
-- **Ships with its own test harness** — 97 self-test cases + 36 end-to-end
+- **Ships with its own test harness** — 107 self-test cases + 37 end-to-end
   integration checks; all must pass before a commit is allowed.
 
 > ⚠️ **Authorized use only.** Only reverse-engineer targets you own or have
@@ -101,7 +101,7 @@ runs through the whole codebase: a failure must never be reported as a success.
 
 ## Commands
 
-There are **26 subcommands** in two layers: **21 analysis commands** (the table
+There are **27 subcommands** in two layers: **22 analysis commands** (the table
 below, schedulable by the orchestration layer) and **5 orchestration/state
 commands** (`require` `flow` `case` `result` `toolgraph`, used by an agent for
 routing and caching).
@@ -129,6 +129,7 @@ routing and caching).
 | `capability` | Capability detection (capa-style rule library → behaviour + ATT&CK mapping) |
 | `symbols` | Symbol recovery (C++/MSVC/Rust demangle + Go pclntab) |
 | `obfstr` | Obfuscated string recovery (stack strings + XOR decryption loops) |
+| `evidence` | Wrap findings as traceable evidence + register residual unknowns (evidence contract layer) |
 | `require` | Look up which subcommands fit an intent (the agent's routing entry point) |
 | `flow` | Staged workflow: what to run now (parallelizable batches shown together) |
 | `case` | Analysis state directory: persist results, reuse them, detect staleness |
@@ -164,10 +165,10 @@ a runnable check. Recommendations are not accepted because they sound right.
 ## Self-testing and gates
 
 ```bash
-python selftest.py                     # full self-test (97 cases, ~155 s)
+python selftest.py                     # full self-test (107 cases, ~155 s)
 python selftest.py --only 性能          # run one category only
 python _dev/_lint.py                   # static audit (syntax / swallowed exceptions / hardcoded paths)
-python _dev/_e2e.py                    # end-to-end: all 26 subcommands against real PE files
+python _dev/_e2e.py                    # end-to-end: all 27 subcommands against real PE files
 python _dev/_ossaudit.py               # open-source compliance self-audit
 ```
 
@@ -280,7 +281,7 @@ reverse-engineering/
 │   ├── frida-templates.js       # Frida hook templates (native / Android / iOS / plaintext capture / unpacking)
 │   └── notes-template.md        # analysis notes template
 └── scripts/
-    ├── re.py                    # CLI entry point (26 subcommands)
+    ├── re.py                    # CLI entry point (27 subcommands)
     ├── lib_formats.py           # magic-number library + per-format parsers
     ├── lib_analyze.py           # strings / entropy / IOCs / diffing / carving
     ├── lib_disasm.py            # disassembly dispatcher
@@ -296,7 +297,7 @@ reverse-engineering/
     ├── lib_agent.py             # orchestration: intent→command lookup / workflow / state / transition graph
     ├── lib_tools.py             # toolchain probing + analysis plans
     ├── _quirk.py                # known dbghelp defects (reference doc, not a runtime module)
-    ├── selftest.py              # self-test suite (97 cases, incl. 5 installation cases)
+    ├── selftest.py              # self-test suite (107 cases, incl. 5 installation cases)
     └── _dev/                    # development scaffolding (not shipped in releases)
         └── _install.py          # cross-runtime installer (--auto detect / --verify re-check)
 ```

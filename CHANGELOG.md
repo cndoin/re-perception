@@ -3,6 +3,54 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.4.0] — 2026-10-13
+
+把 REA（`morluto/rea`）的**证据模型**移植进来，成为工具包的**证据契约层**。
+刻意**不搬它的 dispatch**：本项目已有 `lib_agent` 的 CATALOG / FLOW / require
+调用框架，再造一套编排层违背「同一语义只留一个裁决点」。只补它缺的那块——
+**可溯源证据 + 残余未知项 + provider 注册**，并嫁接到现有调用框架上。
+
+### 新增
+
+- **`evidence` 子命令（第 27 个）**（`re.py`）：把 `identify` 的发现包装成
+  可溯源证据并登记残余未知项。输出 `subject`（内容哈希）/ `evidence`（证据链）/
+  `unknowns`（残余未知项）/ `adjudication`（裁决）/ `providers`（provider 探测）。
+
+- **`lib_evidence.py`（证据契约层，REA 移植 + 适配）**：
+  - 证据模型：内容哈希 ID（`ev-<sha256[:32]>`）、confidence 三分
+    （`observed` 观测 / `derived` 推导 / `inferred` 推断）、authority 五级来源、
+    **`limitations` 必填**、`evidence_links` 把证据串成链（观测 → 推导）。
+    `Evidence` 不可变（`__slots__` + `__setattr__` 封印，杜绝事后篡改）。
+  - `adjudicate()`：同源去重 + 证据强度**取下限**；`can_support_confirmed()`
+    守卫「只有 observed/derived 才能支撑 confirmed 结论」。
+  - 残余未知项：`make_unknown()`（`uk-<digest>`）、`UnknownRegistry`
+    （record 幂等 / update / list / save，损坏文件留 `load_error` 不崩）、
+    `route_unknown()` 把未知项映射回 re-perception 的命令、
+    `unknown_mutation_evidence()`（固定 inferred/analyst-inference）。
+  - provider 注册 / 探测：`ProviderRegistry` + `probe()`
+    （ready/missing/degraded/unknown，异常不崩）+ `build_default_registry()`
+    （10 个内置 provider）。
+  - 退出码对齐 `re.py`（0/2/3/4）；纯标准库零第三方依赖；无 `except: pass`。
+
+- **嫁接到调用框架**（`lib_agent.py`）：CATALOG 加 `evidence` 条目；FLOW 加
+  证据步骤（stage=deliver、batch=8、deps `prior:triage`）——自主工作流编排
+  也走证据层（`require`/`flow` 能路由到它）。
+
+### 用例与验证
+
+- selftest 新增 10 个用例（正反向都测）：内容哈希确定性 / 不可变 / limitations
+  必填 / 校验拒坏输入 / adjudicate 去重取下限 / confirmed 守卫 / 未知项幂等 +
+  变更证据 / 未知项路由与持久化 / provider 探测不崩 / CLI 契约。**97 → 107**。
+- e2e 补 `evidence` 真实样本用例（PE），27 个子命令全覆盖。**36 → 37**。
+- `_dev/_ossaudit.py` 门禁：文档数字漂移清零（子命令 26→27、selftest 97→107、
+  e2e 36→37、分析 21→22），跨 9 个文档同步。
+
+### 文档
+
+- README / README.en / SKILL / CONTRIBUTING(.en) / INSTALL(.en) /
+  PUBLISHING(.en) / `_dev/README` 同步计数与命令清单；SKILL 增补 `evidence`
+  用法说明与 `lib_evidence` 模块条目。
+
 ## [1.3.8] — 2026-09-20
 
 「每一个工具都要单独验一遍」：再挖 7 处静默缺陷，其中 6 处是**静默丢结果**，
