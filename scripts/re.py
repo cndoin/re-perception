@@ -43,6 +43,14 @@ re.py —— 逆向工程工具箱 CLI（Reverse Engineering Toolkit）
   goinfo    Go 二进制 buildinfo
   evm       EVM 字节码 dispatch selector
   demangle  符号还原（C++/Rust/Swift）
+  apk       Android APK 逆向（manifest/权限/组件/签名/DEX/原生库）
+  ipa       iOS IPA 逆向（Info.plist/Bundle/框架/provisioning）
+  iso       ISO9660 光盘镜像清单与提取（含 Joliet）
+  endpoints 应用内接口（API 路径/IPC/Intent/COM/gRPC/SOAP）
+  ports     端口接口（显式端口 + 协议默认端口配对）
+  netaddr   连接网络地址（URL/IPv4/IPv6/域名/邮箱/UNC）
+  fsx       固件/嵌入文件系统签名扫描与提取（binwalk 式）
+  replica   系统复刻（确定性清单/复刻打包/回验）
   require   按自然语言意图检索该用哪些子命令（AI 选路入口）
   flow      分阶段工作流编排：现在该跑哪些（可并行的同批给出）
   case      分析状态目录：结果落盘、复用、过期检测
@@ -84,9 +92,13 @@ import lib_evidence as EV        # noqa: E402
 import lib_contracts as CT       # noqa: E402
 import lib_bundle as BL          # noqa: E402
 import lib_inspect as IP         # noqa: E402
+import lib_apk as AK             # noqa: E402
+import lib_iso as ISOX           # noqa: E402
+import lib_netio as NET          # noqa: E402
+import lib_fsx as FX             # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 
 
 # ---------------------------------------------------------------- 输出
@@ -2355,6 +2367,84 @@ def cmd_demangle(args):
     return EXIT_OK if d.get("ok") else EXIT_USAGE
 
 
+# ---------------------------------------------------------------- 应用/镜像/网络面
+
+def cmd_apk(args):
+    return _inspect_cmd(AK.inspect_apk, args.target, args.json,
+                        max_entries=args.max_entries)
+
+
+def cmd_ipa(args):
+    return _inspect_cmd(AK.inspect_ipa, args.target, args.json,
+                        max_entries=args.max_entries)
+
+
+def cmd_iso(args):
+    if args.extract:
+        need_path(args.target, args.json)
+        d = ISOX.iso_extract(args.target, args.extract,
+                             max_files=args.max_files)
+        d.setdefault("ok", False)
+        if not args.json:
+            print(json.dumps(d, ensure_ascii=False, indent=2, default=str))
+            return EXIT_OK if d.get("ok") else EXIT_TARGET
+        emit(d, True)
+        return EXIT_OK if d.get("ok") else EXIT_TARGET
+    return _inspect_cmd(ISOX.inspect_iso, args.target, args.json,
+                        max_entries=args.max_entries)
+
+
+def cmd_endpoints(args):
+    return _inspect_cmd(NET.extract_endpoints, args.target, args.json,
+                        max_items=args.max_items)
+
+
+def cmd_ports(args):
+    return _inspect_cmd(NET.extract_ports, args.target, args.json,
+                        max_items=args.max_items)
+
+
+def cmd_netaddr(args):
+    return _inspect_cmd(NET.extract_netaddrs, args.target, args.json,
+                        max_items=args.max_items)
+
+
+def cmd_fsx(args):
+    if args.extract:
+        need_path(args.target, args.json)
+        d = FX.extract_embedded(args.target, args.extract,
+                                max_files=args.max_files)
+        d.setdefault("ok", False)
+        if not args.json:
+            print(json.dumps(d, ensure_ascii=False, indent=2, default=str))
+            return EXIT_OK if d.get("ok") else EXIT_TARGET
+        emit(d, True)
+        return EXIT_OK if d.get("ok") else EXIT_TARGET
+    return _inspect_cmd(FX.scan_embedded, args.target, args.json,
+                        max_hits=args.max_hits)
+
+
+def cmd_replica(args):
+    if args.build:
+        d = FX.replica_build(args.src, args.build)
+    elif args.verify:
+        try:
+            with open(args.verify, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+        except (OSError, ValueError) as e:
+            fail(f"清单读取失败：{e}", EXIT_TARGET, args.json)
+            return EXIT_TARGET
+        d = FX.replica_verify(args.src, manifest)
+    else:
+        d = FX.replica_manifest(args.src)
+    d.setdefault("ok", False)
+    if not args.json:
+        print(json.dumps(d, ensure_ascii=False, indent=2, default=str))
+        return EXIT_OK if d.get("ok") else EXIT_TARGET
+    emit(d, True)
+    return EXIT_OK if d.get("ok") else EXIT_TARGET
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="re.py", description="逆向工程工具箱（零第三方依赖）",
@@ -2615,6 +2705,37 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("target", help="文件路径或 0x 十六进制字节码")
     s = add("demangle", "符号还原（C++/Rust/Swift）", cmd_demangle)
     s.add_argument("symbol")
+
+    # ---- 应用 / 镜像 / 网络面 ----
+    s = add("apk", "Android APK 逆向（manifest/权限/组件/签名/DEX/原生库）", cmd_apk)
+    s.add_argument("target")
+    s.add_argument("--max-entries", type=int, default=200)
+    s = add("ipa", "iOS IPA 逆向（Info.plist/Bundle/框架/provisioning）", cmd_ipa)
+    s.add_argument("target")
+    s.add_argument("--max-entries", type=int, default=200)
+    s = add("iso", "ISO9660 光盘镜像清单与提取（含 Joliet）", cmd_iso)
+    s.add_argument("target")
+    s.add_argument("--extract", help="提取到该目录")
+    s.add_argument("--max-entries", type=int, default=500)
+    s.add_argument("--max-files", type=int, default=200)
+    s = add("endpoints", "应用内接口（API 路径/IPC/Intent/COM/gRPC/SOAP）", cmd_endpoints)
+    s.add_argument("target")
+    s.add_argument("--max-items", type=int, default=1500)
+    s = add("ports", "端口接口（显式端口 + 协议默认端口配对）", cmd_ports)
+    s.add_argument("target")
+    s.add_argument("--max-items", type=int, default=1000)
+    s = add("netaddr", "连接网络地址（URL/IPv4/IPv6/域名/邮箱/UNC）", cmd_netaddr)
+    s.add_argument("target")
+    s.add_argument("--max-items", type=int, default=2000)
+    s = add("fsx", "固件/嵌入文件系统签名扫描与提取（binwalk 式）", cmd_fsx)
+    s.add_argument("target")
+    s.add_argument("--extract", help="提取到该目录")
+    s.add_argument("--max-hits", type=int, default=200)
+    s.add_argument("--max-files", type=int, default=200)
+    s = add("replica", "系统复刻（确定性清单/复刻打包/回验）", cmd_replica)
+    s.add_argument("src")
+    s.add_argument("--build", help="复刻打包到该 tar")
+    s.add_argument("--verify", help="对照该清单 JSON 回验")
 
     return p
 
