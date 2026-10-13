@@ -149,15 +149,15 @@ git push -u origin main
 有 Release 的项目显得「可交付」，而且给使用者一个明确的版本锚点。
 
 ```bash
-git tag -a v1.4.0 -m "1.4.0 — 融合 REA 证据契约层：可溯源证据 + 残余未知项"
-git push origin v1.4.0
+git tag -a v1.5.0 -m "1.5.0 — 平台契约层与补充检查器：provider 槽位 / 证据 bundle / 布局缓解与资源检查"
+git push origin v1.5.0
 ```
 
 然后在 GitHub 上 **Draft a new release**：
 
-- **Tag**：`v1.4.0`
-- **Title**：`1.4.0 — 融合 REA 证据契约层：可溯源证据 + 残余未知项`
-- **Describe**：把 `CHANGELOG.md` 里 `[1.4.0]` 整段粘过去
+- **Tag**：`v1.5.0`
+- **Title**：`1.5.0 — 平台契约层与补充检查器：provider 槽位 / 证据 bundle / 布局缓解与资源检查`
+- **Describe**：把 `CHANGELOG.md` 里 `[1.5.0]` 整段粘过去
 
 > 本项目的 CHANGELOG 是按 Keep a Changelog 格式写的，直接可当 Release Notes。
 > 这是它写那么详细的原因之一。
@@ -171,7 +171,7 @@ git push origin v1.4.0
 | Job | 平台 | 作用 |
 |---|---|---|
 | `selftest` | ubuntu / windows / macos × py3.10 / py3.13 | 全量自检 + lint + 未定义名 |
-| `e2e` | **windows-latest** | 27 个子命令跑真实系统二进制 |
+| `e2e` | **windows-latest** | 38 个子命令跑真实系统二进制 |
 | `no-third-party` | ubuntu | 独立一道门，防止混进 pip 包 |
 
 **首次推送后务必去 Actions 页看结果。** 本地绿不等于 CI 绿 —— 本项目的
@@ -194,7 +194,7 @@ git push origin v1.4.0
    建议放在 README 显眼处：
 
    - MSVC demangle 在 **61,248 条真实系统 DLL 导出符号**上实测 99.89% 一致；
-   - **107 个自检用例 + 37 项端到端**，且每个回归用例都做了「撤回修复必须
+   - **122 个自检用例 + 64 项端到端**，且每个回归用例都做了「撤回修复必须
      变红」的反向验证。
 
 ---
@@ -203,8 +203,8 @@ git push origin v1.4.0
 
 | 文件 | 语言 | 说明 |
 |---|---|---|
-| `README.md` | 中文 | 主 README |
-| `README.en.md` | English | 英文主 README |
+| `README.md` | English | 主 README（英文，国际通用） |
+| `README.zh.md` | 中文 | 简体中文 README |
 | `INSTALL.md` / `INSTALL.en.md` | 中 / 英 | 装到各 AI 运行时 + 目录对照表 |
 | `CONTRIBUTING.md` / `CONTRIBUTING.en.md` | 中 / 英 | 贡献指南（含两条硬约束与修 bug 流程） |
 | `SECURITY.md` / `SECURITY.en.md` | 中 / 英 | 漏洞披露（含「失败被上报为成功」的定级说明） |

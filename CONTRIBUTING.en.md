@@ -38,10 +38,10 @@ python re.py --version
 
 ```bash
 cd scripts
-python selftest.py             # full self-test (107 cases, ~155 s) — must be all green
+python selftest.py             # full self-test (122 cases, ~2 min) — must be all green
 python _dev/_lint.py           # static audit — must report zero production findings
 python _dev/_undefined.py      # undefined-name check — must be clean
-python _dev/_e2e.py            # end-to-end across all 27 subcommands
+python _dev/_e2e.py            # end-to-end across all 38 subcommands
 ```
 
 With `make` available:
@@ -68,7 +68,7 @@ re-run until it goes green, and do not disable the check.
    three places, find the one cause. The repository has repeatedly found that
    fixing a symptom in one place leaves two silent copies of the same defect.
 5. **Keep the test suite honest.** If the fix changes a count (test cases, number
-   of subcommands), update `README.md`, `README.en.md`, `SKILL.md`,
+   of subcommands), update `README.md`, `README.zh.md`, `SKILL.md`,
    `CONTRIBUTING.md`, `INSTALL.md`, `Makefile` and the PR template. The
    compliance audit (`_dev/_ossaudit.py`) cross-checks several of these and will
    flag drift.

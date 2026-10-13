@@ -3,6 +3,79 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.5.0] — 2026-10-13
+
+平台契约层 + 补充检查器：把「依赖重型外部工具的域」与「纯标准库可解析的域」
+分开治理 —— 前者做成 provider 槽位（确定性选择、失败不静默降级），后者补齐
+真实解析。**子命令 27 → 38**。
+
+### 新增
+
+- **平台契约层（3 个子命令）**：
+  - `provider`：provider 选择/探测（request > env > auto 单候选确定性选择；
+    多候选歧义显式报错、指定不存在报 `provider_unavailable`，**绝不静默降级**；
+    探测 state ∈ ready/missing/degraded/unknown 且探测自身永不抛）。
+  - `unknowns`：残余未知项治理（list/record/update/verify）——**修订链防篡改**
+    （每次更新 revision+1 并链入 `previous_revision_digest`）+ **乐观并发**
+    （`--expected-revision` 不符抛 `revision_conflict`，防过期写者覆盖）
+    + 裁决（verified/withdrawn/out-of-scope，withdrawn/out-of-scope 不作真值主张）。
+  - `bundle`：证据 bundle 导出/导入/对比 + 快照复用（内容寻址精确命中 `snap-<digest>`；
+    导入校验 evidence_id ↔ 内容哈希一致，**篡改即拒收**；对比给
+    added/removed/changed/unchanged）。
+  - 底层新模块：`lib_contracts.py`（错误契约 10 类目双向校验 + subject 格式闭集 +
+    9 阶段 fail-closed 编排基准（任何阶段非 pass 不聚合为 pass）+ 12 拒绝码 +
+    **覆盖守卫**：relationship_coverage 为 partial/unknown 时禁止断言「不存在」）、
+    `lib_bundle.py`（原子写 + chmod 600 + 规范 JSON 字节）。未知项治理扩展进
+    `lib_evidence.py`（同一语义只留一个裁决点，不另立模块）。
+
+- **补充检查器（8 个子命令，纯标准库）**（`lib_inspect.py`）：
+  `layout`（ELF/PE 静态缓解：ASLR/DEP-NX/SEH/CFG/高熵 VA）、
+  `peres`（PE 资源树：类型→名字→语言）、`archs`（Mach-O/胖二进制架构清单）、
+  `plist`（Apple plist，限深预览）、`dotnet`（.NET 托管程序集元数据）、
+  `goinfo`（Go buildinfo）、`evm`（EVM dispatch selector 表，文件/十六进制双输入）、
+  `demangle`（C++ Itanium / Rust legacy / Swift 前缀）。
+  全部诚实降级：解析不出就 `ok:false` + `reason`，不编造。
+
+### 修复（真实样本实测抓出的假阳性/静默缺陷）
+
+- `archs` 把 PE 与 Java class 误判成 Mach-O（薄头分支算出 `le=False` 也照走，
+  MZ 头被按 cputype 解读；fat 头 nfat 不设界，与 Java class 共用 0xCAFEBABE
+  魔数）——现在魔数不命中一律拒收、nfat 越界拒收，字节序按魔数区分。
+- `demangle` 的 Rust legacy 分支是**死代码**：`_ZN…17h<hash>E` 被 `_Z` 前缀先
+  截给 Itanium 分支，kind 误报 itanium-cpp 且 crate hash 段泄漏进还原名——
+  现在 Rust 哈希名先于 Itanium 判定并剥离 hash 段。
+- `peres` 资源目录头的 `NumberOfNamedEntries/NumberOfIdEntries` 是 u16×2，
+  原实现按 u32 读 —— 条目数被顶到 4096 去解析条目数组之外的垃圾字节（实测
+  kernel32 吐 10 万条伪条目、唯一 data_rva 仅 50；codepage 出现 9 亿量级）。
+  修复后计数精确（本机 kernel32=2 / shell32=4 / notepad=31，与 Windows
+  EnumResource* 金标准逐条核对；差异部分是 MUI 重定向口径，已在输出中申报）。
+- `peres` 的 `truncated` 是摆设字段（walk 以 cap 截停后 `len>max` 恒 False，
+  截断永不申报）——现在如实申报；CLI `--max-entries` 曾被 `_inspect_cmd`
+  静默吞掉（永远跑内部默认值）——现在真透传。
+- `unknowns record` 省略 `--severity` 必炸（None 透传绕过 make_unknown 默认值
+  并被校验拒绝）——现在缺省走 medium；缺 `--question`/`--blocked-by` 给可操作
+  报错（指明缺哪个参数），不再是底层模糊错。
+
+### 用例与验证
+
+- selftest 新增 4 个回归用例（含反向保护：PE/Java class 不许判 Mach-O、
+  缺必填参数必拒、非法 severity 必拒、cap=1 必须申报截断）：**118 → 122**。
+- e2e 补齐 18 个此前未覆盖的子命令（4 个「非目标格式降级」反向用例、case
+  状态目录 init/save/load/status/journal 五连、bundle 导出/导入/对比三连、
+  provider/unknowns/result/flow/require/toolgraph/capability/obfstr/symbols）——
+  顺带纠正 1.4.0 声称的「27 个子命令全覆盖」（实测当时只覆盖 20 个）：
+  现在 **38 个子命令真正全覆盖**，运行时用例 **37 → 64**（实测 64/64）。
+- `_dev/_ossaudit.py` 门禁强化：命令表检查改双语双表（`## Commands` /
+  `## 命令一览` 各查 38 行）、DOCS 清单里的文档缺失即报（换名/删除不再
+  静默缩小检查面）、失效链接与脚本引用检查覆盖双 README。
+
+### 文档
+
+- **README 重组**：主 README 英文化（`README.md` = English primary），中文移至
+  `README.zh.md`，顶部互链语言切换；中英命令表同步 38 行。
+- SKILL / CONTRIBUTING(.en) / INSTALL(.en) / PUBLISHING(.en) / `_dev/README`
+  同步计数与命令清单。
+
 ## [1.4.0] — 2026-10-13
 
 把 REA（`morluto/rea`）的**证据模型**移植进来，成为工具包的**证据契约层**。

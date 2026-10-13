@@ -81,7 +81,7 @@ def main():
             print("[警告] 占位符替换脚本返回非 0，继续但请留意。")
 
     # 顺手把 doc 里的 <你的GitHub账号> 也换掉
-    for fn in ("README.md", "README.en.md", "PUBLISHING.md"):
+    for fn in ("README.md", "README.zh.md", "PUBLISHING.md"):
         p = os.path.join(HERE, fn)
         if not os.path.isfile(p):
             continue

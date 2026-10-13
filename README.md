@@ -1,239 +1,350 @@
-![re-perception 封面](assets/re-perception-hero.png)
+![re-perception hero](assets/re-perception-hero.png)
 
-# 逆向工程工具箱（reverse-engineering skill）
+**English** ｜ [简体中文](README.zh.md)
 
-让 AI 按「正常逆向工程师的流程」去分析**任何**未知文件：识别 → 指纹 → 静态 → 动态 →
-定点突破 → 建模验证 → 文档化。
+# Reverse Engineering Toolbox — an Agent Skill
 
-- **零第三方依赖**：纯 Python 标准库，装完即用
-- **全平台目标**：Windows PE / Linux ELF / macOS-iOS Mach-O / Android APK / iOS IPA /
-  .NET / Java / Python pyc / Web-WASM-Electron / 固件 / 私有格式 / SQLite
-- **内存有界、速度优先**：流式扫描，100MB 文件字符串扫描约 1 秒
-- **只读分析**：不写目标文件、不打补丁、不生成注册码
-- **自带自检**：107 个自检用例 + 37 项端到端集成，提交前必须全绿
+Give any AI agent the workflow of a **real reverse engineer** for **any** unknown
+file: identify → fingerprint → static → dynamic → targeted breakthrough →
+model & verify → document.
 
-> ⚠️ **仅限授权使用**。只对你自己拥有或已获书面授权的目标做逆向。
-> 授权提示见 [USE-POLICY.md](USE-POLICY.md)；法律条款见 [LICENSE](LICENSE)（MIT）。
+- **Zero third-party dependencies** — pure Python standard library, works the
+  moment you unpack it. No `pip install`, no build, no virtualenv.
+- **Targets every major platform** — Windows PE / Linux ELF / macOS–iOS Mach-O /
+  Android APK / iOS IPA / .NET / Java / Python pyc / Web·WASM·Electron /
+  firmware / private formats / SQLite.
+- **Bounded memory, speed first** — streaming scans; string extraction on a
+  100 MB file takes roughly one second.
+- **Read-only analysis** — never writes to the target, never patches it, never
+  generates registration codes.
+- **Ships with its own test harness** — 122 self-test cases + 64 end-to-end
+  integration checks; all must pass before a commit is allowed.
 
-**English documentation:** [README.en.md](README.en.md) ・
-[INSTALL.en.md](INSTALL.en.md) ・ [CONTRIBUTING.en.md](CONTRIBUTING.en.md) ・
-[SECURITY.en.md](SECURITY.en.md) ・ [USE-POLICY.en.md](USE-POLICY.en.md) ・
-[CODE_OF_CONDUCT.en.md](CODE_OF_CONDUCT.en.md)
+> ⚠️ **Authorized use only.** Only reverse-engineer targets you own or have
+> written authorization to analyze. See [USE-POLICY.md](USE-POLICY.md) for the
+> authorization policy and [LICENSE](LICENSE) (MIT) for the legal terms.
 
-## 安装到你的 AI
+**中文文档：** [README.zh.md](README.zh.md) ・ [INSTALL.md](INSTALL.md) ・
+[CONTRIBUTING.md](CONTRIBUTING.md) ・ [SECURITY.md](SECURITY.md) ・
+[USE-POLICY.md](USE-POLICY.md) ・ [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) ・
+[PUBLISHING.md](PUBLISHING.md)
 
-本技能遵循 **Agent Skills 开放标准**，同一份 `SKILL.md` 可直接用于
-**Claude Code / Codex CLI / Hermes / OpenClaw / Cursor / Gemini CLI**。
-各家只是技能目录不同：
+---
+
+## Table of contents
+
+- [Install into your AI runtime](#install-into-your-ai-runtime)
+- [Quick start](#quick-start)
+- [Commands](#commands)
+- [Concepts worth knowing](#concepts-worth-knowing)
+- [Self-testing and gates](#self-testing-and-gates)
+- [Symbol recovery (MSVC / Itanium / Rust)](#symbol-recovery-msvc--itanium--rust)
+- [Repository layout](#repository-layout)
+- [Compliance](#compliance)
+- [Contributing](#contributing)
+
+---
+
+## Install into your AI runtime
+
+This skill follows the **Agent Skills open standard** — a single `SKILL.md` with
+YAML frontmatter. The same file drops into **Claude Code / Codex CLI / Hermes /
+OpenClaw / Cursor / Gemini CLI** without modification. Only the *skills
+directory* differs between runtimes:
 
 ```bash
 cd scripts
-python _dev/_install.py --auto --verify      # 探测本机装了哪些运行时
-python _dev/_install.py --auto               # 装到全部探测到的运行时
+python _dev/_install.py --auto --verify      # detect which runtimes exist locally
+python _dev/_install.py --auto               # install into all detected runtimes
 ```
 
-| 运行时 | 个人级目录 | 项目级目录 |
+| Runtime | Personal scope | Project scope |
 |---|---|---|
 | Claude Code | `~/.claude/skills/` | `.claude/skills/` |
-| Codex CLI | `$CODEX_HOME/skills/`（默认 `~/.codex/skills/`） | `.codex/skills/` |
-| Hermes | `~/.hermes/skills/` | —— |
+| Codex CLI | `$CODEX_HOME/skills/` (default `~/.codex/skills/`) | `.codex/skills/` |
+| Hermes | `~/.hermes/skills/` | — |
 | OpenClaw | `~/.openclaw/skills/` | `.openclaw/skills/` |
-| Cursor | ——（仅项目级） | `.cursor/skills/` |
+| Cursor | — (project scope only) | `.cursor/skills/` |
 | Gemini CLI | `~/.gemini/skills/` | `.gemini/skills/` |
 
-完整说明、手工装法与常见坑见 **[INSTALL.md](INSTALL.md)**。
+On Windows, `~` means `%USERPROFILE%`. Full instructions, manual installation and
+a troubleshooting table live in **[INSTALL.md](INSTALL.md)**.
 
-> 装完请**重开一次新会话** —— 技能在会话启动时扫描，中途装的当轮不加载。
+> After installing, **start a new session**. Most runtimes scan skills at session
+> startup, so a skill installed mid-session will not load until the next one.
 
-## 快速开始
+---
+
+## Quick start
 
 ```bash
-# 只需要 Python 3.10+，不需要 pip install 任何东西
-cd reverse-engineering/scripts     # 仓库根下的 scripts/ 目录
+# Python 3.10+ is the only requirement. Nothing to install.
+cd reverse-engineering/scripts     # the scripts/ directory at the repository root
 
-python re.py doctor --json                  # 本机有哪些外部工具可用
-python re.py triage 目标文件 --json         # 拿到未知目标先跑这个
-python re.py plan 目标文件 --json           # 下一步该干什么
-python re.py report 目标文件 --out 报告.md  # 出一份 Markdown 报告
+python re.py doctor --json                  # which external tools are available here
+python re.py triage some-unknown-file --json   # first thing to run on an unknown target
+python re.py plan some-unknown-file --json     # what to do next
+python re.py report some-unknown-file --out report.md   # Markdown report
 ```
 
-> 拿到仓库后直接 `cd scripts` 即可运行 —— 无需安装、无需构建、无需虚拟环境。
-> 若通过 `git clone` 获取，克隆后同样进 `scripts/`。
+> Just `cd scripts` and run — no installation, no build step, no virtualenv.
+> If you got the project via `git clone`, enter `scripts/` after cloning.
 
-AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法错误/目标不可读/分析出错。
-所有子命令在 `--json` 下都会输出顶层 `ok` 字段（有自检用例守着这条契约）。
+When an **agent** calls this tool, always pass `--json`. Exit codes `0 / 2 / 3 / 4`
+mean success / usage error / target unreadable / analysis error. Under `--json`
+every subcommand emits a top-level `ok` field, and a self-test case guards that
+contract.
 
-## 命令一览
+**A note on exit code `1`.** It is *never* a legal outcome of this CLI — it means
+an uncaught exception escaped. That is a bug, not a result. The same philosophy
+runs through the whole codebase: a failure must never be reported as a success.
 
-共 **27 个子命令**，分两层：**22 个分析命令**（下表的分析层，可被编排层调度）
-与 **5 个编排/状态命令**（`require` `flow` `case` `result` `toolgraph`，供 AI 选路与缓存）。
+---
 
-| 命令 | 作用 |
+## Commands
+
+There are **38 subcommands** in three layers: **30 analysis commands** (the
+table below, schedulable by the orchestration layer), **3 platform/contract
+commands** (`provider` `unknowns` `bundle` — cross-cutting evidence-contract
+capabilities) and **5 orchestration/state commands** (`require` `flow` `case`
+`result` `toolgraph`, used by an agent for routing and caching).
+
+| Command | Purpose |
 |---|---|
-| `doctor` | 探测本机工具链（83 个外部工具） |
-| `identify` | 格式识别 + 结构解析（PE/ELF/Mach-O/DEX/ZIP/pyc/WASM/SQLite/class/固件头） |
-| `strings` | 流式字符串提取（可按类别/正则过滤，支持 UTF-16） |
-| `entropy` | 整体熵 + 分块熵曲线（定位加密/压缩段） |
-| `imports` | 导入表 / 依赖库（行为地图） |
-| `info` | 深度结构解析 |
-| `triage` | **一站式初筛**（识别+熵+字符串+IOC+加壳判断） |
-| `carve` | 按魔数雕刻嵌入文件（固件/覆盖层分析） |
-| `diff` | 两文件字节级差分（版本对比 / 私有格式破解） |
-| `plan` | 生成分步分析计划（按本机工具裁剪） |
-| `report` | 生成 Markdown 分析报告 |
-| `magic` | 魔数速查 |
-| `disasm` | 反汇编（x86 / x86-64 / ARM64 / Thumb） |
-| `funcs` | 函数识别 + 指纹 + XREF |
-| `cfg` | 单个函数的控制流图 |
-| `xref` | 交叉引用（谁调用了谁） |
-| `sim` | 两份二进制的函数级差分比对 |
-| `semantics` | 函数级语义摘要（调了什么 API / 什么行为） |
-| `capability` | 能力识别（capa 风格规则库 → 行为结论 + ATT&CK 映射） |
-| `symbols` | 符号还原（C++/MSVC/Rust demangle + Go pclntab） |
-| `obfstr` | 混淆字符串恢复（栈字符串 + XOR 解密循环） |
-| `evidence` | 把分析发现包装成可溯源证据 + 登记残余未知项（证据契约层） |
-| `require` | 按意图检索该用哪些子命令（AI 选路入口） |
-| `flow` | 分阶段工作流：现在该跑哪些（可并行同批给出） |
-| `case` | 分析状态目录：结果落盘、复用、过期检测 |
-| `result` | 结果摘要 + 错误分类（防无效重试） |
-| `toolgraph` | 工具转移图：这个跑完之后该跑哪个 |
+| `doctor` | Probe the local toolchain (83 external tools) |
+| `identify` | Format identification + structural parsing (PE/ELF/Mach-O/DEX/ZIP/pyc/WASM/SQLite/class/firmware headers) |
+| `strings` | Streaming string extraction (filter by category/regex, UTF-16 aware) |
+| `entropy` | Overall entropy + block entropy curve (locate encrypted/compressed regions) |
+| `imports` | Import table / dependent libraries (the behaviour map) |
+| `info` | Deep structural parsing |
+| `triage` | **One-shot first pass** (identify + entropy + strings + IOCs + packer detection) |
+| `carve` | Carve embedded files by magic number (firmware / overlay analysis) |
+| `diff` | Byte-level diff of two files (version comparison / reversing private formats) |
+| `plan` | Generate a step-by-step analysis plan, trimmed to the local toolchain |
+| `report` | Produce a Markdown analysis report |
+| `magic` | Magic-number lookup |
+| `disasm` | Disassembly (x86 / x86-64 / ARM64 / Thumb) |
+| `funcs` | Function identification + fingerprints + XREF |
+| `cfg` | Control-flow graph for a single function |
+| `xref` | Cross references (who calls whom) |
+| `sim` | Function-level similarity diff between two binaries |
+| `semantics` | Per-function semantic summary (which APIs it calls, what it does) |
+| `capability` | Capability detection (capa-style rule library → behaviour + ATT&CK mapping) |
+| `symbols` | Symbol recovery (C++/MSVC/Rust demangle + Go pclntab) |
+| `obfstr` | Obfuscated string recovery (stack strings + XOR decryption loops) |
+| `evidence` | Wrap findings as traceable evidence + register residual unknowns (evidence contract layer) |
+| `layout` | Binary layout + static mitigations (ELF program headers / PE DllCharacteristics) |
+| `peres` | PE resource tree (type / name / language) |
+| `archs` | Mach-O / universal-binary architecture list |
+| `plist` | Apple plist parsing (XML / binary) |
+| `dotnet` | .NET managed-assembly metadata (CLR header, metadata streams, assembly name) |
+| `goinfo` | Go binary buildinfo (compiler version, modules, build settings) |
+| `evm` | EVM bytecode dispatch selector table |
+| `demangle` | Symbol demangling (C++/Rust/Swift) |
+| `provider` | Analysis provider selection & probing (deterministic, never fails over) |
+| `unknowns` | Residual-unknown governance (record / update / adjudicate / optimistic concurrency) |
+| `bundle` | Evidence bundle export / import / compare (canonical bytes, tamper-evident, replayable) |
+| `require` | Look up which subcommands fit an intent (the agent's routing entry point) |
+| `flow` | Staged workflow: what to run now (parallelizable batches shown together) |
+| `case` | Analysis state directory: persist results, reuse them, detect staleness |
+| `result` | Result summary + error classification (prevents useless retries) |
+| `toolgraph` | Tool transition graph: what to run after this one |
 
-## 自检
+---
+
+## Concepts worth knowing
+
+Three design decisions shape everything above.
+
+**1. Never report a failure as a success.** This is the single most important rule
+in the project, and defects in this class are treated as vulnerabilities. A
+malformed PE that fails to parse must not come back as `ok: true` with zero
+imports; a truncated scan must not look like a completed one; a stat that was
+never computed must not be printed as `0`. Where a value genuinely cannot be
+computed, the field is reported as `null` **with an explanation** — never as a
+plausible-looking wrong number.
+
+**2. A gate that never blocks is not a gate.** Every check tool is judged by its
+exit code, not by its prose. A self-test that silently runs zero cases is a
+failure, not a pass. The tool-matrix harness in `scripts/_dev/_matrix.py` carries
+an explicit guard for this: if it manages to run zero groups, it fails loudly
+instead of reporting "no problems".
+
+**3. Verify by evidence, not by assertion.** Every claim about behaviour in this
+repository is expected to be backed by an actual file path and line number, or by
+a runnable check. Recommendations are not accepted because they sound right.
+
+---
+
+## Self-testing and gates
 
 ```bash
-python selftest.py                     # 全量自检（107 个用例，约 155 秒）
-python selftest.py --only 性能          # 只跑某一类
-python _dev/_lint.py                   # 静态体检（语法/静默吞异常/硬编码路径）
-python _dev/_e2e.py                    # 端到端：27 个子命令在真实 PE 上全跑一遍
+python selftest.py                     # full self-test (122 cases, ~115 s)
+python selftest.py --only 性能          # run one category only
+python _dev/_lint.py                   # static audit (syntax / swallowed exceptions / hardcoded paths)
+python _dev/_e2e.py                    # end-to-end: all 38 subcommands against real PE files
+python _dev/_ossaudit.py               # open-source compliance self-audit
 ```
 
-覆盖三条线：正确性（合成样本 + 实机文件）、稳定性（空文件/截断/位翻转变异/垃圾输入）、
-性能（100MB 流式扫描）。另外还盯两条硬约束：**零第三方依赖** 与
-**`--json` 的 `ok` 字段契约**。
+Coverage runs along three axes: **correctness** (synthetic samples plus real
+system files), **robustness** (empty files, truncation, bit-flip mutation, garbage
+input) and **performance** (100 MB streaming scan). Two further hard constraints
+are enforced: **zero third-party dependencies** and the **`ok` field contract**
+for `--json`.
 
-### 门禁的退出码契约
+### Exit-code contracts for the gates
 
-检查工具**不是只看输出，退出码才作数**（否则在 CI 里就是一道永不拦截的门）：
-
-| 命令 | 退出码 | 含义 |
+| Command | Exit code | Meaning |
 |---|---|---|
-| `selftest.py` | `0` 全绿 / `1` 有失败用例 / `2` `--only` 没匹配到任何用例 | 静默跑 0 个用例是错误，不是通过 |
-| `_dev/_lint.py` | `0` 生产文件零告警 / `1` 生产文件有告警 | `_dev/` 脚手架的告警单独列账，不影响退出码 |
-| `_dev/_undefined.py` | `0` 干净 / `1` 有问题 | 零依赖版 pyflakes |
-| `_dev/_ossaudit.py` | `0` 无高危项 / `1` 有高危项 | 开源合规自审 |
+| `selftest.py` | `0` all green / `1` failures present / `2` `--only` matched nothing | Silently running zero cases is an error, not a pass |
+| `_dev/_lint.py` | `0` zero findings in production files / `1` findings present | Warnings in `_dev/` scaffolding are listed separately and do not affect the exit code |
+| `_dev/_undefined.py` | `0` clean / `1` problems | A zero-dependency pyflakes |
+| `_dev/_ossaudit.py` | `0` no high-severity items / `1` high-severity items present | Open-source compliance self-audit |
 
-### 一键跑门禁
+### Running all gates at once
 
-有 `make` 的环境（Linux/macOS/WSL）直接：
+Where `make` exists (Linux / macOS / WSL):
 
 ```bash
-make check     # lint + 未定义名 + 全量自检（提交前必跑）
-make all       # check + 端到端 + 合规自审（发布前必跑）
-make help      # 看全部目标
+make check     # lint + undefined names + full self-test (required before every commit)
+make all       # check + end-to-end + compliance audit (required before a release)
+make help      # list every target
 ```
 
-Windows 原生环境一般没有 `make`，照抄上面对应的 `python xxx.py` 命令即可 ——
-`Makefile` 里没有任何逻辑，只是一串命令别名。
+Native Windows environments usually lack `make`; just run the corresponding
+`python xxx.py` commands above. The `Makefile` contains no logic — only command
+aliases.
 
-## 符号还原（MSVC / Itanium / Rust）
+---
 
-`lib_symbols.py` 内置三套 demangler，零外部依赖：
+## Symbol recovery (MSVC / Itanium / Rust)
 
-| 方言 | 前缀 | 覆盖 |
+`lib_symbols.py` implements three demanglers with no external dependencies:
+
+| Dialect | Prefix | Coverage |
 |---|---|---|
-| Itanium C++ ABI | `_Z` | GCC/Clang：嵌套名、模板、替换表、成员 CV/ref 限定、运算符、thunk、typeinfo/vtable/guard/TLS |
-| MSVC | `?` | Windows C++/驱动/COM：完整 LLVM 文法、回溯表、thunk、RTTI、C++/CX 帽指针 |
-| Rust legacy / v0 | `_ZN…17h` / `_R` | legacy 哈希剥离；v0 的 punycode ident、泛型、生命周期、const 泛型 |
+| Itanium C++ ABI | `_Z` | GCC/Clang: nested names, templates, substitution tables, member CV/ref qualifiers, operators, thunks, typeinfo/vtable/guard/TLS |
+| MSVC | `?` | Windows C++ / drivers / COM: full LLVM grammar, back-references, thunks, RTTI, C++/CX hat pointers |
+| Rust legacy / v0 | `_ZN…17h` / `_R` | legacy hash stripping; v0 punycode idents, generics, lifetimes, const generics |
 
-MSVC 一路以 `dbghelp!UnDecorateSymbolName` 为逐字对齐目标，**在 61,248 条
-真实系统 DLL 导出符号上实测**：
+The MSVC path is aligned character-for-character against
+`dbghelp!UnDecorateSymbolName` and measured on **61,248 real exported symbols
+from system DLLs**:
 
 ```
-有效样本 61205
-  完全逐字一致      : 51337  (83.88%)
-  计入 dbghelp 怪癖 : 61138  (99.89%)
-  仍不一致          :    67  (0.11%)
-  放弃              :     0  (0.00%)
-  解出正确率(含怪癖): 99.89%
-  端到端覆盖率      : 99.82%  （相对全部输入）
+valid samples            61205
+  exact character match  51337  (83.88%)
+  including dbghelp quirks 61138  (99.89%)
+  still mismatched          67  (0.11%)
+  gave up                    0  (0.00%)
+  correct rate (w/ quirks)      99.89%
+  end-to-end coverage           99.82%  (of all input)
 ```
 
-「dbghelp 怪癖」指 dbghelp 自身已用最小用例证实的缺陷（CV 前不写空格、
-变量尾 `__ptr64` 重复、返回值位指针丢 `const` 等），逐条清单与最小用例见
-`scripts/_quirk.py`（参考文档，无任何代码 import 它）。
-**这 67 处不一致全部归因于 dbghelp 的缺陷，而非引擎的语法缺口**——本项目
-不做「向缺陷对齐」，理由同样记录在该文件的模块 docstring 里。
+"dbghelp quirks" are defects in dbghelp itself, each confirmed with a minimal
+reproducing case (no space before CV, duplicated trailing `__ptr64` on
+variables, dropped `const` on pointer return values, and so on). The complete
+list with minimal cases lives in `scripts/_quirk.py` (reference documentation;
+no code imports it). **All 67 mismatches are attributable to dbghelp defects
+rather than grammar gaps in this engine** — this project deliberately does not
+"align to a defect", and the reasoning is recorded in that file's module
+docstring.
 
-> C++/CX 的 `^` 帽（hat）扩展 `$AA`–`$AD` 在 LLVM 里完全没有，是本项目自行
-> 逆向出来的 2-bit CV 阶梯。详见 `references/research.md`。
+> C++/CX hat pointers (`^`), the `$AA`–`$AD` extensions, do not exist in LLVM at
+> all. They were reverse-engineered for this project as a 2-bit CV ladder. See
+> `references/research.md`.
 
-## 目录结构
+---
+
+## Repository layout
 
 ```
 reverse-engineering/
-├── SKILL.md                     # 技能主入口（AI 读这个，中文）
-├── INSTALL.md / INSTALL.en.md   # **安装到各 AI 运行时**（中 / 英）
-├── README.md                    # 中文主 README（本文件）
-├── README.en.md                 # English README
-├── PUBLISHING.md / .en.md       # 开源发布指南（维护者手册，中 / 英）
-├── CONTRIBUTING.md / .en.md     # 贡献指南（中 / 英）
-├── SECURITY.md / SECURITY.en.md # 漏洞披露（中 / 英）
-├── USE-POLICY.md / .en.md       # 使用政策（中 / 英，明确非许可证）
-├── CODE_OF_CONDUCT.md / .en.md  # 行为准则（中 / 英）
-├── LICENSE                      # MIT（标准全文，无附加限制）
-├── CHANGELOG.md                 # 更新日志
-├── Makefile                     # 常用命令入口（make test / lint / check）
-├── .editorconfig                # 编辑器统一配置
+├── SKILL.md                     # skill entry point (this is what the AI reads; Chinese)
+├── INSTALL.md / INSTALL.en.md   # installation into each AI runtime (zh / en)
+├── README.md                    # English README (primary, this file)
+├── README.zh.md                 # 简体中文 README
+├── PUBLISHING.md / .en.md       # open-source publishing guide (maintainer manual, zh / en)
+├── CONTRIBUTING.md / .en.md     # contribution guide (zh / en)
+├── SECURITY.md / SECURITY.en.md # vulnerability disclosure (zh / en)
+├── USE-POLICY.md / .en.md       # usage policy (zh / en; explicitly NOT a license)
+├── CODE_OF_CONDUCT.md / .en.md  # code of conduct (zh / en)
+├── LICENSE                      # MIT (standard text, no additional restrictions)
+├── CHANGELOG.md                 # changelog
+├── Makefile                     # command entry points (make test / lint / check)
+├── .editorconfig                # editor configuration
 ├── .github/
-│   ├── workflows/ci.yml         # CI：三平台 × 多 Python 版本
-│   ├── ISSUE_TEMPLATE/          # issue 模板
-│   └── PULL_REQUEST_TEMPLATE.md # PR 模板
+│   ├── workflows/ci.yml         # CI: three platforms × multiple Python versions
+│   ├── ISSUE_TEMPLATE/
+│   └── PULL_REQUEST_TEMPLATE.md
 ├── references/
-│   ├── workflow.md              # 通用方法论：五层模型 / 假说驱动 / SOP / ABI / 反调试
-│   ├── playbooks.md             # 13 类目标的命门、工具链与坑点
-│   ├── toolchain.md             # 工具矩阵、安装源、学习路线
-│   ├── ecosystem.md             # 开源生态地图：四层堆栈 / 项目对照 / 选型决策树
-│   ├── research.md              # 论文索引：按「卡在哪」组织（反编译/符号/BCSD/Agent/协议）
-│   ├── ai-calling-protocol.md   # AI 怎么挑工具：意图检索 / 摘要层 / 编排协议
-│   ├── top-tier-tools.md        # 顶尖逆向工程师的工具、套路与「AI 可达性」对照表
-│   └── legal.md                 # 合规红线（中/美/欧盟 + 自查清单）
-├── rules/                       # 能力规则库（capa 风格，`capability` 子命令加载）
-│   ├── anti-analysis.yml        # 反调试 / 反分析
-│   ├── crypto.yml               # AES 等加密常量与 API
-│   ├── network.yml              # HTTP / 网络通信
-│   └── process.yml              # 进程创建 / WMI / Shell
+│   ├── workflow.md              # general methodology: five-layer model / hypothesis-driven / SOP / ABI / anti-debugging
+│   ├── playbooks.md             # 13 target classes: pressure points, toolchains, pitfalls
+│   ├── toolchain.md             # tool matrix, install sources, learning path
+│   ├── ecosystem.md             # open-source ecosystem map: four-layer stack / project comparison / decision tree
+│   ├── research.md              # paper index, organised by "where you're stuck"
+│   ├── ai-calling-protocol.md   # how an AI picks tools: intent lookup / summary layer / orchestration
+│   ├── top-tier-tools.md        # tools and habits of top reverse engineers, with an "AI reachability" column
+│   └── legal.md                 # compliance red lines (CN / US / EU + self-check list)
+├── rules/                       # capability rule library (capa-style, loaded by `capability`)
+│   ├── anti-analysis.yml        # anti-debugging / anti-analysis
+│   ├── crypto.yml               # AES and similar crypto constants and APIs
+│   ├── network.yml              # HTTP / network communication
+│   └── process.yml              # process creation / WMI / shell
 ├── assets/
-│   ├── frida-templates.js       # Frida Hook 模板（Native/Android/iOS/抓明文/脱壳）
-│   └── notes-template.md        # 分析笔记模板
+│   ├── frida-templates.js       # Frida hook templates (native / Android / iOS / plaintext capture / unpacking)
+│   └── notes-template.md        # analysis notes template
 └── scripts/
-    ├── re.py                    # CLI 入口（27 个子命令）
-    ├── lib_formats.py           # 魔数库 + 各格式解析器
-    ├── lib_analyze.py           # 字符串 / 熵 / IOC / 差分 / 雕刻
-    ├── lib_disasm.py            # 反汇编调度
-    ├── lib_x86.py               # x86 / x86-64 解码器
-    ├── lib_arm.py               # ARM64 / Thumb 解码器
-    ├── lib_code.py              # 函数识别 / CFG / XREF
-    ├── lib_semantics.py         # 函数语义画像
-    ├── lib_libscan.py           # 库函数与密码学常量识别
-    ├── lib_symbols.py           # MSVC / Itanium / Rust 名字修饰解析（demangle 引擎）
-    ├── lib_names.py             # 符号恢复与还原（Go pclntab / 符号表 / 导出表汇总）
-    ├── lib_obfstr.py            # 混淆字符串恢复（栈字符串 + XOR 解密循环）
-    ├── lib_rules.py             # 能力规则引擎（自带 YAML 子集解析 + 特征匹配）
-    ├── lib_agent.py             # 工具编排：意图→命令检索 / 工作流 / 状态 / 转移图
-    ├── lib_evidence.py          # 证据契约层：证据模型 + 残余未知项 + provider 注册（REA 移植）
-    ├── lib_tools.py             # 工具链探测 + 分析计划
-    ├── _quirk.py                # dbghelp 已知缺陷清单（参考文档，非运行时模块）
-    ├── selftest.py              # 自检套件（107 个用例，含 5 个安装用例）
-    └── _dev/                    # 开发脚手架（不随发布分发）
-        └── _install.py          # 跨运行时安装器（--auto 探测 / --verify 回验）
+    ├── re.py                    # CLI entry point (38 subcommands)
+    ├── lib_formats.py           # magic-number library + per-format parsers
+    ├── lib_analyze.py           # strings / entropy / IOCs / diffing / carving
+    ├── lib_disasm.py            # disassembly dispatcher
+    ├── lib_x86.py               # x86 / x86-64 decoder
+    ├── lib_arm.py               # ARM64 / Thumb decoder
+    ├── lib_code.py              # function identification / CFG / XREF
+    ├── lib_semantics.py         # function semantic profiling
+    ├── lib_libscan.py           # library-function and crypto-constant identification
+    ├── lib_symbols.py           # MSVC / Itanium / Rust demangling engine
+    ├── lib_names.py             # symbol recovery (Go pclntab / symbol table / exports)
+    ├── lib_obfstr.py            # obfuscated string recovery (stack strings + XOR loops)
+    ├── lib_rules.py             # capability rule engine (built-in YAML subset parser + matcher)
+    ├── lib_agent.py             # orchestration: intent→command lookup / workflow / state / transition graph
+    ├── lib_evidence.py          # evidence contract layer: evidence model + residual-unknown governance
+    ├── lib_contracts.py         # platform contracts: error contract + provider abstraction + stage closure
+    ├── lib_bundle.py            # evidence bundle export/import/compare + snapshot reuse
+    ├── lib_inspect.py           # extra inspectors: layout / PE resources / Mach-O / plist / .NET / Go / EVM
+    ├── lib_tools.py             # toolchain probing + analysis plans
+    ├── _quirk.py                # known dbghelp defects (reference doc, not a runtime module)
+    ├── selftest.py              # self-test suite (122 cases, incl. 5 installation cases)
+    └── _dev/                    # development scaffolding (not shipped in releases)
+        └── _install.py          # cross-runtime installer (--auto detect / --verify re-check)
 ```
 
-## 合规
+---
 
-只对自己拥有或书面授权的目标做逆向。恶意样本在隔离环境分析。
-反编译产物、还原的源码、提取的密钥一律不外传。
+## Compliance
 
-- 法务条款：[LICENSE](LICENSE)（标准 MIT，无使用领域限制）
-- 授权与合规提醒：[USE-POLICY.md](USE-POLICY.md)（**非许可证**）
-- 合规红线（中/美/欧盟 + 自查清单）：`references/legal.md`
-- 漏洞披露：[SECURITY.md](SECURITY.md)
+Only reverse-engineer targets you own or have written authorization to analyze.
+Analyze malware in an isolated environment. Decompiled output, recovered source
+code and extracted keys must never be redistributed.
+
+- Legal terms: [LICENSE](LICENSE) (standard MIT, no field-of-use restriction)
+- Authorization and compliance policy: [USE-POLICY.md](USE-POLICY.md) (**not** a license)
+- Compliance red lines (CN / US / EU + self-check list): `references/legal.md`
+- Vulnerability disclosure: [SECURITY.md](SECURITY.md)
+
+---
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) first. Two constraints are non-negotiable:
+
+1. **Zero third-party dependencies.** Python 3.10+, standard library only. The
+   `t_no_third_party` test will reject a pull request that breaks this.
+2. **Never disguise a failure as a success, and never disguise a skip or a
+   truncation as a pass.** A new check must be able to go red; adding a guard
+   requires showing that withdrawing the fix makes the test fail.
+
+Every fix is expected to come with a regression case in `selftest.py`, and commit
+messages must answer three questions: what changed, why the original code was
+wrong, and what the blast radius is.

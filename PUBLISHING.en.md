@@ -152,15 +152,15 @@ A repository with releases reads as "deliverable", and it gives users a stable
 anchor point.
 
 ```bash
-git tag -a v1.4.0 -m "1.4.0 — integrate REA evidence contract: traceable evidence + residual unknowns"
-git push origin v1.4.0
+git tag -a v1.5.0 -m "1.5.0 — platform contracts and extra inspectors: provider slots, evidence bundles, layout mitigations & PE resources"
+git push origin v1.5.0
 ```
 
 Then on GitHub use **Draft a new release**:
 
-- **Tag**: `v1.4.0`
-- **Title**: `1.4.0 — integrate REA evidence contract: traceable evidence + residual unknowns`
-- **Describe**: paste the whole `[1.4.0]` block from `CHANGELOG.md`
+- **Tag**: `v1.5.0`
+- **Title**: `1.5.0 — platform contracts and extra inspectors: provider slots, evidence bundles, layout mitigations & PE resources`
+- **Describe**: paste the whole `[1.5.0]` block from `CHANGELOG.md`
 
 > The changelog follows Keep a Changelog, so it doubles as release notes
 > verbatim. That level of detail is one reason it is written the way it is.
@@ -174,7 +174,7 @@ Then on GitHub use **Draft a new release**:
 | Job | Platform | Purpose |
 |---|---|---|
 | `selftest` | ubuntu / windows / macos × py3.10 / py3.13 | Full self-test + lint + undefined names |
-| `e2e` | **windows-latest** | All 27 subcommands against real system binaries |
+| `e2e` | **windows-latest** | All 38 subcommands against real system binaries |
 | `no-third-party` | ubuntu | A separate gate so a pip package cannot sneak in |
 
 **Check the Actions tab after the first push.** Green locally does not imply green
@@ -200,7 +200,7 @@ permanently red; the workflow file says so in a comment).
 
    - MSVC demangling measured at 99.89% agreement across **61,248 real exported
      symbols from system DLLs**;
-   - **107 self-test cases + 37 end-to-end checks**, where every regression case
+   - **122 self-test cases + 64 end-to-end checks**, where every regression case
      was reverse-validated (withdrawing the fix must make it fail).
 
 ---
@@ -209,8 +209,8 @@ permanently red; the workflow file says so in a comment).
 
 | File | Language | Purpose |
 |---|---|---|
-| `README.md` | 中文 | Main README |
-| `README.en.md` | English | English main README |
+| `README.md` | English | Main README (primary, international) |
+| `README.zh.md` | 中文 | Simplified Chinese README |
 | `INSTALL.md` / `INSTALL.en.md` | both | Installing into each AI runtime + directory table |
 | `CONTRIBUTING.md` / `CONTRIBUTING.en.md` | both | Contribution guide (two hard constraints, bug-fix flow) |
 | `SECURITY.md` / `SECURITY.en.md` | both | Disclosure policy, incl. the severity rule for silent failures |

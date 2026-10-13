@@ -104,7 +104,7 @@ capa 风格的规则库折算成"这样本能做什么"，并直接给出 ATT&CK
 每条命中都带**地址证据**，可以回到 `disasm`/`cfg` 复核。
 规则库在 `rules/*.yml`，可以自己加（格式见 `rules/` 里的注释）。
 
-`evidence` 是**证据契约层**（移植自 REA 的证据模型）：把上面的发现包装成
+`evidence` 是**证据契约层**：把上面的发现包装成
 **可溯源证据**——每条证据带内容哈希 ID（`ev-<sha256[:32]>`）、confidence
 三分（`observed` 观测 / `derived` 推导 / `inferred` 推断）、authority 来源等级、
 必填 `limitations` 边界，并用 `evidence_links` 串成证据链（观测→推导）。
@@ -412,7 +412,10 @@ capa 风格的规则库折算成"这样本能做什么"，并直接给出 ATT&CK
 | `scripts/lib_obfstr.py` | 混淆字符串恢复：栈字符串重建 + XOR 解密循环识别 |
 | `scripts/lib_rules.py` | **能力规则引擎**：自带 YAML 子集解析器 + capa 风格特征提取与匹配 |
 | `scripts/lib_agent.py` | **工具编排层**：意图→命令检索、分阶段工作流、状态目录、工具转移图 |
-| `scripts/lib_evidence.py` | **证据契约层**（REA 移植）：证据模型（内容哈希 ID + confidence 三分 + limitations 必填）+ 残余未知项登记 + provider 注册探测 |
+| `scripts/lib_evidence.py` | **证据契约层**：证据模型（内容哈希 ID + confidence 三分 + limitations 必填）+ 残余未知项治理（修订链/裁决/乐观并发） |
+| `scripts/lib_contracts.py` | **平台契约**：错误契约（10 类目）+ Provider 抽象（确定性选择/失败不降级）+ 阶段闭合 + 「缺失覆盖≠不存在」守卫 |
+| `scripts/lib_bundle.py` | **可复用/可重放**：证据 bundle 导出/导入/对比（防篡改）+ 内容寻址快照 |
+| `scripts/lib_inspect.py` | **补充检查器**：布局缓解 / PE 资源树 / Mach-O 架构 / plist / .NET 元数据 / Go buildinfo / EVM selector / demangle |
 | `scripts/_quirk.py` | dbghelp 已知缺陷清单（**参考文档**，须随发布分发，勿挪进 `_dev/`） |
 | `rules/*.yml` | **能力规则库**（capa 格式）：4 个文件共 20 条，跨 7 个 capa 命名空间（进程/加密/网络/反分析/加载/发现/持久化），带 ATT&CK 映射 |
 | `scripts/selftest.py` | 自检套件（正确性 + 稳定性 + 性能，共 107 个用例，含 74 条 x86 + 18 条 ARM64 黄金指令向量） |
