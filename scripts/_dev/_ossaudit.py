@@ -59,9 +59,11 @@ SELFTEST_N = len(re.findall(r'^\s*\(\"', cases_block, re.M))
 # 注意 e2e 的用例是**条件注册**的（有些只在 Windows 上跑），
 # 所以这里数出来的是"源码里写了几条"，本机实跑数是它的子集。
 # 文档里写的是实跑数，因此只做"文档数 <= 源码条数"的方向性校验，
-# 避免把平台裁剪误判成漂移（实测：源码 37 条，本机实跑 36 条）。
+# 避免把平台裁剪误判成漂移。
+# 正则要同时收 `case(...)` 与赋值形 `o = case(...)` —— 只写 ^\s*case\( 会漏
+# 后者（实测源码 64 条只数出 63，而运行时确实是 64/64）。
 _e2e_src = read("scripts/_dev/_e2e.py")
-E2E_SRC_N = len(re.findall(r'^\s*case\(', _e2e_src, re.M))
+E2E_SRC_N = len(re.findall(r'^\s*(?:[\w\.]+\s*=\s*)?case\(', _e2e_src, re.M))
 
 # 外部工具数
 try:
@@ -86,10 +88,18 @@ print()
 # ---------------------------------------------------------------- 2. 文档声明 vs 实测
 DOCS = ["README.md", "CONTRIBUTING.md", "SKILL.md", "CHANGELOG.md",
         "scripts/_dev/README.md",
-        # 英文文档与安装/发布手册 —— 之前漏在外面，正是"编造的数字"能藏身的地方
-        "README.en.md", "INSTALL.md", "INSTALL.en.md",
+        # 中文 README 与安装/发布手册 —— 之前漏在外面，正是"编造的数字"能藏身的地方
+        "README.zh.md", "INSTALL.md", "INSTALL.en.md",
         "CONTRIBUTING.en.md", "PUBLISHING.md", "PUBLISHING.en.md",
         ".github/PULL_REQUEST_TEMPLATE.md"]
+
+# DOCS 列表是硬编码的：文档被删/改名时上面的循环会 `isfile` 静默跳过，
+# 检查面悄悄缩小而没人知道（README.en.md→README.zh.md 换名就踩过一次）。
+# 故缺失即报，宁可显式失败也不要静默漏检。
+for doc in DOCS:
+    if not os.path.isfile(os.path.join(ROOT, doc)):
+        rep("审计覆盖缺失", "高", doc,
+            "DOCS 清单里的文档不存在，数字漂移检查会静默漏检它")
 
 # 允许出现的"历史数字"位置：CHANGELOG 是历史记录，旧数字是正常的
 HISTORY_OK = {"CHANGELOG.md"}
@@ -158,16 +168,20 @@ if os.path.isfile(os.path.join(ROOT, _cfg)):
                 "URL 里还有 OWNER/REPO 占位符，发布后会 404：%s"
                 % m.group(0).strip()[:90])
 
-# 命令数表格行数（README "命令一览"）
+# 命令数表格行数（README "## Commands" / "## 命令一览"）
 # 从标题扫到下一个同级标题为止 —— 不假设"标题后紧跟空行+表格"这种脆弱排版。
-_cm = re.search(r"^## 命令一览\s*$", read("README.md"), re.M)
-if _cm:
-    _rest = read("README.md")[_cm.end():]
+# 双语两张表都查（英文主 README + 中文 README），任一漂移都要报。
+for _rm in ("README.md", "README.zh.md"):
+    _cm = re.search(r"^## (?:Commands|命令一览)\s*$", read(_rm), re.M)
+    if not _cm:
+        rep("文档结构缺失", "中", _rm, "找不到命令一览标题（## Commands / ## 命令一览）")
+        continue
+    _rest = read(_rm)[_cm.end():]
     _nxt = re.search(r"^## ", _rest, re.M)
     _sec = _rest[:_nxt.start()] if _nxt else _rest
     rows = len(re.findall(r"^\|\s*`", _sec, re.M))
     if rows != CLI_N:
-        rep("文档数字过期", "中", "README.md 命令一览",
+        rep("文档数字过期", "中", _rm + " 命令一览",
             "表格 %d 行，CLI 实际 %d 个子命令" % (rows, CLI_N))
 
 # 工具数
@@ -204,7 +218,7 @@ for _m in _prod_mods:
             "生产模块未在任何文档中出现（README 目录结构 / SKILL.md 模块表应有它）")
 
 # ---------------------------------------------------------------- 3. 失效的相对链接
-for f in ["README.md", "CONTRIBUTING.md", "CHANGELOG.md", "SKILL.md"] + \
+for f in ["README.md", "README.zh.md", "CONTRIBUTING.md", "CHANGELOG.md", "SKILL.md"] + \
          ["references/" + x for x in os.listdir(os.path.join(ROOT, "references"))] + \
          ["scripts/_dev/README.md"]:
     p = os.path.join(ROOT, f)
@@ -222,7 +236,7 @@ for f in ["README.md", "CONTRIBUTING.md", "CHANGELOG.md", "SKILL.md"] + \
                 "[%s](%s) -> 目标不存在" % (m.group(1), tgt))
 
 # ---------------------------------------------------------------- 4. 文档提到的脚本是否真实存在
-for f in ["README.md", "CONTRIBUTING.md", "SKILL.md", "scripts/_dev/README.md"]:
+for f in ["README.md", "README.zh.md", "CONTRIBUTING.md", "SKILL.md", "scripts/_dev/README.md"]:
     p = os.path.join(ROOT, f)
     if not os.path.isfile(p):
         continue
