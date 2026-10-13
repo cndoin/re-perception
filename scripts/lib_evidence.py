@@ -461,8 +461,27 @@ def can_support_confirmed(evidence_list, require_sources=2):
 #: 解决状态。
 RESOLUTION_STATUS = ("open", "resolved", "abandoned")
 
+#: 未知项状态（REA residualUnknown 的五态 + 本地 abandoned）。RESOLUTION_STATUS
+#: 是它的子集，保留两者：老调用方用 RESOLUTION_STATUS，新语义用 UNKNOWN_STATUS。
+UNKNOWN_STATUS = ("open", "investigating", "blocked", "contradicted",
+                  "resolved", "abandoned")
+
+#: 严重度。
+UNKNOWN_SEVERITY = ("low", "medium", "high", "critical")
+
+#: 裁决处置（REA resolution.disposition）—— withdrawn/out-of-scope **不是**真值主张。
+RESOLUTION_DISPOSITION = ("verified", "withdrawn", "out-of-scope")
+
+#: 未知项之间的关系。
+UNKNOWN_RELATIONSHIPS = ("depends-on", "related-to", "contradicts")
+
 #: 默认未知项登记处文件名（相对当前分析目录，跨会话复用）。
 DEFAULT_REGISTRY_NAME = os.path.join(".re-perception", "unknown-registry.json")
+
+
+class RevisionConflict(ValueError):
+    """乐观并发冲突：写者持有的 expected_revision 已过期。对应错误码
+    ``revision_conflict``（见 lib_contracts.error_contract）。"""
 
 
 class UnknownError(ValueError):
@@ -503,12 +522,24 @@ def compute_unknown_id(record):
     return "uk-" + canonical_digest(payload)[:32]
 
 
+def _revision_digest(record):
+    """修订链摘要（去掉自身 digest 字段后的内容哈希），实现防篡改链。"""
+    payload = {k: v for k, v in record.items()
+               if k not in ("revision_digest",)}
+    return canonical_digest(payload)
+
+
 def make_unknown(question, required_authority, required_confidence,
                  blocked_by, supporting_evidence_ids=None,
                  contradicting_evidence_ids=None, resolution=None,
-                 owner=None):
+                 owner=None, severity="medium", required_environment=None,
+                 recommended_probes=None, relationships=None):
     """构造一条未知项记录（未写盘）。`blocked_by` 是位置参数而非关键字参数 ——
     刻意的：「为什么不知道」不该被省略；想省略就说明你还没查清楚。
+
+    携带 REA residualUnknown 的治理字段：修订链（防篡改）、严重度、推荐探测、
+    关系、所需环境。``resolution`` 若给应为 ``{"disposition", "rationale",
+    "evidence_ids"}``，``disposition ∈ RESOLUTION_DISPOSITION``。
     """
     _require_str(question, "question")
     _require_str(blocked_by, "blocked_by")
@@ -518,23 +549,39 @@ def make_unknown(question, required_authority, required_confidence,
     if required_confidence not in CONFIDENCE_LEVELS:
         raise UnknownError("required_confidence=%r 不在 %s"
                            % (required_confidence, list(CONFIDENCE_LEVELS)))
+    if severity not in UNKNOWN_SEVERITY:
+        raise UnknownError("severity=%r 不在 %s"
+                           % (severity, list(UNKNOWN_SEVERITY)))
+    if resolution is not None:
+        disp = resolution.get("disposition") if isinstance(resolution, dict) else None
+        if disp not in RESOLUTION_DISPOSITION:
+            raise UnknownError("resolution.disposition=%r 不在 %s"
+                               % (disp, list(RESOLUTION_DISPOSITION)))
     rec = {
         "unknown_id": "",
         "question": question,
         "required_authority": required_authority,
         "required_confidence": required_confidence,
+        "required_environment": required_environment,
         "blocked_by": blocked_by,
+        "severity": severity,
         "supporting_evidence_ids": _check_id_list(
             supporting_evidence_ids, "supporting_evidence_ids"),
         "contradicting_evidence_ids": _check_id_list(
             contradicting_evidence_ids, "contradicting_evidence_ids"),
+        "recommended_probes": list(recommended_probes or []),
+        "relationships": list(relationships or []),
         "status": "open",
         "resolution": resolution,
         "owner": owner,
+        "revision": 1,
+        "previous_revision_digest": None,
+        "revision_digest": None,
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
     }
     rec["unknown_id"] = compute_unknown_id(rec)
+    rec["revision_digest"] = _revision_digest(rec)
     return rec
 
 
@@ -591,18 +638,43 @@ class UnknownRegistry:
         self._items[rec["unknown_id"]] = rec
         return rec, True
 
-    def update(self, unknown_id, status=None, resolution=None):
-        """更新未知项状态。找不到 → KeyError（调用方决定当失败还是用法错）。"""
+    def update(self, unknown_id, status=None, resolution=None,
+               expected_revision=None, **fields):
+        """更新未知项状态（乐观并发 + 修订链推进）。
+
+        ``expected_revision`` 非 None 时做**乐观并发检查**：与当前修订号不符即抛
+        ``RevisionConflict``（对应错误码 ``revision_conflict``），防止过期写者覆盖
+        新值。每次更新修订号 +1 并把旧摘要接入 ``previous_revision_digest`` 链。
+        """
         rec = self._items.get(unknown_id)
         if rec is None:
             raise KeyError("未知项不存在: %s" % unknown_id)
+        if expected_revision is not None and expected_revision != rec.get("revision"):
+            raise RevisionConflict(
+                "revision_conflict: expected=%r current=%r"
+                % (expected_revision, rec.get("revision")))
         if status is not None:
-            if status not in RESOLUTION_STATUS:
-                raise UnknownError("status=%r 不在 %s" % (status, list(RESOLUTION_STATUS)))
+            if status not in UNKNOWN_STATUS:
+                raise UnknownError("status=%r 不在 %s"
+                                   % (status, list(UNKNOWN_STATUS)))
             rec["status"] = status
         if resolution is not None:
+            disp = resolution.get("disposition") if isinstance(resolution, dict) else None
+            if disp not in RESOLUTION_DISPOSITION:
+                raise UnknownError("resolution.disposition=%r 不在 %s"
+                                   % (disp, list(RESOLUTION_DISPOSITION)))
             rec["resolution"] = resolution
+        for key in ("owner", "severity", "blocked_by", "required_environment"):
+            if key in fields and fields[key] is not None:
+                if key == "severity" and fields[key] not in UNKNOWN_SEVERITY:
+                    raise UnknownError("severity=%r 不在 %s"
+                                       % (fields[key], list(UNKNOWN_SEVERITY)))
+                rec[key] = fields[key]
+        # 推进修订链（防篡改）
+        rec["previous_revision_digest"] = rec.get("revision_digest")
+        rec["revision"] = (rec.get("revision") or 1) + 1
         rec["updated_at"] = _now_iso()
+        rec["revision_digest"] = _revision_digest(rec)
         self._items[unknown_id] = rec
         return rec
 

@@ -32,6 +32,17 @@ re.py —— 逆向工程工具箱 CLI（Reverse Engineering Toolkit）
   symbols   符号恢复（C++/MSVC/Rust demangle + Go pclntab）
   obfstr    混淆字符串恢复（栈字符串 + XOR 解密循环）
   evidence  把分析发现包装成可溯源证据 + 登记残余未知项（证据契约层）
+  provider  分析 provider 选择/探测（确定性选择、失败不降级）
+  unknowns  残余未知项治理（登记/更新/裁决/乐观并发）
+  bundle    证据 bundle 导出/导入/对比
+  layout    二进制布局 + 静态缓解（ELF/PE）
+  peres     PE 资源树（类型/名字/语言）
+  archs     Mach-O / 胖二进制架构清单
+  plist     Apple plist 解析（XML/二进制）
+  dotnet    .NET 托管程序集元数据
+  goinfo    Go 二进制 buildinfo
+  evm       EVM 字节码 dispatch selector
+  demangle  符号还原（C++/Rust/Swift）
   require   按自然语言意图检索该用哪些子命令（AI 选路入口）
   flow      分阶段工作流编排：现在该跑哪些（可并行的同批给出）
   case      分析状态目录：结果落盘、复用、过期检测
@@ -70,9 +81,12 @@ import lib_names as N            # noqa: E402
 import lib_obfstr as OS          # noqa: E402
 import lib_agent as AG           # noqa: E402
 import lib_evidence as EV        # noqa: E402
+import lib_contracts as CT       # noqa: E402
+import lib_bundle as BL          # noqa: E402
+import lib_inspect as IP         # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 
 # ---------------------------------------------------------------- 输出
@@ -2146,6 +2160,201 @@ def _fmt_evidence(d: dict) -> str:
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------- REA 平台层
+# （provider / unknowns / bundle —— 复刻 REA 的契约层横切能力）
+
+def _rea_providers():
+    """REA 风格的 provider 槽位。依赖重型外部工具的域在这里诚实降级。"""
+    return [
+        CT.ProviderDescriptor("ghidra", "deep-analysis", ("analyzeHeadless",)),
+        CT.ProviderDescriptor("ida", "deep-analysis", ("idat64", "idat")),
+        CT.ProviderDescriptor("hopper", "deep-analysis", ("hopper",)),
+        CT.ProviderDescriptor("jeb", "deep-analysis", ("jeb",)),
+        CT.ProviderDescriptor("adb", "device", ("adb",)),
+        CT.ProviderDescriptor("browser", "runtime-observation", ("chrome", "chromium")),
+        CT.ProviderDescriptor("lldb", "runtime-observation", ("lldb",)),
+    ]
+
+
+def cmd_provider(args):
+    """provider 选择/探测（确定性选择、失败不降级、诚实降级）。"""
+    cands = _rea_providers()
+    d = CT.provider_status(cands, requested=args.provider,
+                           env_provider=args.env_provider)
+    d["ok"] = True
+    d["rejection_codes"] = list(CT.REJECTION_CODES)
+    d["deadline_layers"] = CT.DEADLINE_LAYERS
+    if not args.json:
+        lines = ["provider 抽象（确定性选择 · 失败不降级）"]
+        sel = d.get("selection") or {}
+        if sel.get("provider_id"):
+            lines.append("  选中: %s  (来源 %s)" % (sel["provider_id"],
+                                                  sel["selection_source"]))
+        elif sel.get("error"):
+            lines.append("  选择结果: %s  %s" % (sel["error"],
+                                                sel.get("details")))
+        for p in d.get("probes", []):
+            lines.append("  · %-8s %-8s %s" % (
+                p["provider_id"], p["state"],
+                (p.get("detail") or {}).get("missing") or
+                (p.get("detail") or {}).get("versions") or ""))
+        print("\n".join(lines))
+        return EXIT_OK
+    emit(d, True)
+    return EXIT_OK
+
+
+def cmd_unknowns(args):
+    """残余未知项治理（登记/更新/裁决/乐观并发）。"""
+    reg = EV.UnknownRegistry(args.registry)
+    act = args.action
+    try:
+        if act == "list":
+            items = reg.list(status=args.status)
+            d = {"ok": True, "count": len(items), "unknowns": items,
+                 "load_error": reg.load_error}
+        elif act == "record":
+            # --question/--blocked-by 是 make_unknown 的必填项；--severity 省略
+            # 时 args.severity 是 None —— 直接透传会绕过 make_unknown 的默认值
+            # 并被校验拒绝（实测：省略 --severity 必炸）。缺参要给可操作的报错，
+            # 而不是让底层校验抛一个不提参数名的错。
+            if not args.question or not args.blocked_by:
+                d = {"ok": False, "error": CT.make_error(
+                    "invalid_input", "invalid_input",
+                    "unknowns record 需要 --question 与 --blocked-by",
+                    "补上缺失参数后重试")}
+            else:
+                rec, added = reg.record(
+                    args.question, args.authority, args.confidence,
+                    args.blocked_by,
+                    severity=args.severity or "medium", owner=args.owner)
+                reg.save()
+                d = {"ok": True, "added": added, "unknown": rec}
+        elif act == "update":
+            fields = {}
+            if args.severity:
+                fields["severity"] = args.severity
+            res = None
+            if args.disposition:
+                res = {"disposition": args.disposition,
+                       "rationale": args.rationale or "",
+                       "evidence_ids": []}
+            rec = reg.update(args.id, status=args.status, resolution=res,
+                             expected_revision=args.expected_revision, **fields)
+            reg.save()
+            d = {"ok": True, "unknown": rec}
+        else:  # verify
+            rec = reg.get(args.id)
+            if rec is None:
+                d = {"ok": False, "error": "未知项不存在: %s" % args.id}
+            else:
+                disp = (rec.get("resolution") or {}).get("disposition")
+                d = {"ok": True, "unknown_id": args.id, "status": rec.get("status"),
+                     "disposition": disp, "verified": disp == "verified"}
+    except EV.RevisionConflict as ex:
+        d = {"ok": False,
+             "error": CT.make_error("revision_conflict", "invalid_input",
+                                    str(ex), "用最新 revision 重试", retryable=True)}
+    except EV.UnknownError as ex:
+        d = {"ok": False, "error": CT.make_error(
+            "invalid_input", "invalid_input", str(ex), "修正参数")}
+    if not args.json:
+        print(json.dumps(d, ensure_ascii=False, indent=2, default=str))
+        return EXIT_OK if d.get("ok") else EXIT_USAGE
+    emit(d, True)
+    return EXIT_OK if d.get("ok") else EXIT_USAGE
+
+
+def cmd_bundle(args):
+    """证据 bundle 导出/导入/对比 + 快照复用。"""
+    act = args.action
+    try:
+        if act == "export":
+            evs = _evidence_bundle(args.target, F.identify(args.target))["evidence"] \
+                if args.target else []
+            d = BL.export_bundle(args.out, evs, overwrite=args.overwrite)
+            d["ok"] = True
+        elif act == "import":
+            d = BL.import_bundle(args.infile, strict=not args.lenient)
+            d["ok"] = True
+        else:  # compare
+            with open(args.a, "r", encoding="utf-8") as f:
+                ba = json.load(f)
+            with open(args.b, "r", encoding="utf-8") as f:
+                bb = json.load(f)
+            d = BL.compare_bundles(ba, bb)
+            d["ok"] = True
+    except Exception as ex:  # noqa: BLE001 —— 归类为结构化错误，不静默
+        d = {"ok": False, "error": CT.make_error(
+            "execution_failure", "execution_failure", str(ex), "检查输入路径")}
+    if not args.json:
+        print(json.dumps(d, ensure_ascii=False, indent=2, default=str))
+        return EXIT_OK if d.get("ok") else EXIT_RUNTIME
+    emit(d, True)
+    return EXIT_OK if d.get("ok") else EXIT_RUNTIME
+
+
+# ---------------------------------------------------------------- REA 检查器
+# （layout / peres / archs / plist / dotnet / goinfo / evm / demangle —— 复刻
+#  REA 的 stdlib 可解析 inspect-* 域）
+
+def _inspect_cmd(fn, target, as_json, **kw):
+    need_path(target, as_json)
+    # kw 必须透传给检查器 —— 否则 CLI 参数被静默吞掉（实测 peres
+    # --max-entries 根本没传进函数，永远跑内部默认值）。
+    d = fn(target, **kw)
+    d.setdefault("ok", False)
+    if not as_json:
+        print(json.dumps(d, ensure_ascii=False, indent=2, default=str))
+        return EXIT_OK if d.get("ok") else EXIT_TARGET
+    emit(d, True)
+    return EXIT_OK if d.get("ok") else EXIT_TARGET
+
+
+def cmd_layout(args):
+    return _inspect_cmd(IP.inspect_layout, args.target, args.json)
+
+
+def cmd_peres(args):
+    return _inspect_cmd(IP.inspect_pe_resources, args.target, args.json,
+                        max_entries=args.max_entries)
+
+
+def cmd_archs(args):
+    return _inspect_cmd(IP.inspect_archs, args.target, args.json)
+
+
+def cmd_plist(args):
+    return _inspect_cmd(IP.inspect_plist, args.target, args.json)
+
+
+def cmd_dotnet(args):
+    return _inspect_cmd(IP.inspect_dotnet, args.target, args.json)
+
+
+def cmd_goinfo(args):
+    return _inspect_cmd(IP.inspect_go, args.target, args.json)
+
+
+def cmd_evm(args):
+    d = IP.inspect_evm(args.target)
+    d.setdefault("ok", False)
+    if not args.json:
+        print(json.dumps(d, ensure_ascii=False, indent=2, default=str))
+        return EXIT_OK if d.get("ok") else EXIT_TARGET
+    emit(d, True)
+    return EXIT_OK if d.get("ok") else EXIT_TARGET
+
+
+def cmd_demangle(args):
+    d = IP.demangle(args.symbol)
+    if not args.json:
+        print(json.dumps(d, ensure_ascii=False, indent=2, default=str))
+        return EXIT_OK if d.get("ok") else EXIT_USAGE
+    emit(d, True)
+    return EXIT_OK if d.get("ok") else EXIT_USAGE
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="re.py", description="逆向工程工具箱（零第三方依赖）",
@@ -2324,6 +2533,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="show 时即使过期也返回数据")
     s.add_argument("--raw", action="store_true",
                    help="show 时保留完整原始数据")
+    # journal 的显示条数上限 —— cmd_case 的 journal 分支读 args.limit，
+    # 缺了这个参数就是 AttributeError 直接崩（实测踩过）。
+    s.add_argument("--limit", type=int, help="journal 显示条数上限（默认 200）")
 
     s = add("result", "结果摘要 + 错误分类（防无效重试）", cmd_result)
     s.add_argument("--from-file", help="读该 JSON 文件")
@@ -2351,6 +2563,58 @@ def build_parser() -> argparse.ArgumentParser:
     s = add("evidence", "把分析发现包装成可溯源证据 + 登记残余未知项", cmd_evidence)
     s.add_argument("target")
     s.add_argument("--no-deep", action="store_true", help="只做魔数识别，不做结构解析")
+
+    # ---- REA 平台层（契约） ----
+    s = add("provider", "分析 provider 选择/探测（确定性选择、失败不降级）", cmd_provider)
+    s.add_argument("--provider", help="指定 provider id 或 auto")
+    s.add_argument("--env-provider", help="环境来源的 provider id")
+
+    s = add("unknowns", "残余未知项治理（登记/更新/裁决/乐观并发）", cmd_unknowns)
+    s.add_argument("action", choices=["list", "record", "update", "verify"])
+    s.add_argument("--registry", help="登记处文件路径")
+    s.add_argument("--id", help="未知项 ID（update/verify 需要）")
+    s.add_argument("--question", help="未知项问题（record 需要）")
+    s.add_argument("--authority", default="analyst-inference",
+                   help="所需权威等级（record）")
+    s.add_argument("--confidence", default="observed",
+                   help="所需置信等级（record）")
+    s.add_argument("--blocked-by", help="被什么挡住（record）")
+    s.add_argument("--status", help="目标状态（update/list 过滤）")
+    s.add_argument("--severity", help="严重度 low/medium/high/critical")
+    s.add_argument("--owner", help="负责人")
+    s.add_argument("--disposition", help="裁决 verified/withdrawn/out-of-scope")
+    s.add_argument("--rationale", help="裁决理由")
+    s.add_argument("--expected-revision", type=int,
+                   help="乐观并发：持有的修订号（不符则 revision_conflict）")
+
+    s = add("bundle", "证据 bundle 导出/导入/对比", cmd_bundle)
+    s.add_argument("action", choices=["export", "import", "compare"])
+    s.add_argument("--target", help="export 时的分析目标")
+    s.add_argument("--out", help="export 输出路径")
+    s.add_argument("--infile", help="import 输入路径")
+    s.add_argument("--a", help="compare 的左 bundle")
+    s.add_argument("--b", help="compare 的右 bundle")
+    s.add_argument("--overwrite", action="store_true", help="export 允许覆盖")
+    s.add_argument("--lenient", action="store_true", help="import 跳过坏条目而非整体拒收")
+
+    # ---- REA 检查器（stdlib 可解析域） ----
+    s = add("layout", "二进制布局 + 静态缓解（ELF/PE）", cmd_layout)
+    s.add_argument("target")
+    s = add("peres", "PE 资源树（类型/名字/语言）", cmd_peres)
+    s.add_argument("target")
+    s.add_argument("--max-entries", type=int, default=512)
+    s = add("archs", "Mach-O / 胖二进制架构清单", cmd_archs)
+    s.add_argument("target")
+    s = add("plist", "Apple plist 解析（XML/二进制）", cmd_plist)
+    s.add_argument("target")
+    s = add("dotnet", ".NET 托管程序集元数据", cmd_dotnet)
+    s.add_argument("target")
+    s = add("goinfo", "Go 二进制 buildinfo", cmd_goinfo)
+    s.add_argument("target")
+    s = add("evm", "EVM 字节码 dispatch selector", cmd_evm)
+    s.add_argument("target", help="文件路径或 0x 十六进制字节码")
+    s = add("demangle", "符号还原（C++/Rust/Swift）", cmd_demangle)
+    s.add_argument("symbol")
 
     return p
 
