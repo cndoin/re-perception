@@ -2437,7 +2437,7 @@ def t_obfstr_cli_contract():
 # 判错误 四件事从模型脑子里挪进确定性代码。
 # 下面这些用例守的就是"挪进去之后不能退化成猜"。
 
-# 25 条真实口吻的意图 → 期望命令。中文口语，故意含泛词（"这个""里面"）。
+# 29 条真实口吻的意图 → 期望命令。中文口语，故意含泛词（"这个""里面"）。
 _RETRIEVAL_GOLD = [
     ("这文件是不是加壳了", "entropy"),
     ("这程序是干什么的", "capability"),
@@ -2464,6 +2464,10 @@ _RETRIEVAL_GOLD = [
     ("把逻辑结构化成伪代码", "struct"),
     ("指令转成中间表示", "ir"),
     ("反编译看逻辑", "ir"),
+    ("把这个函数挖透", "fundeep"),
+    ("函数深度挖掘", "fundeep"),
+    ("这函数调了谁又被谁调，深挖一下", "fundeep"),
+    ("找相似的函数", "fundeep"),
 ]
 
 
@@ -6292,6 +6296,176 @@ def t_ir_cli_contract():
     return True, "ok 契约 + IR 明细 + 预算诚实 + 垃圾退出码 3"
 
 
+def t_fundeep_chain_known_answers():
+    """
+    函数深挖已知答案闸门（核心层）：手工构造 A→{B,D}→C→E 调用链、
+    D 与 B 同指令序列（同指纹），对照 _call_chain / _similar / _data_refs
+    的已知答案。反向：unknown 地址如实标 unknown、深度不涨不许多报。
+    """
+    import struct as _p
+    from types import SimpleNamespace
+    from lib_code import CodeIndex, find_functions
+    from lib_fundeep import _call_chain, _data_refs, _similar
+    from lib_x86 import Insn, K_CALL
+    bad = []
+
+    def want(name, cond, detail):
+        if not cond:
+            bad.append("%s(%s)" % (name, detail))
+
+    # 定长布局 base=0x1000：
+    #   A@0  call B / call D / ret      （11B，入口）
+    #   B@11 call C / ret               （6B）
+    #   C@17 call E / ret               （6B）
+    #   D@23 call C / ret               （6B，与 B 同 mnem 序列）
+    #   E@29 ret                        （1B）
+    def call_rel(target, call_off):
+        return _p.pack("<i", target - (call_off + 5))
+
+    code = (b"\xe8" + call_rel(11, 0) + b"\xe8" + call_rel(23, 5) + b"\xc3"
+            + b"\xe8" + call_rel(17, 11) + b"\xc3"
+            + b"\xe8" + call_rel(29, 17) + b"\xc3"
+            + b"\xe8" + call_rel(17, 23) + b"\xc3"
+            + b"\xc3")
+    idx = CodeIndex(code, base_vma=0x1000, bits=64, arch="x86-64")
+    funcs = find_functions(idx, seeds=[0x1000], stats={})
+    by_vma = {f["start_vma"]: f for f in funcs}
+    want("识别 5 个函数", len(funcs) == 5, "%d: %s" % (
+        len(funcs), [hex(f["start_vma"]) for f in funcs]))
+    fA = by_vma.get(0x1000)
+    want("A 存在", fA is not None, str(sorted(by_vma)))
+    if fA is None:
+        return False, "; ".join(bad)
+    want("A 调 B/D", sorted(hex(c) for c in fA["calls"])
+         == ["0x100b", "0x1017"], str([hex(c) for c in fA["calls"]]))
+
+    # 调用链深度语义：depth=1 只见 B/D；depth=2 加 C；depth=3 加 E
+    n1, t1, _ = _call_chain(by_vma, {}, {}, fA["calls"], 1)
+    n2, t2, _ = _call_chain(by_vma, {}, {}, fA["calls"], 2)
+    n3, t3, _ = _call_chain(by_vma, {}, {}, fA["calls"], 3)
+    want("depth=1 两节点", len(n1) == 2 and not t1,
+         "%d %s" % (len(n1), [n["addr"] for n in n1]))
+    want("depth=2 三节点", len(n2) == 3 and not t2,
+         "%d %s" % (len(n2), [n["addr"] for n in n2]))
+    want("depth=3 四节点含 E", len(n3) == 4
+         and any(n["addr"] == "0x101d" for n in n3) and not t3,
+         "%d %s" % (len(n3), [n["addr"] for n in n3]))
+    want("节点 kind=internal", all(n["kind"] == "internal" for n in n3),
+         str([n["kind"] for n in n3]))
+
+    # 反向：未知地址如实标 unknown（不编造名字）
+    nu, _, _ = _call_chain(by_vma, {}, {}, [0x9999], 1)
+    want("unknown 如实标注", nu and nu[0]["kind"] == "unknown"
+         and nu[0]["name"] is None, str(nu))
+    # 反向：import 命中 IAT 标 import
+    ni, _, _ = _call_chain(by_vma, {0x2000: "user32!MessageBoxW"}, {},
+                           [0x2000], 1)
+    want("import 如实标注", ni and ni[0]["kind"] == "import"
+         and ni[0]["name"] == "user32!MessageBoxW", str(ni))
+
+    # 相似函数：D 与 B 同指纹 → identical
+    sim = _similar(by_vma[0x100B], funcs)
+    want("相似报出 D", any(s["addr"] == "0x1017" for s in sim), str(sim))
+    d_hit = [s for s in sim if s["addr"] == "0x1017"]
+    want("D 判定 identical", d_hit and d_hit[0]["verdict"] == "identical",
+         str(d_hit))
+    want("相似不含自身", all(s["addr"] != "0x100b" for s in sim), str(sim))
+
+    # 数据引用：大常量 / 字符串 / 导入各按精确命中归集
+    i_imm, i_str, i_api = Insn(), Insn(), Insn()
+    i_imm.imm = 0x4141414141414141
+    i_str.mem_ref = 0x5000
+    i_api.kind = K_CALL
+    i_api.target = 0x6000
+    fx = SimpleNamespace(insn={0: i_imm, 1: i_str, 2: i_api})
+    refs = _data_refs(fx, {"_offs": [0, 1, 2]}, {0x5000: "hello"},
+                      {0x6000: "user32!MessageBoxW"}, {})
+    want("大常量归集", any(c["value"] == "0x4141414141414141"
+                          for c in refs["constants"]), str(refs))
+    want("字符串归集", any(s["text"] == "hello" for s in refs["strings"]),
+         str(refs))
+    want("导入归集", any(s["api"] == "user32!MessageBoxW"
+                         for s in refs["imports"]), str(refs))
+    # 反向：命中字符串/导入表的地址不再重复算大常量
+    i_dup = Insn()
+    i_dup.imm = 0x5000
+    refs2 = _data_refs(SimpleNamespace(insn={0: i_dup}), {"_offs": [0]},
+                       {0x5000: "hello"}, {}, {})
+    want("已有归属不重复报常量", not refs2["constants"], str(refs2))
+    if bad:
+        return False, "; ".join(bad[:6])
+    return True, "调用链深度 1/2/3 对照 + 相似 identical + 数据引用正反向"
+
+
+def t_fundeep_cli_contract():
+    """
+    fundeep 入口层闸门：带调用图的 PE 端到端（字段齐全 + callees 分类）、
+    地址不存在 ok:false + 候选（不猜）、预算截断诚实、CLI ok 契约
+    （文件不存在退出 3、地址不存在退出 4）。
+    """
+    import struct as _p
+    from lib_fundeep import deep_function
+
+    def call_rel(target, call_off):
+        return _p.pack("<i", target - (call_off + 5))
+
+    code = (b"\xe8" + call_rel(11, 0) + b"\xe8" + call_rel(23, 5) + b"\xc3"
+            + b"\xe8" + call_rel(17, 11) + b"\xc3"
+            + b"\xe8" + call_rel(29, 17) + b"\xc3"
+            + b"\xe8" + call_rel(17, 23) + b"\xc3"
+            + b"\xc3")
+    src = mk_pe64().read_bytes()
+    buf = bytearray(src)
+    buf[0x200:0x200 + len(code)] = code          # .text 换成调用图
+    pe = w("sample_pe64_fundeep.exe", bytes(buf))
+
+    bad = []
+
+    def want(name, cond, detail):
+        if not cond:
+            bad.append("%s(%s)" % (name, detail))
+
+    d = deep_function(str(pe), "140001000", depth=3, with_ir=True)
+    want("ok", d.get("ok") is True, str(d)[:200])
+    want("target.addr", (d.get("target") or {}).get("addr") == "0x140001000",
+         str(d.get("target")))
+    want("structure 字段", isinstance((d.get("structure") or {}).get("loops"),
+                                      list), str(d.get("structure"))[:120])
+    want("ir 明细", bool(d.get("ir")), str(len(d.get("ir") or [])))
+    cal = (d.get("calls") or {}).get("callees") or []
+    want("callees 两个 internal", len(cal) == 2
+         and all(c["kind"] == "internal" for c in cal), str(cal))
+    want("chain 深度 3 四节点", len((d.get("calls") or {}).get("chain") or [])
+         == 4, str((d.get("calls") or {}).get("chain")))
+    want("hints 多条且带 cmd", len(d.get("hints") or []) >= 2
+         and all(h.get("cmd") for h in d["hints"]), str(d.get("hints"))[:200])
+
+    # 反向：地址不存在 → ok:false + 候选，绝不猜
+    d2 = deep_function(str(pe), "1")
+    want("垃圾地址 ok:false", d2.get("ok") is False, str(d2)[:120])
+    want("垃圾地址给候选", "候选" in str(d2.get("hint") or ""),
+         str(d2.get("hint")))
+
+    # 预算诚实：max_functions=1 → 种子被跳过如实标注
+    d3 = deep_function(str(pe), "140001000", max_functions=1)
+    want("预算截断 partial", d3.get("partial") is True, str(d3.get("partial")))
+    want("预算截断有说明", bool(d3.get("truncated_note")),
+         str(d3.get("truncated_note")))
+
+    # CLI 契约：ok 字段必有；文件不存在退出 3；地址不存在退出 4
+    code_rc, obj, raw = jrun([CLI, "fundeep", str(pe), "140001000"])
+    want("CLI ok 契约", code_rc == 0 and (obj or {}).get("ok") is True,
+         "%s %s" % (code_rc, raw[:120]))
+    code_rc2, obj2, raw2 = jrun([CLI, "fundeep", str(pe), "1"])
+    want("CLI 地址不存在 rc=4", code_rc2 == 4 and (obj2 or {}).get("ok") is False,
+         "%s %s" % (code_rc2, raw2[:120]))
+    code_rc3, _, raw3 = jrun([CLI, "fundeep", "no_such_file_xyz.bin", "140001000"])
+    want("CLI 文件不存在 rc=3", code_rc3 == 3, "%s %s" % (code_rc3, raw3[:120]))
+    if bad:
+        return False, "; ".join(bad[:6])
+    return True, "入口端到端 + 候选不猜 + 预算诚实 + CLI 退出码 3/4"
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -6448,6 +6622,8 @@ def main():
         ("IR：lift_insn 语义归类与垃圾降级", t_ir_lift_semantics),
         ("IR：ARM 解码分发 + 架构 fail-closed", t_ir_arm_dispatch_and_failclosed),
         ("IR：struct/ir CLI 契约与预算诚实", t_ir_cli_contract),
+        ("fundeep：调用链/相似函数/数据引用已知答案", t_fundeep_chain_known_answers),
+        ("fundeep：入口端到端 + CLI 契约与预算诚实", t_fundeep_cli_contract),
     ]
 
     t0 = time.time()

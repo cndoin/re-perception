@@ -335,6 +335,27 @@ def main():
     case("ir", ["ir", exe, "--json", "--max-functions", "1"],
          check=_ir_ok, timeout=300)
 
+    # ---------- fundeep ----------
+    def _fundeep_ok(o, p):
+        if not o.get("ok"):
+            return "fundeep ok=false: %s" % o.get("error")
+        for k in ("target", "structure", "calls", "data_refs", "hints"):
+            if k not in o:
+                return "fundeep 缺字段 %s" % k
+        hs = o.get("hints") or []
+        if not hs or not all(h.get("cmd") for h in hs):
+            return "fundeep hints 不带具体命令"
+        return None
+
+    if starts:
+        s0f = ("0x%x" % starts[0]) if isinstance(starts[0], int) else str(starts[0])
+        case("fundeep", ["fundeep", exe, s0f, "--depth", "2", "--json"],
+             check=_fundeep_ok, timeout=300)
+        case("fundeep(--ir)", ["fundeep", exe, s0f, "--ir", "--json"],
+             check=_fundeep_ok, timeout=300)
+        case("fundeep(垃圾地址)", ["fundeep", exe, "1", "--json"],
+             expect_rc=(4,), timeout=300)
+
     # ---------- xref ----------
     case("xref(Top 引用者)", ["xref", exe, "--json"], timeout=300)
     if starts:
