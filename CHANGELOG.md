@@ -3,6 +3,51 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.9.0] — 2026-10-14
+
+「看懂程序」的分水岭：**轻量 IR 提升 + 控制流结构化**（`ir` / `struct`
+两个子命令）——把指令折算成语义操作、把 CFG 折算成人能读的 if / loop /
+switch 结构。结构化算法取 Cifuentes《dcc 反编译器》路线：支配树
+（Cooper-Harvey-Kennedy）+ 回边/自然循环 + 后支配树汇合点。
+CLI 47 → 49 个子命令。
+
+### 新增
+
+- **`re.py struct`**（`scripts/lib_ir.py`，纯标准库）：函数级控制流结构化
+  - 自然循环（回边 + 反向可达闭包）：while / do-while / self-loop 如实
+    区分——单块 `dec ecx; jnz top` 是条件回边的 do-while，`jmp $` 才是
+    self-loop；
+  - 条件分支（后支配树找汇合点）：if-then / if-then-else / if-exit；
+  - switch 两条证据线：同寄存器比较链（≥3 路，被消费的比较节点不再重复
+    报 if）与间接跳转**候选**（静态无法与虚调用/尾调用区分，只报证据
+    不下结论）；
+  - 圈复杂度 + 伪代码骨架。条件表达式由块内 cmp/test + 跳转极性推导
+    （x86 jCC / ARM b.cond / cbz / tbz），推不出只给原始助记符并标
+    approx，不编造。
+- **`re.py ir`**：指令级轻量 IR（assign / binop / load / store / call /
+  branch / cond / ret / trap + dst / srcs / imm / mem_ref）。操作数文本
+  解析的保真边界如实标 approx（ARM 寄存器对三操作数、括号内逗号形态）。
+- **架构分发根因修复**：`lib_code.CodeIndex` 此前无条件用 x86 解码器解
+  一切字节——ARM 机器码会被解成语义完全错误但语法合法的 x86 指令还会
+  ok:true 照常返回。改为走 `lib_disasm.backend()` 唯一裁决点；不支持的
+  架构在构造时即抛 UnsupportedArch，绝不兜底（错误指令比报错危险一百倍）。
+- **编排层接入**：CATALOG / SUMMARY_FIELDS / FLOW / toolgraph 均登记
+  struct / ir，`require` 意图检索可直接命中「哪里是循环」「转成中间
+  表示」等口语（top-3 25/25）。
+
+### 测试
+
+- 自检 140 → **144 个用例**：结构识别已知答案（if / do-while 单块与
+  多块 / while / self-loop / 比较链 switch 逐一对照手工机器码，另含
+  直线代码反向样本与块预算截断诚实）、lift_insn 语义归类与垃圾降级、
+  ARM64 解码分发 + 架构 fail-closed、struct/ir CLI ok 契约与预算诚实
+  （垃圾目标退出码 3）。近似标注缺口（三操作数形态漏标）由守卫当场
+  抓出并修复；循环类型裁决（do-while/self-loop）与 approx 规则均做
+  **撤回验证**：撤回修复守卫变红，确认非摆设。
+- e2e 76 → **79 项**：struct / struct(--addr) / ir 在真实 PE 上端到端
+  跑通（函数输出必含 loops / conditionals / switches / structure /
+  cyclomatic，ir 必含逐条语义明细）。
+
 ## [1.8.0] — 2026-10-14
 
 Android/DEX 深水区第一铲：**`dexmap` 子命令**（DEX 方法级接口地图）——
