@@ -35,7 +35,7 @@ python re.py plan   "/path/to/unknown.bin" --json
 - 退出码： `0` 成功 / `2` 用法错误 / `3` 目标不可读 / `4` 分析出错
 - `--json` 下所有子命令都输出顶层 `ok` 字段，优先用它判断成败
 - 路径用正斜杠，含空格必须加引号
-- 自检：`python selftest.py`（129 个用例，期望全绿）
+- 自检：`python selftest.py`（130 个用例，期望全绿）
 - 静态体检：`python _dev/_lint.py`（期望 `生产 0 处`，退出码 0）
 - 安装到本机 AI：`python _dev/_install.py --auto --verify`（先看装到哪，再 `--auto` 实装）
 - 稳定性压测：`python _dev/_fuzz.py` 与 `python _dev/_fuzzlib.py`（期望 0 缺陷）

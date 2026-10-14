@@ -129,4 +129,4 @@ when to invoke the skill, then calls `scripts/re.py` as documented.
 - External tools (Ghidra / jadx / Frida and friends) are optional; `re.py doctor`
   reports which ones your machine has
 - Verify after installing:
-  `python <skill-dir>/scripts/selftest.py` (expect **129/129** green)
+  `python <skill-dir>/scripts/selftest.py` (expect **130/130** green)

@@ -200,7 +200,7 @@ permanently red; the workflow file says so in a comment).
 
    - MSVC demangling measured at 99.89% agreement across **61,248 real exported
      symbols from system DLLs**;
-   - **129 self-test cases + 75 end-to-end checks**, where every regression case
+   - **130 self-test cases + 75 end-to-end checks**, where every regression case
      was reverse-validated (withdrawing the fix must make it fail).
 
 ---

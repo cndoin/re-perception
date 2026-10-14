@@ -5259,11 +5259,83 @@ def t_path_traversal_gate():
     # 两个提取模块必须都用同一个裁决点
     import lib_fsx as FX
     import lib_iso as ISOX
-    src_f = open(FX.__file__, encoding="utf-8").read()
-    src_i = open(ISOX.__file__, encoding="utf-8").read()
+    src_f = ""
+    with open(FX.__file__, encoding="utf-8") as fh:
+        src_f = fh.read()
+    src_i = ""
+    with open(ISOX.__file__, encoding="utf-8") as fh:
+        src_i = fh.read()
     if "lib_paths" not in src_f or "lib_paths" not in src_i:
         return False, "仍有模块没走 lib_paths 裁决点"
     return True, "裁决点：拒 %d 个危险名 + 最终路径断言 + 双模块同源" % len(must_reject)
+
+
+def t_rule_budget_isolation():
+    """规则预算必须按规则隔离，且措辞不能说「成环」。
+
+    背景（真实缺陷）：max_calls 曾是**全局共享**计数器，前面的规则吃光
+    预算后，后面的规则一条都跑不完就被截断。实测 kernel32.dll（2392 函数）
+    上 20 条规则有 7 条以「步数超上限」收场，errors 措辞是「疑似规则成环」
+    （把预算耗尽误报成规则有问题），而输出仍是 ok:true + 残缺 capabilities。
+    这比慢更严重：用户会把残缺结论当完整结论。
+    """
+    import lib_rules as R
+    rules = _mk_rule_objs_for_budget()
+    # 关键：max_calls 要设成「第一条规则刚好用完、第二条还够用」的量。
+    # 若预算是全局共享的，第二条会被连坐截断；按规则隔离时它能跑完。
+    # （先前用 max_calls=1 每条规则都立刻超预算，两种实现表现相同 → 测不出连坐）
+    feats = {"file": {"api": set(), "string": set()},
+             "functions": {i: {"api": {"a|b"}, "string": set(),
+                               "mnemonic": set(), "characteristic": set()}
+                           for i in range(50)}}
+    # 标定：二分找出「恰好能跑完 1 条规则」的预算。
+    # 关键在于**只用 1 条规则**去标定，再用同一个预算跑 5 条：
+    #   · 隔离实现 → 每条规则各自拿到这个预算，5 条全跑完，0 报错
+    #   · 连坐实现 → 预算被全局共享，5 条共用，第 2 条起就超限
+    one = _budget_for(rules[:1], feats)
+    if one is None:
+        return False, "连单条规则都跑不完，测试前提不成立"
+    out = R.match_rules(rules, feats, max_calls=one)
+    errs_list = out.get("errors") or []
+    errs_txt = " ".join(errs_list)
+    if "成环" in errs_txt:
+        return False, "预算耗尽被误报成规则成环: %s" % errs_txt[:120]
+    if errs_list:
+        return False, ("预算是连坐的：预算 %d 足够跑完单条规则，"
+                       "跑 %d 条却有 %d 条报错"
+                       % (one, len(rules), len(errs_list)))
+    return True, "预算按规则隔离（单条标定 %d 步，%d 条规则 0 报错）" % (one, len(rules))
+
+
+def _budget_for(rules, feats, cap=2000000):
+    """二分找出能跑完这批规则的最小 max_calls；跑不完返回 None。"""
+    import lib_rules as R
+    if R.match_rules(rules, feats, max_calls=cap).get("errors"):
+        return None
+    lo, hi = 1, cap
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if R.match_rules(rules, feats, max_calls=mid).get("errors"):
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+
+
+def _mk_rule_objs_for_budget():
+    """用真实构造器造函数作用域规则（不走 __new__，保证测的是真实路径）。"""
+    import lib_rules as R
+    out = []
+    for i in range(5):
+        d = {
+            "rule": {
+                "meta": {"name": "budget_rule_%d" % i, "scope": "function"},
+                "features": {"or": [{"api": "nope::x%d" % j}
+                                    for j in range(30)]},
+            }
+        }
+        out.append(R.Rule(d, source="selftest"))
+    return out
 
 
 def main():
@@ -5407,6 +5479,7 @@ def main():
         ("fsx 扫描提取回环与诚实降级", t_fsx_scan_extract_honesty),
         ("replica 复刻回环与篡改检出", t_replica_roundtrip_and_tamper),
         ("提取路径安全裁决点（穿越反向用例）", t_path_traversal_gate),
+        ("规则预算按规则隔离（不误报成环）", t_rule_budget_isolation),
     ]
 
     t0 = time.time()

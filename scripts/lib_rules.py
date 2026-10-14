@@ -1019,8 +1019,12 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
     def eval_node(node, scope_key, rule: Rule) -> bool:
         counters["n"] += 1
         if counters["n"] > max_calls:
-            raise RuleError("匹配步数超过上限（%d），疑似规则成环或数据异常"
-                            % max_calls)
+            # 措辞要精确：预算耗尽与「规则成环」是完全不同的故障。
+            # 成环由下面的 ctx.stack 环检测单独报；这里只说预算。
+            raise RuleError(
+                "本条规则的匹配步数超过上限（%d）—— 预算耗尽，"
+                "该规则未跑完，结论不完整（可调大 max_calls 或减少函数范围）"
+                % max_calls)
         counters["depth"] += 1
         try:
             if counters["depth"] > _MAX_EVAL_DEPTH:
@@ -1065,25 +1069,47 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
             return True
         return eval_leaf(k, v, scope_key, rule)
 
-    def eval_leaf(kind, val, scope_key, rule: Rule) -> bool:
+    # 【性能】合并袋按 scope_key 记忆化。
+    # 原实现每求值一个叶子判据就重建一次 dict(ff) + 合并（同一行的 bag
+    # 赋值随后立刻被覆盖，纯浪费）。规模放大后这是主要开销：
+    # 2392 个函数 × 20 条规则 × 每规则若干叶子 → 十万次级重复建字典。
+    # 合并结果只依赖 (文件级特征, 该函数特征)，整个 match_rules 内不变，
+    # 所以按 scope_key 缓存是安全的。
+    _merged_cache: dict = {}
+
+    def _bag_for(scope_key):
+        """返回 (bag, ff)：file 作用域直接给文件级袋；函数作用域给合并袋（记忆化）。"""
         ff = feats.get("file") or {}
-        # file 作用域 + 任何作用域都先看文件级特征（capa 里 file 特征在
-        # function 作用域下同样可见）
         if scope_key is None:
-            bag = ff
-        else:
-            fn_bag = (feats.get("functions") or {}).get(scope_key)
-            if fn_bag is None:
-                return False
-            bag = dict(ff)
-            for kk, vv in fn_bag.items():
-                bag.setdefault(kk, set())
-            # 合并
-            merged = {}
-            for src in (ff, fn_bag):
-                for kk, vv in (src or {}).items():
-                    merged.setdefault(kk, set()).update(vv)
-            bag = merged
+            return ff, ff
+        hit = _merged_cache.get(scope_key)
+        if hit is not None:
+            # 缓存里存的已经是 (bag, ff) 二元组，直接返回；
+            # 若写成 `return hit, ff` 会变成 ((bag, ff), ff)，
+            # 调用方解包后 bag 变成元组 → 后续 .get() 全炸。
+            return hit
+        fn_bag = (feats.get("functions") or {}).get(scope_key)
+        if fn_bag is None:
+            _merged_cache[scope_key] = (None, ff)
+            return None, ff
+        merged = {}
+        for kk, vv in (ff or {}).items():
+            merged[kk] = set(vv) if isinstance(vv, set) else vv
+        for kk, vv in (fn_bag or {}).items():
+            cur = merged.get(kk)
+            if isinstance(cur, set) and isinstance(vv, set):
+                cur.update(vv)
+            else:
+                s = set(cur) if isinstance(cur, (set, list, tuple)) else set()
+                s.update(vv if isinstance(vv, (set, list, tuple)) else [vv])
+                merged[kk] = s
+        _merged_cache[scope_key] = (merged, ff)
+        return merged, ff
+
+    def eval_leaf(kind, val, scope_key, rule: Rule) -> bool:
+        bag, ff = _bag_for(scope_key)
+        if bag is None:
+            return False
 
         vals = val if isinstance(val, list) else [val]
         for one in vals:
@@ -1158,6 +1184,15 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
     _cur_rule = [None]   # 供叶子判据登记「是哪条规则」的轻量上下文
     for r in rules:
         _cur_rule[0] = getattr(r, "name", None)
+        # 【重要·修复】预算是**每条规则独立**的，不是全局共享。
+        # 原实现用全局 counters["n"]，前面的规则（大 scope、规则依赖多）
+        # 会吃光预算，导致后面的规则一条都跑不完就被截断 —— 实测
+        # kernel32.dll（2392 函数）上 20 条规则有 7 条以「步数超上限」收场，
+        # 而 errors 的措辞是「疑似规则成环」，把「预算耗尽」误报成
+        # 「规则有问题」，用户拿到的是**残缺的 capabilities 却 ok:true**。
+        # 现在每条规则重新计数：单条超预算只影响它自己，且措辞改成
+        # 「预算耗尽」而非「成环」（两者是完全不同的故障）。
+        counters["n"] = 0
         try:
             if r.scope == "file":
                 if eval_rule(r, None):
