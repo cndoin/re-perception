@@ -333,6 +333,12 @@ for dirpath, dirnames, filenames in os.walk(ROOT):
                     continue
                 # 邮箱：只在明显是个人邮箱时报
                 if kind == "邮箱地址":
+                    # rules/imported/ 里的是 capa 规则**原作者署名**，
+                    # Apache-2.0 的署名义务要求保留出处（见 NOTICE.md），
+                    # 不是隐私泄露。只豁免邮箱类别 —— API key / 私钥等
+                    # 其他类别照扫（防止翻译夹带敏感内容）。
+                    if rel.startswith("rules/imported/"):
+                        continue
                     v = m.group(0).lower()
                     if v.endswith(("@example.com", "@users.noreply.github.com",
                                     "@email.com")) or "example" in v:
