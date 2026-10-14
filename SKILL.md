@@ -406,6 +406,7 @@ capa 风格的规则库折算成"这样本能做什么"，并直接给出 ATT&CK
 | `scripts/lib_disasm.py` | 架构分派、代码区选取、IAT 与符号还原 |
 | `scripts/lib_code.py` | 函数识别、基本块/CFG、指纹比对、交叉引用 |
 | `scripts/lib_ir.py` | 轻量 IR 提升 + 控制流结构化（if/loop/switch 识别、支配树、伪代码骨架） |
+| `scripts/lib_fundeep.py` | 函数深度挖掘（单函数全维度档案、调用链递归展开、数据引用归集、相似函数） |
 | `scripts/lib_semantics.py` | 函数语义画像：API 还原、行为标签、调用链传播 |
 | `scripts/lib_libscan.py` | 库函数家族与密码学常量识别 |
 | `scripts/lib_symbols.py` | MSVC / Itanium / Rust 名字修饰解析（demangle 引擎，本项目最复杂的模块） |

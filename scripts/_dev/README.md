@@ -53,7 +53,7 @@ python _dev/_lint.py
 
 ## `_e2e.py` — 端到端功能测试
 
-把 49 个子命令在真实系统文件（`notepad.exe` / `kernel32.dll` / `null.sys`
+把 50 个子命令在真实系统文件（`notepad.exe` / `kernel32.dll` / `null.sys`
 等）上全跑一遍，校验退出码、JSON 合法性、关键字段与 `ok` 契约。与
 `selftest.py` 互补：自检偏单元与合成样本，本脚本偏真实文件的 CLI 集成。
 

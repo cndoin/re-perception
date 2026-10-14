@@ -17,7 +17,7 @@ model & verify → document.
   100 MB file takes roughly one second.
 - **Read-only analysis** — never writes to the target, never patches it, never
   generates registration codes.
-- **Ships with its own test harness** — 144 self-test cases + 76 end-to-end
+- **Ships with its own test harness** — 146 self-test cases + 76 end-to-end
   integration checks; all must pass before a commit is allowed.
 
 > ⚠️ **Authorized use only.** Only reverse-engineer targets you own or have
@@ -119,7 +119,7 @@ runs through the whole codebase: a failure must never be reported as a success.
 
 ## Commands
 
-There are **49 subcommands** in three layers: **39 analysis commands** (the
+There are **50 subcommands** in three layers: **39 analysis commands** (the
 table below, schedulable by the orchestration layer), **3 platform/contract
 commands** (`provider` `unknowns` `bundle` — cross-cutting evidence-contract
 capabilities) and **5 orchestration/state commands** (`require` `flow` `case`
@@ -153,6 +153,7 @@ capabilities) and **5 orchestration/state commands** (`require` `flow` `case`
 | `cfg` | Control-flow graph for a single function |
 | `struct` | Control-flow structuring (if / loop / switch + pseudocode skeleton) |
 | `ir` | Per-instruction lightweight IR (assign / load / store / branch semantics) |
+| `fundeep` | Function deep-dive (full dossier + call-chain expansion + similar functions) |
 | `xref` | Cross references (who calls whom) |
 | `sim` | Function-level similarity diff between two binaries |
 | `semantics` | Per-function semantic summary (which APIs it calls, what it does) |
@@ -206,10 +207,10 @@ a runnable check. Recommendations are not accepted because they sound right.
 ## Self-testing and gates
 
 ```bash
-python selftest.py                     # full self-test (144 cases, ~3 min)
+python selftest.py                     # full self-test (146 cases, ~3 min)
 python selftest.py --only 性能          # run one category only
 python _dev/_lint.py                   # static audit (syntax / swallowed exceptions / hardcoded paths)
-python _dev/_e2e.py                    # end-to-end: all 49 subcommands against real PE files
+python _dev/_e2e.py                    # end-to-end: all 50 subcommands against real PE files
 python _dev/_ossaudit.py               # open-source compliance self-audit
 ```
 
@@ -324,7 +325,7 @@ reverse-engineering/
 │   ├── frida-templates.js       # Frida hook templates (native / Android / iOS / plaintext capture / unpacking)
 │   └── notes-template.md        # analysis notes template
 └── scripts/
-    ├── re.py                    # CLI entry point (49 subcommands)
+    ├── re.py                    # CLI entry point (50 subcommands)
     ├── lib_formats.py           # magic-number library + per-format parsers
     ├── lib_analyze.py           # strings / entropy / IOCs / diffing / carving
     ├── lib_disasm.py            # disassembly dispatcher
@@ -332,6 +333,7 @@ reverse-engineering/
     ├── lib_arm.py               # ARM64 / Thumb decoder
     ├── lib_code.py              # function identification / CFG / XREF
     ├── lib_ir.py                # lightweight IR lifting + control-flow structuring
+    ├── lib_fundeep.py           # function deep-dive (dossier + call chain + similar)
     ├── lib_semantics.py         # function semantic profiling
     ├── lib_libscan.py           # library-function and crypto-constant identification
     ├── lib_symbols.py           # MSVC / Itanium / Rust demangling engine
@@ -350,7 +352,7 @@ reverse-engineering/
     ├── lib_fsx.py               # firmware signature scan, embedded extraction, deterministic replication
     ├── lib_tools.py             # toolchain probing + analysis plans
     ├── _quirk.py                # known dbghelp defects (reference doc, not a runtime module)
-    ├── selftest.py              # self-test suite (144 cases, incl. 5 installation cases)
+    ├── selftest.py              # self-test suite (146 cases, incl. 5 installation cases)
     └── _dev/                    # development scaffolding (not shipped in releases)
         └── _install.py          # cross-runtime installer (--auto detect / --verify re-check)
 ```

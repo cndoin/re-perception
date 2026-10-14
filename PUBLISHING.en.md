@@ -14,10 +14,10 @@ Confirm all of the following before publishing:
 cd scripts
 
 python re.py --version          # should print 1.8.0
-python selftest.py              # 144/144 green
+python selftest.py              # 146/146 green
 python _dev/_lint.py            # zero findings in production files
 python _dev/_undefined.py       # zero problems
-python _dev/_e2e.py             # 79/79
+python _dev/_e2e.py             # 82/82
 python _dev/_ossaudit.py        # zero items
 ```
 
@@ -174,7 +174,7 @@ Then on GitHub use **Draft a new release**:
 | Job | Platform | Purpose |
 |---|---|---|
 | `selftest` | ubuntu / windows / macos × py3.10 / py3.13 | Full self-test + lint + undefined names |
-| `e2e` | **windows-latest** | All 49 subcommands against real system binaries |
+| `e2e` | **windows-latest** | All 50 subcommands against real system binaries |
 | `no-third-party` | ubuntu | A separate gate so a pip package cannot sneak in |
 
 **Check the Actions tab after the first push.** Green locally does not imply green
@@ -200,7 +200,7 @@ permanently red; the workflow file says so in a comment).
 
    - MSVC demangling measured at 99.89% agreement across **61,248 real exported
      symbols from system DLLs**;
-   - **144 self-test cases + 76 end-to-end checks**, where every regression case
+   - **146 self-test cases + 76 end-to-end checks**, where every regression case
      was reverse-validated (withdrawing the fix must make it fail).
 
 ---

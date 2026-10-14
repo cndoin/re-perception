@@ -14,10 +14,10 @@
 cd scripts
 
 python re.py --version          # 应输出 1.8.0
-python selftest.py              # 144/144 全绿
+python selftest.py              # 146/146 全绿
 python _dev/_lint.py            # 生产 0 处告警
 python _dev/_undefined.py       # 0 处问题
-python _dev/_e2e.py             # 79/79
+python _dev/_e2e.py             # 82/82
 python _dev/_ossaudit.py        # 0 项
 ```
 
@@ -171,7 +171,7 @@ git push origin v1.8.0
 | Job | 平台 | 作用 |
 |---|---|---|
 | `selftest` | ubuntu / windows / macos × py3.10 / py3.13 | 全量自检 + lint + 未定义名 |
-| `e2e` | **windows-latest** | 49 个子命令跑真实系统二进制 |
+| `e2e` | **windows-latest** | 50 个子命令跑真实系统二进制 |
 | `no-third-party` | ubuntu | 独立一道门，防止混进 pip 包 |
 
 **首次推送后务必去 Actions 页看结果。** 本地绿不等于 CI 绿 —— 本项目的
@@ -194,7 +194,7 @@ git push origin v1.8.0
    建议放在 README 显眼处：
 
    - MSVC demangle 在 **61,248 条真实系统 DLL 导出符号**上实测 99.89% 一致；
-   - **144 个自检用例 + 76 项端到端**，且每个回归用例都做了「撤回修复必须
+   - **146 个自检用例 + 76 项端到端**，且每个回归用例都做了「撤回修复必须
      变红」的反向验证。
 
 ---

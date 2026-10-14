@@ -23,7 +23,7 @@
 # 拿到仓库后进 scripts/ 目录即可，无需安装任何东西
 cd reverse-engineering/scripts
 
-# 全量自检（约 3 分钟，144 个用例）
+# 全量自检（约 3 分钟，146 个用例）
 python selftest.py
 
 # 只跑名字含关键字的用例
@@ -32,7 +32,7 @@ python selftest.py --only 符号
 # 静态体检（语法/静默吞异常/可变默认参数/硬编码路径等）
 python _dev/_lint.py
 
-# 端到端：把 49 个子命令在真实系统 PE 上全跑一遍
+# 端到端：把 50 个子命令在真实系统 PE 上全跑一遍
 # ⚠️ 仅 Windows：样本取自 System32（notepad.exe / kernel32.dll / ntdll.dll /
 #    null.sys）。Linux / macOS 上没有这些文件，脚本会**失败退出**（不是跳过）——
 #   这是刻意的，不用合成样本凑数。CI 里该 job 也跑在 windows-latest。
@@ -45,7 +45,7 @@ python _dev/_e2e.py
 
 ```
 scripts/
-  re.py              CLI 唯一入口（49 个子命令：39 分析 + 3 平台/契约 + 5 编排）
+  re.py              CLI 唯一入口（50 个子命令：39 分析 + 3 平台/契约 + 5 编排）
   lib_*.py           按职责拆分的分析库
   _quirk.py          dbghelp 已知缺陷清单（**参考文档**，须随发布分发）
   selftest.py        自检用例集
