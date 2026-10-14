@@ -98,7 +98,7 @@ import lib_netio as NET          # noqa: E402
 import lib_fsx as FX             # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.6.0"
+VERSION = "1.7.0"
 
 
 # ---------------------------------------------------------------- 输出
@@ -1218,6 +1218,11 @@ def cmd_capability(args):
         loc = h.get("location")
         if loc and loc not in m["locations"]:
             m["locations"].append(loc)
+        elif not loc and str(h.get("scope") or "") == "file":
+            # 文件级规则的证据就是整个文件。空位置 = 无法复核，
+            # 统一标注 "file" 让「每条命中都有位置证据」契约成立。
+            if "file" not in m["locations"]:
+                m["locations"].append("file")
     rows = sorted(merged.values(),
                   key=lambda x: (x.get("namespace") or "", x["rule"]))
 
@@ -1237,6 +1242,9 @@ def cmd_capability(args):
                          for k, v in sorted(matched["by_namespace"].items())},
         "att_ck": matched["att_ck"],
         "capabilities": rows,
+        # 辅助规则（lib 构件）经 match: 引用的命中登记：不是能力结论，
+        # 但保留证据链供复核（contain loop 之类「积木」的使用位置）。
+        "aux_rules": matched.get("aux_hits") or [],
         "feature_stats": {
             "api": sum(len(f["api"]) for f in feats["functions"].values()),
             "mnemonic": sum(len(f["mnemonic"]) for f in feats["functions"].values()),
