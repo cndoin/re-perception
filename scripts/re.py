@@ -44,6 +44,7 @@ re.py —— 逆向工程工具箱 CLI（Reverse Engineering Toolkit）
   evm       EVM 字节码 dispatch selector
   demangle  符号还原（C++/Rust/Swift）
   apk       Android APK 逆向（manifest/权限/组件/签名/DEX/原生库）
+  dexmap    DEX 方法级接口地图（api_surface/JNI 映射/组件入口/URL）
   ipa       iOS IPA 逆向（Info.plist/Bundle/框架/provisioning）
   iso       ISO9660 光盘镜像清单与提取（含 Joliet）
   endpoints 应用内接口（API 路径/IPC/Intent/COM/gRPC/SOAP）
@@ -93,12 +94,13 @@ import lib_contracts as CT       # noqa: E402
 import lib_bundle as BL          # noqa: E402
 import lib_inspect as IP         # noqa: E402
 import lib_apk as AK             # noqa: E402
+import lib_dexmap as DM          # noqa: E402
 import lib_iso as ISOX           # noqa: E402
 import lib_netio as NET          # noqa: E402
 import lib_fsx as FX             # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.7.0"
+VERSION = "1.8.0"
 
 
 # ---------------------------------------------------------------- 输出
@@ -2390,6 +2392,15 @@ def cmd_apk(args):
                         max_entries=args.max_entries)
 
 
+def cmd_dexmap(args):
+    return _inspect_cmd(DM.map_dex, args.target, args.json,
+                        max_classes=args.max_classes,
+                        max_methods=args.max_methods,
+                        max_insns=args.max_insns,
+                        class_filter=args.klass,
+                        surface_only=args.surface_only)
+
+
 def cmd_ipa(args):
     return _inspect_cmd(AK.inspect_ipa, args.target, args.json,
                         max_entries=args.max_entries)
@@ -2726,6 +2737,15 @@ def build_parser() -> argparse.ArgumentParser:
     s = add("apk", "Android APK 逆向（manifest/权限/组件/签名/DEX/原生库）", cmd_apk)
     s.add_argument("target")
     s.add_argument("--max-entries", type=int, default=200)
+    s = add("dexmap", "DEX 方法级接口地图（api_surface/JNI 映射/组件入口/URL）",
+            cmd_dexmap)
+    s.add_argument("target", help=".apk（合并多 DEX）或裸 .dex")
+    s.add_argument("--max-classes", type=int, default=200)
+    s.add_argument("--max-methods", type=int, default=40)
+    s.add_argument("--max-insns", type=int, default=2_000_000)
+    s.add_argument("--class", dest="klass", help="只看类名含该子串的类")
+    s.add_argument("--surface-only", action="store_true",
+                   help="只出 api_surface 汇总面（不出逐类明细）")
     s = add("ipa", "iOS IPA 逆向（Info.plist/Bundle/框架/provisioning）", cmd_ipa)
     s.add_argument("target")
     s.add_argument("--max-entries", type=int, default=200)

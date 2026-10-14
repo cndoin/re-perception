@@ -21,7 +21,7 @@ lib_agent.py —— AI 调用协议层（工具选路、工作流编排、状态
     一阶条件熵 2.52 bit、二阶 1.93 bit，都远低于 0 阶的 3.50 bit。
     据此建 Tool Inertia Graph 可减少最多 30% 的推理开销。
 
-  对我们来说这三条的含义是明确的：**不该让 AI 每次都在 21 个工具里瞎选**。
+  对我们来说这三条的含义是明确的：**不该让 AI 每次都在几十个工具里瞎选**。
   所以我们把选路这件事**下沉成确定性代码**：
 
     require  —— 意图 → Top-K 子命令（对标 x_amz_bedrock_agentcore_search / discover_tool）
@@ -737,6 +737,27 @@ CATALOG: list[dict] = [
         "risky": False,
     },
     {
+        "name": "dexmap",
+        'summary': 'DEX 方法级接口地图（api_surface/JNI 映射/组件入口/URL）',
+        "answers": [
+            '这个 apk 调用了什么接口', '调用了哪些 api', 'dex 方法级分析',
+            '谁调用了谁', 'jni 映射', 'native 方法对不上', 'Java_ 符号',
+            '组件入口', '生命周期方法', '代码里的 url',
+        ],
+        'keywords': ['dexmap', 'dex', 'api_surface', '调用面', '接口地图',
+                     'invoke', 'dalvik', 'jni', 'native', 'Java_', '生命周期',
+                     'lifecycle', 'method', '方法级'],
+        "args": ["<目标>"],
+        "flags": ["--max-classes", "--max-methods", "--max-insns",
+                  "--class", "--surface-only"],
+        "needs": ["path"],
+        "produces": ["api_surface", "classes", "jni", "entry_points", "urls"],
+        "cost": "medium",
+        "stage": "understand",
+        "formats": ["apk", "dex"],
+        "risky": False,
+    },
+    {
         "name": "ipa",
         'summary': 'iOS IPA 逆向（Info.plist/Bundle 标识/框架/provisioning）',
         "answers": [
@@ -982,7 +1003,7 @@ assert len(CATALOG_BY_NAME) == len(CATALOG), (
 # ================================================================
 #
 # 没有嵌入模型可用（零依赖），所以用"加权词表命中"做检索。
-# 这不是退而求其次 —— 对 21 个工具的规模，确定性规则比向量检索更可控、
+# 这不是退而求其次 —— 对本项目几十个工具的规模，确定性规则比向量检索更可控、
 # 可解释、零冷启动（AutoTool 论文自己承认冷启动是图方法的弱点）。
 #
 # 打分维度（权重是排过序的，改之前先看 selftest 的检索精度用例）：
@@ -1287,7 +1308,7 @@ def recommend(intent: str, fmt: str | None = None, top_k: int = 6,
 
     【为什么 Top-K 默认是 6】研究给出的可行区间是 5–10：
     低于 5 容易漏，高于 10 就开始出现'列表中部工具选不中'的问题。
-    6 是我们 21 个工具的约 1/3，既能覆盖常见组合又不至于让 AI 分心。
+    6 在该区间内取小端：既能覆盖常见组合又不至于让 AI 分心。
 
     【为什么 min_score 是 1.0 而不是 0】宁可返回空列表也不要返回
     '勉强相关'的结果 —— 后者会让 AI 以为检索成功、然后在无关命令上浪费调用。
@@ -2310,7 +2331,7 @@ def case_journal(case_dir: str, limit: int = 200) -> dict:
 # 我们把这个 orchestrator 做成确定性的：AI 不必自己规划调用顺序，
 # 只要跑 `flow` 拿到"现在该跑什么"，跑完再问一次。
 #
-# 【为什么用 DAG 而不是线性清单】21 个工具里有大量互不依赖的操作
+# 【为什么用 DAG 而不是线性清单】工具表里有大量互不依赖的操作
 # （strings / entropy / imports / symbols 之间没有先后依赖）。
 # 顺序执行会让总耗时等于各步之和；标出来让 AI 并行跑，
 # 总耗时等于最慢那一个。研究里的例子：5 个 200ms 的调用，
