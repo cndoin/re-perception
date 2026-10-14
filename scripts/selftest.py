@@ -2437,7 +2437,7 @@ def t_obfstr_cli_contract():
 # 判错误 四件事从模型脑子里挪进确定性代码。
 # 下面这些用例守的就是"挪进去之后不能退化成猜"。
 
-# 19 条真实口吻的意图 → 期望命令。中文口语，故意含泛词（"这个""里面"）。
+# 25 条真实口吻的意图 → 期望命令。中文口语，故意含泛词（"这个""里面"）。
 _RETRIEVAL_GOLD = [
     ("这文件是不是加壳了", "entropy"),
     ("这程序是干什么的", "capability"),
@@ -2460,6 +2460,10 @@ _RETRIEVAL_GOLD = [
     ("静态体检一下", "triage"),
     ("dex 方法级调用面", "dexmap"),
     ("native 方法和 so 对一下", "dexmap"),
+    ("这函数哪里是循环哪里是分支", "struct"),
+    ("把逻辑结构化成伪代码", "struct"),
+    ("指令转成中间表示", "ir"),
+    ("反编译看逻辑", "ir"),
 ]
 
 
@@ -5948,6 +5952,346 @@ def t_dexmap_cli_contract():
     return True, "ok 契约 + --surface-only 透传 + 垃圾退出码 3"
 
 
+# ---------------------------------------------------------------- IR / 结构化
+
+class _Asm:
+    """x86-64 微型汇编器（仅测试用）：rel8 回填，构造已知答案机器码。"""
+
+    def __init__(self):
+        self.buf = bytearray()
+        self.labels = {}
+        self.fixups = []
+
+    def emit(self, b):
+        self.buf += bytes(b)
+
+    def label(self, name):
+        self.labels[name] = len(self.buf)
+
+    def jcc(self, op, lab):
+        self.buf += bytes([op, 0])
+        self.fixups.append((len(self.buf) - 1, lab))
+
+    def jmp(self, lab):
+        self.buf += bytes([0xEB, 0])
+        self.fixups.append((len(self.buf) - 1, lab))
+
+    def link(self):
+        for off, lab in self.fixups:
+            rel = self.labels[lab] - (off + 1)
+            if not -128 <= rel <= 127:
+                raise AssertionError("rel8 越界: %d" % rel)
+            self.buf[off] = rel & 0xFF
+        return bytes(self.buf)
+
+
+def _ir_struct_of(code: bytes, base=0x1000):
+    from lib_code import CodeIndex
+    from lib_ir import structure_function
+    idx = CodeIndex(code, base_vma=base, bits=64, arch="x86-64")
+    offs = idx.linear_scan()
+    return idx, structure_function(idx, offs, name="f", with_ir=True)
+
+
+def t_ir_structure_known_answers():
+    """
+    结构识别已知答案闸门：if / do-while / while / self-loop / switch
+    逐一对照手工构造的机器码，另含反向样本（直线代码不许报任何结构）。
+    """
+    bad = []
+
+    def want(name, cond, detail):
+        if not cond:
+            bad.append("%s(%s)" % (name, detail))
+
+    # if-then-else
+    a = _Asm()
+    a.emit(b"\x85\xff")                # test edi, edi
+    a.jcc(0x74, "e")                   # jz else
+    a.emit(b"\xb8\x01\x00\x00\x00")    # mov eax, 1
+    a.jmp("j")
+    a.label("e")
+    a.emit(b"\xb8\x02\x00\x00\x00")    # mov eax, 2
+    a.label("j")
+    a.emit(b"\xc3")                    # ret
+    st = _ir_struct_of(a.link())[1]
+    want("if 数量", len(st["conditionals"]) == 1, str(len(st["conditionals"])))
+    if st["conditionals"]:
+        want("if 种类", st["conditionals"][0]["kind"] == "if-then-else",
+             st["conditionals"][0]["kind"])
+        want("if 条件", "==" in (st["conditionals"][0]["cond"] or {}).get("text", ""),
+             str(st["conditionals"][0]["cond"]))
+    want("if 无循环", not st["loops"], str(st["loops"]))
+    want("if 无 switch", not st["switches"], str(st["switches"]))
+    want("if 圈复杂度", st["cyclomatic"] == 2, str(st["cyclomatic"]))
+
+    # 单块 do-while：dec ecx; jnz top（tail==header 但是条件回边）
+    a = _Asm()
+    a.emit(b"\xb9\x0a\x00\x00\x00")    # mov ecx, 10
+    a.label("t")
+    a.emit(b"\xff\xc9")                # dec ecx
+    a.jcc(0x75, "t")                   # jnz t
+    a.emit(b"\xc3")
+    st = _ir_struct_of(a.link())[1]
+    want("单块循环数量", len(st["loops"]) == 1, str(len(st["loops"])))
+    if st["loops"]:
+        want("单块循环=do-while（不是 self-loop）",
+             st["loops"][0]["type"] == "do-while", st["loops"][0]["type"])
+
+    # 多块 do-while：body 块（sub+jmp）与条件块（test+jnz）分开
+    a = _Asm()
+    a.emit(b"\xb9\x0a\x00\x00\x00")    # mov ecx, 10
+    a.label("b")
+    a.emit(b"\x83\xe9\x01")            # sub ecx, 1
+    a.jmp("ck")
+    a.label("ck")
+    a.emit(b"\x85\xc9")                # test ecx, ecx
+    a.jcc(0x75, "b")                   # jnz b
+    a.emit(b"\xc3")
+    st = _ir_struct_of(a.link())[1]
+    want("多块循环数量", len(st["loops"]) == 1, str(len(st["loops"])))
+    if st["loops"]:
+        want("多块循环=do-while", st["loops"][0]["type"] == "do-while",
+             st["loops"][0]["type"])
+
+    # while：header 条件 + 无条件回跳
+    a = _Asm()
+    a.emit(b"\xb9\x0a\x00\x00\x00")    # mov ecx, 10
+    a.label("t")
+    a.emit(b"\x85\xc9")                # test ecx, ecx
+    a.jcc(0x74, "d")                   # jz done
+    a.emit(b"\xff\xc9")                # dec ecx
+    a.jmp("t")
+    a.label("d")
+    a.emit(b"\xc3")
+    st = _ir_struct_of(a.link())[1]
+    want("while 数量", len(st["loops"]) == 1, str(len(st["loops"])))
+    if st["loops"]:
+        want("while 类型", st["loops"][0]["type"] == "while",
+             st["loops"][0]["type"])
+
+    # self-loop：jmp $
+    a = _Asm()
+    a.label("s")
+    a.jmp("s")
+    a.emit(b"\xc3")
+    st = _ir_struct_of(a.link())[1]
+    want("自旋数量", len(st["loops"]) == 1, str(len(st["loops"])))
+    if st["loops"]:
+        want("自旋=self-loop", st["loops"][0]["type"] == "self-loop",
+             st["loops"][0]["type"])
+
+    # switch：同寄存器比较链 3 case + default
+    a = _Asm()
+    a.emit(b"\x89\xf8")                # mov eax, edi
+    a.emit(b"\x83\xf8\x01")            # cmp eax, 1
+    a.jcc(0x74, "c1")
+    a.emit(b"\x83\xf8\x02")            # cmp eax, 2
+    a.jcc(0x74, "c2")
+    a.emit(b"\x83\xf8\x03")            # cmp eax, 3
+    a.jcc(0x74, "c3")
+    a.jmp("df")
+    for lab, imm in (("c1", 10), ("c2", 20), ("c3", 30)):
+        a.label(lab)
+        a.emit(b"\xb8" + bytes([imm, 0, 0, 0]))
+        a.emit(b"\xc3")
+    a.label("df")
+    a.emit(b"\x31\xc0")                # xor eax, eax
+    a.emit(b"\xc3")
+    st = _ir_struct_of(a.link())[1]
+    want("switch 数量", len(st["switches"]) == 1,
+         str([(s["kind"], s.get("case_count")) for s in st["switches"]]))
+    if st["switches"]:
+        s = st["switches"][0]
+        want("switch 种类", s["kind"] == "compare-chain", s["kind"])
+        want("switch 路数", s.get("case_count") == 3, str(s.get("case_count")))
+        want("switch 寄存器", s.get("reg") == "eax", str(s.get("reg")))
+        want("switch default", bool(s.get("default")), str(s.get("default")))
+    want("比较链节点不再报 if", not st["conditionals"],
+         str([(c["kind"], c["at"]) for c in st["conditionals"]]))
+
+    # 反向：直线代码不许报任何结构
+    a = _Asm()
+    a.emit(b"\x89\xf8")                # mov eax, edi
+    a.emit(b"\x83\xc0\x01")            # add eax, 1
+    a.emit(b"\x0f\xaf\xc0")            # imul eax, eax
+    a.emit(b"\xc3")
+    st = _ir_struct_of(a.link())[1]
+    want("直线无循环", not st["loops"], str(st["loops"]))
+    want("直线无分支", not st["conditionals"], str(st["conditionals"]))
+    want("直线无 switch", not st["switches"], str(st["switches"]))
+    want("直线圈复杂度=1", st["cyclomatic"] == 1, str(st["cyclomatic"]))
+
+    # 预算截断如实标注：max_blocks=2 喂 5+ 块的 switch 函数
+    a = _Asm()
+    a.emit(b"\x89\xf8")
+    a.emit(b"\x83\xf8\x01")
+    a.jcc(0x74, "c1")
+    a.emit(b"\x83\xf8\x02")
+    a.jcc(0x74, "c2")
+    a.emit(b"\x83\xf8\x03")
+    a.jcc(0x74, "c3")
+    a.jmp("df")
+    for lab, imm in (("c1", 10), ("c2", 20), ("c3", 30)):
+        a.label(lab)
+        a.emit(b"\xb8" + bytes([imm, 0, 0, 0]))
+        a.emit(b"\xc3")
+    a.label("df")
+    a.emit(b"\x31\xc0")
+    a.emit(b"\xc3")
+    from lib_code import CodeIndex
+    from lib_ir import structure_function
+    idx = CodeIndex(a.link(), base_vma=0x1000, bits=64, arch="x86-64")
+    st = structure_function(idx, idx.linear_scan(), name="f", max_blocks=2)
+    want("块预算截断标 partial", st.get("partial") is True, str(st.get("partial")))
+    want("块预算截断有说明", bool(st.get("notes")), str(st.get("notes")))
+
+    if bad:
+        return False, "未过项：" + "；".join(bad)
+    return True, "if/do-while/while/self-loop/switch/直线反向/预算截断 全部符合已知答案"
+
+
+def t_ir_lift_semantics():
+    """lift_insn 语义归类：assign/load/store/cmp/branch/cond/ret + 垃圾不崩。"""
+    from lib_x86 import Insn, K_CALL, K_CJMP, K_JMP, K_RET, K_OTHER
+    from lib_ir import lift_insn
+    bad = []
+
+    def want(name, cond, detail):
+        if not cond:
+            bad.append("%s(%s)" % (name, detail))
+
+    def mk(mnem, ops="", kind=K_OTHER, imm=None):
+        i = Insn()
+        i.mnem, i.ops, i.kind, i.imm = mnem, ops, kind, imm
+        i.vma = 0x1000
+        return i
+
+    s = lift_insn(mk("mov", "eax, edi"))
+    want("mov=assign", s["op"] == "assign", s["op"])
+    want("mov dst", s["dst"] == "eax", str(s["dst"]))
+    want("mov srcs", s["srcs"] == ["edi"], str(s["srcs"]))
+    s = lift_insn(mk("mov", "eax, qword ptr [rbx]"))
+    want("读内存=load", s["op"] == "load", s["op"])
+    s = lift_insn(mk("mov", "qword ptr [rbx], eax"))
+    want("写内存=store", s["op"] == "store", s["op"])
+    s = lift_insn(mk("add", "eax, 1"))
+    want("add=binop", s["op"] == "binop", s["op"])
+    s = lift_insn(mk("cmp", "eax, 5"))
+    want("cmp=cmp", s["op"] == "cmp", s["op"])
+    s = lift_insn(mk("push", "rax"))
+    want("push=stack", s["op"] == "stack", s["op"])
+    s = lift_insn(mk("call", "0x401000", kind=K_CALL))
+    want("call=call", s["op"] == "call", s["op"])
+    s = lift_insn(mk("jz", "0x401000", kind=K_CJMP))
+    want("jcc=cond", s["op"] == "cond", s["op"])
+    s = lift_insn(mk("jmp", "0x401000", kind=K_JMP))
+    want("jmp=branch", s["op"] == "branch", s["op"])
+    s = lift_insn(mk("ret", "", kind=K_RET))
+    want("ret=ret", s["op"] == "ret", s["op"])
+    # 复杂形态如实标 approx：ARM 寄存器对（三操作数）/ 括号内逗号
+    s = lift_insn(mk("ldp", "x0, x1, [sp, #16]"))
+    want("寄存器对=load", s["op"] == "load", s["op"])
+    want("寄存器对形态标 approx", s.get("approx") is True, str(s.get("approx")))
+    s = lift_insn(mk("ldr", "x0, [sp, #-16]!"))
+    want("括号内逗号标 approx", s.get("approx") is True, str(s.get("approx")))
+    # 垃圾：空助记符/怪操作数一律不崩
+    s = lift_insn(mk("", "qword ptr [rsp+8], rax, rbx"))
+    want("垃圾不崩", isinstance(s, dict) and s.get("op"), str(s))
+    s = lift_insn(Insn())
+    want("空 Insn 不崩", isinstance(s, dict) and s.get("op") == "other", str(s))
+    if bad:
+        return False, "未过项：" + "；".join(bad)
+    return True, "语义归类 + 垃圾输入如实降级"
+
+
+def t_ir_arm_dispatch_and_failclosed():
+    """
+    架构分发闸门：ARM64 机器码必须走 ARM 解码器（不能被当 x86 解），
+    不支持的架构必须 fail-closed 抛 UnsupportedArch。
+    """
+    import struct as _st
+    from lib_code import CodeIndex
+    from lib_ir import structure_function
+    bad = []
+
+    def want(name, cond, detail):
+        if not cond:
+            bad.append("%s(%s)" % (name, detail))
+
+    def a64(x):
+        return _st.pack("<I", x)
+
+    # movz w0,#0 / add w0,w0,#1 / cmp w0,#10 / b.ne -8 / ret
+    arm = (a64(0x52800000) + a64(0x11000400) + a64(0x7100281F)
+           + a64(0x54000000 | ((((-8) >> 2) & 0x7FFFF) << 5) | 1)
+           + a64(0xD65F03C0))
+    idx = CodeIndex(arm, base_vma=0x2000, bits=64, arch="arm64")
+    offs = idx.linear_scan()
+    want("ARM64 解码 5 条", len(offs) == 5,
+         str([idx.insn[o].mnem for o in offs]))
+    st = structure_function(idx, offs, name="g")
+    want("ARM64 循环数量", len(st["loops"]) == 1, str(st["loops"]))
+    if st["loops"]:
+        want("ARM64 循环类型", st["loops"][0]["type"] == "do-while",
+             st["loops"][0]["type"])
+        want("ARM64 条件推导（# 归一）",
+             (st["loops"][0]["cond"] or {}).get("text") == "w0 != 10",
+             str(st["loops"][0]["cond"]))
+    # fail-closed：不支持的架构绝不拿 x86 解码器兜底
+    try:
+        CodeIndex(b"\x00", base_vma=0, bits=64, arch="mips")
+        want("mips 必须抛 UnsupportedArch", False, "没抛")
+    except Exception as e:
+        want("mips 必须抛 UnsupportedArch",
+             type(e).__name__ == "UnsupportedArch", type(e).__name__)
+    if bad:
+        return False, "未过项：" + "；".join(bad)
+    return True, "ARM64 走 ARM 解码器 + 不支持架构 fail-closed"
+
+
+def t_ir_cli_contract():
+    """struct/ir CLI：--json ok 契约 + 预算诚实 + 垃圾目标退出码 3。"""
+    a = _Asm()
+    a.emit(b"\x85\xff")                # test edi, edi
+    a.jcc(0x74, "e")
+    a.emit(b"\xb8\x01\x00\x00\x00")
+    a.jmp("j")
+    a.label("e")
+    a.emit(b"\xb8\x02\x00\x00\x00")
+    a.label("j")
+    a.emit(b"\xc3")
+    p = w("ir_struct.bin", a.link())
+    code, d, raw = jrun([CLI, "struct", str(p)])
+    if not isinstance(d, dict) or not d.get("ok"):
+        return False, "struct --json 无 ok:true (exit=%s) %s" % (code, raw)
+    if "Traceback" in raw:
+        return False, "struct 漏出 Traceback"
+    fns = d.get("functions") or []
+    if not fns:
+        return False, "struct 没有函数输出"
+    c0 = fns[0].get("conditionals") or []
+    if not c0 or c0[0].get("kind") != "if-then-else":
+        return False, "struct 端到端结构不对: %s" % (c0,)
+    # ir 子命令：必须带 IR 明细
+    code2, d2, raw2 = jrun([CLI, "ir", str(p)])
+    if not (isinstance(d2, dict) and d2.get("ok")):
+        return False, "ir --json 无 ok:true (exit=%s) %s" % (code2, raw2)
+    ir0 = (d2.get("functions") or [{}])[0].get("ir") or []
+    if not ir0 or "op" not in ir0[0]:
+        return False, "ir 没有 IR 明细: %s" % raw2
+    # 预算诚实：指令预算给死 → partial + truncated_note
+    code3, d3, raw3 = jrun([CLI, "struct", str(p), "--max-insns", "2"])
+    if not (isinstance(d3, dict) and d3.get("ok") and d3.get("partial")
+            and d3.get("truncated_note")):
+        return False, "预算截断不诚实: %s" % raw3
+    # 反向：垃圾/不存在目标退出码 3，不是 0
+    code4, d4, raw4 = jrun([CLI, "struct", str(TMP / "no_such_target.bin")])
+    if code4 != 3 or (d4 and d4.get("ok")):
+        return False, "不存在目标退出码不对: exit=%s %s" % (code4, raw4)
+    return True, "ok 契约 + IR 明细 + 预算诚实 + 垃圾退出码 3"
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -6100,6 +6444,10 @@ def main():
         ("PE 导出 ordinal 表语义（rva 命中率）", t_pe_export_ordinal_table_semantics),
         ("capa 正则字符串与计数算子契约", t_rule_regex_string_and_count_operator),
         ("capa 翻译规则库完整性（无悬空引用）", t_imported_ruleset_integrity),
+        ("IR：结构识别已知答案+反向+预算", t_ir_structure_known_answers),
+        ("IR：lift_insn 语义归类与垃圾降级", t_ir_lift_semantics),
+        ("IR：ARM 解码分发 + 架构 fail-closed", t_ir_arm_dispatch_and_failclosed),
+        ("IR：struct/ir CLI 契约与预算诚实", t_ir_cli_contract),
     ]
 
     t0 = time.time()

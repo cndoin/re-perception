@@ -299,6 +299,42 @@ def main():
         FAIL.append(("cfg", "funcs 返回 %d 个函数但都取不到地址，样例=%s"
                      % (len(fns or []), (fns or [{}])[0])))
 
+    # ---------- struct / ir（IR + 控制流结构化） ----------
+    def _struct_ok(o, p):
+        if not isinstance(o, dict):
+            return "顶层不是对象"
+        fns2 = o.get("functions")
+        if not isinstance(fns2, list) or not fns2:
+            return "没有 functions 输出"
+        for k in ("loops", "conditionals", "switches", "structure",
+                  "cyclomatic"):
+            if k not in fns2[0]:
+                return "函数输出缺字段 %s" % k
+        return None
+
+    case("struct", ["struct", exe, "--json", "--max-functions", "2"],
+         check=_struct_ok, timeout=300)
+    if starts:
+        s0s = ("0x%x" % starts[0]) if isinstance(starts[0], int) else str(starts[0])
+        case("struct(--addr)", ["struct", exe, "--addr", s0s, "--json"],
+             check=_struct_ok, timeout=300)
+
+    def _ir_ok(o, p):
+        msg = _struct_ok(o, p)
+        if msg:
+            return msg
+        for f in o.get("functions", []):
+            ir = f.get("ir")
+            if not isinstance(ir, list) or not ir:
+                return "ir 子命令没有 IR 明细"
+            if "op" not in ir[0]:
+                return "IR 条目缺 op 字段"
+            break
+        return None
+
+    case("ir", ["ir", exe, "--json", "--max-functions", "1"],
+         check=_ir_ok, timeout=300)
+
     # ---------- xref ----------
     case("xref(Top 引用者)", ["xref", exe, "--json"], timeout=300)
     if starts:
