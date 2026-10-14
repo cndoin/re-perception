@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""端到端功能测试：把 38 个子命令全部在真实样本上跑一遍。
+"""端到端功能测试：把全部子命令在真实样本上跑一遍。
 
 判定标准（不是"跑完就算过"）：
   * 退出码必须属于该命令的合法集合
@@ -559,9 +559,93 @@ def main():
     with open(os.path.join(tree, "sub", "f.bin"), "wb") as f:
         f.write(b"\x01\x02")
 
+    def _uleb(v):
+        out = bytearray()
+        while True:
+            b = v & 0x7F
+            v >>= 7
+            if v:
+                out.append(b | 0x80)
+            else:
+                out.append(b)
+                return bytes(out)
+
+    def _dex_full():
+        """全表 DEX（class_data + code_item + invoke）—— stub DEX 进不了方法级。"""
+        strs = ["Lcom/example/t;", "V", "init", "Landroid/util/Log;", "d",
+                "Ljava/lang/String;", "I", "https://api.example.com/x",
+                "Ldemo/Api;", "call", "IL", "helper"]
+        T_MAIN, T_VOID, T_LOG, T_STR, T_INT, T_API = range(6)
+        types = [0, 1, 3, 5, 6, 8]
+        protos = [(1, T_VOID, 0), (10, T_INT, [T_STR, T_STR])]
+        methods = [(T_MAIN, 0, 2), (T_LOG, 1, 4), (T_API, 0, 9), (T_MAIN, 0, 11)]
+
+        def sitem(s):
+            return _uleb(len(s)) + s.encode("utf-8") + b"\x00"
+
+        hdr = 0x70
+        sio, tio = hdr, hdr + 4 * len(strs)
+        pio, mio = tio + 4 * len(types), tio + 4 * len(types) + 12 * len(protos)
+        cio = mio + 8 * len(methods)
+        cur = cio + 32
+        tlo = cur
+        tl = _st.pack("<I", 2) + _st.pack("<HH", T_STR, T_STR)
+        cur += len(tl)
+        insns = [0x001A, 0x0007, 0x2071, 0x0001, 0x0000,
+                 0x0071, 0x0002, 0x0000, 0x000E]
+        codeo = cur
+        code = (_st.pack("<HHHH", 3, 1, 2, 0) + _st.pack("<II", 0, len(insns)) +
+                b"".join(_st.pack("<H", u) for u in insns))
+        cur += len(code)
+        cdo = cur
+        cd = (_uleb(0) + _uleb(0) + _uleb(2) + _uleb(0) +
+              _uleb(0) + _uleb(0x10001) + _uleb(codeo) +
+              _uleb(3) + _uleb(0x2) + _uleb(0))
+        cur += len(cd)
+        sd = b"".join(sitem(s) for s in strs)
+        fs = cur + len(sd)
+        out = bytearray(fs)
+        out[0:8] = b"dex\n035\x00"
+        for off, val in ((32, fs), (36, 0x70), (40, 0x12345678),
+                         (56, len(strs)), (60, sio), (64, len(types)), (68, tio),
+                         (72, len(protos)), (76, pio), (80, 0), (84, mio),
+                         (88, len(methods)), (92, mio), (96, 1), (100, cio),
+                         (104, fs - hdr), (108, hdr)):
+            _st.pack_into("<I", out, off, val)
+
+        def put(o, blob):
+            out[o:o + len(blob)] = blob
+
+        o = cur
+        for i, s in enumerate(strs):
+            put(sio + 4 * i, _st.pack("<I", o))
+            o += len(sitem(s))
+        for i, t in enumerate(types):
+            put(tio + 4 * i, _st.pack("<I", t))
+        for i, (sh, ret, par) in enumerate(protos):
+            put(pio + 12 * i,
+                _st.pack("<III", sh, ret, tlo if par else 0))
+        for i, (c, p_, n) in enumerate(methods):
+            put(mio + 8 * i, _st.pack("<HHI", c, p_, n))
+        put(cio, _st.pack("<IIIIIIII", T_MAIN, 0x1, 0xFFFFFFFF, 0,
+                          0xFFFFFFFF, 0, cdo, 0))
+        put(tlo, tl)
+        put(codeo, code)
+        put(cdo, cd)
+        put(cur, sd)
+        return bytes(out)
+
+    dex_full_f = os.path.join(RPT, "e2e_full.dex")
+    with open(dex_full_f, "wb") as f:
+        f.write(_dex_full())
+
     case("apk(APK 逆向)", ["apk", apk_f, "--json"],
          check=lambda o, p: need(o, "ok", "manifest", "dex") or
          (None if o["manifest"].get("package") == "com.e2e.t" else "包名不对"))
+    case("dexmap(DEX 方法级接口地图)", ["dexmap", dex_full_f, "--json"],
+         check=lambda o, p: need(o, "ok", "api_surface", "totals", "jni") or
+         (None if any("Log;->d" in m["ref"] for e in o["api_surface"]
+                      for m in e["methods"]) else "api_surface 漏报外部调用"))
     case("ipa(IPA 逆向)", ["ipa", ipa_f, "--json"],
          check=lambda o, p: need(o, "ok", "info_plist") or
          (None if o["info_plist"].get("bundle_id") == "com.e2e.t" else "bundle 不对"))

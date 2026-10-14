@@ -2458,6 +2458,8 @@ _RETRIEVAL_GOLD = [
     ("文件被加了什么壳", "entropy"),
     ("符号表看看", "symbols"),
     ("静态体检一下", "triage"),
+    ("dex 方法级调用面", "dexmap"),
+    ("native 方法和 so 对一下", "dexmap"),
 ]
 
 
@@ -5706,6 +5708,246 @@ def t_imported_ruleset_integrity():
                   % (len(rules), dt))
 
 
+# ---------------------------------------------------------------- DEX 方法级接口地图
+
+
+def _uleb(v: int) -> bytes:
+    out = bytearray()
+    while True:
+        b = v & 0x7F
+        v >>= 7
+        if v:
+            out.append(b | 0x80)
+        else:
+            out.append(b)
+            return bytes(out)
+
+
+def _dex_str_item(s: str) -> bytes:
+    raw = s.encode("utf-8")   # 夹具串全 ASCII，MUTF-8 与 UTF-8 等价
+    return _uleb(len(s)) + raw + b"\x00"
+
+
+def mk_dexmap_dex() -> bytes:
+    """全表 DEX 夹具：class_data + code_item + invoke + const-string + native 方法。
+
+    覆盖 dexmap 的三条裁决线：
+      - 调用面分类：init 里 2 个外部调用（Log->d / Api->call）+ 1 个内部调用
+        （helper，本 DEX 定义的类）—— 内部调用绝不能进 api_surface；
+      - 字符串溯源：const-string 的 URL 要归属到 init 方法；
+      - JNI：nativeInit（native，无 code）↔ so 里 Java_* 符号的三向差集。
+    """
+    strings = [
+        "Lcom/example/t;",           # 0 类描述符（与 APK manifest 组件名对齐）
+        "V",                         # 1
+        "init",                      # 2
+        "Landroid/util/Log;",        # 3
+        "d",                         # 4
+        "Ljava/lang/String;",        # 5
+        "I",                         # 6
+        "https://api.example.com/x", # 7
+        "Ldemo/Api;",                # 8
+        "call",                      # 9
+        "IL",                        # 10 shorty
+        "nativeInit",                # 11
+        "onCreate",                  # 12
+        "helper",                    # 13
+    ]
+    (T_MAIN, T_VOID, T_LOG, T_STR, T_INT, T_API) = range(6)
+    types = [0, 1, 3, 5, 6, 8]
+    protos = [(1, T_VOID, 0), (10, T_INT, [T_STR, T_STR])]
+    methods = [
+        (T_MAIN, 0, 2),    # 0: t->init()V        （direct，有 code）
+        (T_LOG, 1, 4),     # 1: Log->d(String,String)I  （外部）
+        (T_API, 0, 9),     # 2: Api->call()V      （外部）
+        (T_MAIN, 0, 11),   # 3: t->nativeInit()V  （virtual native）
+        (T_MAIN, 0, 12),   # 4: t->onCreate()V    （direct，无 code）
+        (T_MAIN, 0, 13),   # 5: t->helper()V      （direct，内部调用目标）
+    ]
+
+    hdr = 0x70
+    str_ids_off = hdr
+    type_ids_off = str_ids_off + 4 * len(strings)
+    proto_ids_off = type_ids_off + 4 * len(types)
+    method_ids_off = proto_ids_off + 12 * len(protos)   # field_cnt=0
+    class_defs_off = method_ids_off + 8 * len(methods)
+    cur = class_defs_off + 32
+
+    tl_off = cur
+    tl_bytes = struct.pack("<I", 2) + struct.pack("<HH", T_STR, T_STR)
+    cur += len(tl_bytes)
+
+    insns = [
+        0x001A, 0x0007,             # const-string v0, "https://api.example.com/x"
+        0x2071, 0x0001, 0x0000,     # invoke-static {v0,v0}, Log->d   （外部）
+        0x0071, 0x0002, 0x0000,     # invoke-static {}, Api->call     （外部）
+        0x1074, 0x0005, 0x0000,     # invoke-direct {v0}, t->helper   （内部）
+        0x000E,                     # return-void
+    ]
+    code_off = cur
+    code_item = (struct.pack("<HHHH", 3, 1, 2, 0) +
+                 struct.pack("<II", 0, len(insns)) +
+                 b"".join(struct.pack("<H", u) for u in insns))
+    cur += len(code_item)
+
+    # class_data：3 direct（diff 0 init 有 code / diff 4 onCreate / diff 1 helper）
+    #             + 1 virtual（diff 3 nativeInit，native，code_off=0）
+    cd_off = cur
+    cd = (_uleb(0) + _uleb(0) + _uleb(3) + _uleb(1) +
+          _uleb(0) + _uleb(0x10001) + _uleb(code_off) +   # init: public|ctor
+          _uleb(4) + _uleb(0x1) + _uleb(0) +              # onCreate: public
+          _uleb(1) + _uleb(0x2) + _uleb(0) +              # helper: private
+          _uleb(3) + _uleb(0x101) + _uleb(0))             # nativeInit: public|native
+    cur += len(cd)
+
+    str_data = b"".join(_dex_str_item(s) for s in strings)
+    sd_off = cur
+    file_size = cur + len(str_data)
+
+    out = bytearray(file_size)
+    out[0:8] = b"dex\n035\x00"
+    struct.pack_into("<I", out, 32, file_size)
+    struct.pack_into("<I", out, 36, 0x70)
+    struct.pack_into("<I", out, 40, 0x12345678)
+    struct.pack_into("<I", out, 56, len(strings))
+    struct.pack_into("<I", out, 60, str_ids_off)
+    struct.pack_into("<I", out, 64, len(types))
+    struct.pack_into("<I", out, 68, type_ids_off)
+    struct.pack_into("<I", out, 72, len(protos))
+    struct.pack_into("<I", out, 76, proto_ids_off)
+    struct.pack_into("<I", out, 80, 0)
+    struct.pack_into("<I", out, 84, method_ids_off)    # field 表为空
+    struct.pack_into("<I", out, 88, len(methods))
+    struct.pack_into("<I", out, 92, method_ids_off)
+    struct.pack_into("<I", out, 96, 1)
+    struct.pack_into("<I", out, 100, class_defs_off)
+    struct.pack_into("<I", out, 104, file_size - hdr)
+    struct.pack_into("<I", out, 108, hdr)
+
+    def put(off, blob):
+        out[off:off + len(blob)] = blob
+
+    off = sd_off
+    for i, s in enumerate(strings):
+        put(str_ids_off + 4 * i, struct.pack("<I", off))
+        off += len(_dex_str_item(s))
+    for i, t in enumerate(types):
+        put(type_ids_off + 4 * i, struct.pack("<I", t))
+    for i, (shorty, ret, params) in enumerate(protos):
+        put(proto_ids_off + 12 * i,
+            struct.pack("<III", shorty, ret, tl_off if params else 0))
+    for i, (cidx, pidx, nidx) in enumerate(methods):
+        put(method_ids_off + 8 * i, struct.pack("<HHI", cidx, pidx, nidx))
+    put(class_defs_off, struct.pack("<IIIIIIII", T_MAIN, 0x1, 0xFFFFFFFF,
+                                    0, 0xFFFFFFFF, 0, cd_off, 0))
+    put(tl_off, tl_bytes)
+    put(code_off, code_item)
+    put(cd_off, cd)
+    put(sd_off, str_data)
+    return bytes(out)
+
+
+def t_dexmap_call_surface():
+    """dexmap：调用面分类 / URL 归属 / JNI 三向差集 / 预算截断诚实。
+
+    分类裁决点反向保护：内部调用（helper，本 DEX 定义的类）绝不能混进
+    api_surface —— 混了就是「调用面虚高」，比漏报更误导。
+    """
+    import lib_dexmap as DM
+    p = w("dexmap_full.dex", mk_dexmap_dex())
+    d = DM.map_dex(str(p))
+    if not d.get("ok"):
+        return False, "map_dex 失败: %s" % d.get("reason")
+    t = d["totals"]
+    if t["methods"] != 4 or t["methods_with_code"] != 1:
+        return False, "方法计数不对: %s" % t
+    if t["external_calls"] != 2 or t["internal_calls"] != 1:
+        return False, "内外调用分类不对（内部混入 api_surface 即虚高）: %s" % t
+    flat = [m["ref"] for e in d["api_surface"] for m in e["methods"]]
+    if not any("Log;->d" in x for x in flat) or not any("Api;->call" in x for x in flat):
+        return False, "外部调用面漏报: %s" % flat
+    if any("helper" in x for x in flat):
+        return False, "内部调用混进 api_surface（虚高）: %s" % flat
+    if len(d["urls"]) != 1 or "api.example.com" not in d["urls"][0]["url"] \
+            or d["urls"][0]["in_method"] != "Lcom/example/t;->init()V":
+        return False, "URL 归属不对: %s" % d["urls"]
+    jni = d["jni"]
+    if jni["native_methods"] != ["Lcom/example/t;->nativeInit()V"]:
+        return False, "native 方法清单不对: %s" % jni["native_methods"]
+    if not jni["unmatched_native"] or \
+            jni["unmatched_native"][0]["expected_symbol"] != "Java_com_example_t_nativeInit":
+        return False, "JNI 期望符号算错: %s" % jni["unmatched_native"]
+    # 反向：扫描预算截断必须如实标 partial，且不崩
+    d2 = DM.map_dex(str(p), max_insns=2)
+    codes = [m["code"] for c in d2.get("classes", []) for m in c["methods"]
+             if m.get("code")]
+    if not codes or not codes[0]["partial"] or codes[0]["reason"] != "insns 预算耗尽":
+        return False, "预算截断未如实标注: %s" % codes
+    if d2["totals"]["insns_scanned"] > 2:
+        return False, "预算形同虚设: %s" % d2["totals"]
+    return True, "调用面内外分类 + URL 归属 + JNI 差集 + 预算截断诚实"
+
+
+def t_dexmap_apk_entry_and_jni():
+    """dexmap（APK）：组件入口 × DEX 定义观测 + so 符号 matched/orphan 三向差集。"""
+    import lib_dexmap as DM
+    dex = mk_dexmap_dex()
+    p = TMP / "dexmap_full.apk"
+    with zipfile.ZipFile(p, "w") as zf:
+        zf.writestr("AndroidManifest.xml", _mk_axml_manifest())
+        zf.writestr("classes.dex", dex)
+        zf.writestr("lib/arm64-v8a/liba.so",
+                    b"\x7fELF" + b"\x00" * 8 + b"Java_com_example_t_nativeInit\x00")
+        zf.writestr("lib/armeabi-v7a/libb.so",
+                    b"\x7fELF" + b"\x00" * 8 + b"Java_com_zzz_Orphan\x00")
+    d = DM.map_dex(str(p))
+    if not d.get("ok"):
+        return False, "APK map_dex 失败: %s" % d.get("reason")
+    jni = d["jni"]
+    if not jni["matched"] or jni["matched"][0]["symbol"] != "Java_com_example_t_nativeInit":
+        return False, "so 命中没对上: %s" % jni["matched"]
+    if jni["unmatched_native"]:
+        return False, "对上了不该再报 unmatched: %s" % jni["unmatched_native"]
+    if not any(o["symbol"] == "Java_com_zzz_Orphan" for o in jni["orphan_symbols"]):
+        return False, "孤儿符号漏报: %s" % jni["orphan_symbols"]
+    if jni.get("scan_method") != "symbol-string-scan":
+        return False, "扫描方式未如实标注: %s" % jni.get("scan_method")
+    eps = d["entry_points"]
+    act = next((e for e in eps if e["type"] == "activity"), None)
+    if not act:
+        return False, "组件入口漏报: %s" % eps
+    if act["name"] != "com.example.t" or not act["in_dex"]:
+        return False, "组件 × DEX 定义观测不对: %s" % act
+    if act["lifecycle_methods"] != ["onCreate"]:
+        return False, "生命周期方法观测不对: %s" % act
+    # 反向：垃圾文件拒收（不许 ok，不许崩）
+    g = w("dexmap_garbage.bin", b"\x00\x01\x02\x03" * 16)
+    d3 = DM.map_dex(str(g))
+    if d3.get("ok"):
+        return False, "垃圾文件被误判: %s" % d3
+    return True, "APK 入口面 + JNI 三向差集 + 垃圾拒收"
+
+
+def t_dexmap_cli_contract():
+    """dexmap CLI：--json ok 契约 + 参数透传 + 非目标退出码。"""
+    p = w("dexmap_full.dex", mk_dexmap_dex())
+    code, d, raw = jrun([CLI, "dexmap", str(p)])
+    if not isinstance(d, dict) or not d.get("ok"):
+        return False, "CLI --json 无 ok:true (exit=%s) %s" % (code, raw)
+    if "Traceback" in raw:
+        return False, "CLI 漏出 Traceback"
+    # 参数透传：--surface-only 不出逐类明细但 api_surface 必须在
+    code2, d2, raw2 = jrun([CLI, "dexmap", str(p), "--surface-only"])
+    if not d2 or "classes" in d2 or not d2.get("api_surface"):
+        return False, "--surface-only 透传失败: %s" % raw2
+    # 反向：垃圾目标退出码 3（目标不可读/不可解析），不是 0
+    g = w("dexmap_garbage2.bin", b"garbage!")
+    code3, d3, raw3 = jrun([CLI, "dexmap", str(g)])
+    if code3 != 3 or (d3 and d3.get("ok")):
+        return False, "垃圾目标退出码不对: exit=%s %s" % (code3, raw3)
+    return True, "ok 契约 + --surface-only 透传 + 垃圾退出码 3"
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -5844,6 +6086,9 @@ def main():
         ("检查器：peres 计数/截断/参数透传", t_peres_count_truncation_and_flag),
         ("未知项：record 默认值与缺参守卫", t_unknowns_record_defaults_and_guards),
         ("APK manifest 语义与导出双路", t_apk_manifest_semantics),
+        ("dexmap：调用面分类/URL/JNI/预算诚实", t_dexmap_call_surface),
+        ("dexmap：APK 入口面与 so 三向差集", t_dexmap_apk_entry_and_jni),
+        ("dexmap：CLI ok 契约与参数透传", t_dexmap_cli_contract),
         ("IPA plist 语义与框架清单", t_ipa_bundle_semantics),
         ("ISO9660 清单与提取回环", t_iso9660_roundtrip),
         ("接口/端口/网络地址全覆盖+反向", t_netio_guards_and_coverage),
