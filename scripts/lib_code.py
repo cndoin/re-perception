@@ -23,7 +23,7 @@ import hashlib
 from collections import Counter
 
 from lib_x86 import (K_CALL, K_CJMP, K_JMP, K_RET, K_HLT, K_INT, K_INVALID,
-                     Insn, decode_one)
+                     Insn)
 
 # 结束函数体的指令类别
 _END_KINDS = (K_RET, K_HLT)
@@ -127,6 +127,12 @@ class CodeIndex:
         self.insn: dict[int, Insn] = {}
         self.max_insns = max_insns
         self.truncated = False
+        # 解码器按架构分发，唯一裁决点是 lib_disasm.backend()。
+        # 旧实现无条件拿 x86 解码器解一切字节：ARM 机器码会被解成语义
+        # 完全错误但语法合法的 x86 指令（还会 ok:true 照常返回），比报错
+        # 危险得多。不支持的架构在构造时就抛 UnsupportedArch，不兜底。
+        from lib_disasm import backend
+        self._decode_one = backend(arch)[0]
 
     def off2vma(self, off: int) -> int:
         return self.base + off
@@ -145,8 +151,7 @@ class CodeIndex:
         if len(self.insn) >= self.max_insns:
             self.truncated = True
             return None
-        ins = decode_one(self.code, off, bits=self.bits, vma_base=self.base,
-                         code_start=0)
+        ins = self._decode_one(self.code, off, self.bits, self.base)
         if ins.size <= 0:
             return None
         self.insn[off] = ins
