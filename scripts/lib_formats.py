@@ -831,9 +831,31 @@ def parse_pe(r: Reader) -> dict:
                                 continue
                             exports.append(nm)
                             ordi = _u("<H", r.read(ot_off + i * 2, 2), 0) if ot_off else None
-                            o = (ordi[0] if ordi else ordinal_base + i)
+                            # 【已修 bug · PE 规范】ExportOrdinalTable 里的值是
+                            # **EAT 的索引**，不是最终 ordinal；最终 ordinal 是
+                            # ordinal_base + 该索引。旧实现拿 OrdTab 的值直接去
+                            # 查以 `ordinal_base + i` 为键的 addr_by_ord，
+                            # 只要 ordinal_base != 0 就**全部落空**。
+                            # 实测 user32.dll：ord_base=1502、ord=1103 → 1050 个
+                            # 导出符号 rva 全为 None，导致 1717 个函数里只有 8 个
+                            # 被命名（0.5%）；kernel32 恰好 ord_base=1 才幸免。
+                            # 现在：ord = ord_base + idx（有 OrdTable），
+                            # rva 直接取 EAT[idx]；无 OrdTable 时才用
+                            # addr_by_ord 回退（兼容畸形文件）。
+                            if ordi:
+                                idx = ordi[0]
+                                o = ordinal_base + idx
+                                rva = None
+                                if eat_off and idx < addr_cnt:
+                                    rv = _u("<I", r.read(eat_off + idx * 4, 4), 0)
+                                    rva = rv[0] if rv and rv[0] else None
+                                if rva is None:
+                                    rva = addr_by_ord.get(o)
+                            else:
+                                o = ordinal_base + i
+                                rva = addr_by_ord.get(o)
                             export_syms.append({"name": nm, "ordinal": o,
-                                                "rva": addr_by_ord.get(o)})
+                                                "rva": rva})
                     ename_off = rva2off(name_rva)
                     d["export_name"] = _cstr(r.read(ename_off, 128), 0) if ename_off else None
                     d["export_count"] = addr_cnt

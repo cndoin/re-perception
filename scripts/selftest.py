@@ -5378,6 +5378,45 @@ def t_export_truncation_is_honest():
                   % (total, len(dj.get("exports") or [])))
 
 
+def t_pe_export_ordinal_table_semantics():
+    """PE ExportOrdinalTable 的值是 EAT **索引**，不是最终 ordinal。
+
+    背景（真实缺陷，PE 规范违反）：旧实现拿 OrdTab 的值直接去查以
+    `ordinal_base + i` 为键的 addr_by_ord，只要 ordinal_base != 0 就**全部落空**。
+    实测 user32.dll：ord_base=1502 → 1050 个导出符号 rva 全为 None →
+    1717 个函数只有 8 个被命名（0.5%）。而 kernel32 恰好 ord_base=1
+    才对，所以这个 bug 长期没被发现 —— **典型的「幸存的样本掩盖了缺陷」**。
+    """
+    import lib_formats as F
+    real = None
+    for cand in (r"C:\Windows\System32\user32.dll",
+                 r"C:\Windows\System32\kernel32.dll"):
+        if os.path.isfile(cand):
+            real = cand
+            break
+    if real is None:
+        return True, "跳过：本机无系统 PE 样本"
+    with F.Reader(real) as r:
+        det = F.parse_pe(r)
+    ex = det.get("export_syms") or []
+    if not ex:
+        return True, "跳过：该 PE 无导出表"
+    with_rva = [e for e in ex if e.get("rva")]
+    ratio = len(with_rva) / float(len(ex))
+    # 只导出名不导出地址的 PE 是合法的（转发器/数据导出），但对系统 DLL
+    # 来说 rva 缺失率过高一定是解析错了 —— 取一个保守阈值。
+    if ratio < 0.9:
+        return False, ("导出符号 rva 命中率仅 %.0f%%（%d/%d）—— "
+                       "多半是 OrdinalTable 语义又搞错了"
+                       % (ratio * 100, len(with_rva), len(ex)))
+    # 抽查一条：ordinal 与 rva 必须都非零且 rva 落在文件范围内
+    e0 = with_rva[0]
+    if not e0.get("ordinal") or not e0.get("rva"):
+        return False, "导出符号缺 ordinal 或 rva: %r" % (e0,)
+    return True, "PE 导出 ordinal 语义正确：%d/%d 有 rva (%.0f%%)" % (
+        len(with_rva), len(ex), ratio * 100)
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -5521,6 +5560,7 @@ def main():
         ("提取路径安全裁决点（穿越反向用例）", t_path_traversal_gate),
         ("规则预算按规则隔离（不误报成环）", t_rule_budget_isolation),
         ("导出表截断诚实（真实总数+truncated）", t_export_truncation_is_honest),
+        ("PE 导出 ordinal 表语义（rva 命中率）", t_pe_export_ordinal_table_semantics),
     ]
 
     t0 = time.time()

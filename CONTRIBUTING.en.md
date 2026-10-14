@@ -38,7 +38,7 @@ python re.py --version
 
 ```bash
 cd scripts
-python selftest.py             # full self-test (131 cases, ~2 min) — must be all green
+python selftest.py             # full self-test (132 cases, ~2 min) — must be all green
 python _dev/_lint.py           # static audit — must report zero production findings
 python _dev/_undefined.py      # undefined-name check — must be clean
 python _dev/_e2e.py            # end-to-end across all 46 subcommands
