@@ -1855,7 +1855,8 @@ def t_rules_match_real_pe():
     sums = LS.summarize_functions(idx, funcs, iat, str_map,
                                   limit=400, thunk_map=thunks)
     feats = LR.build_features(str(pe), ident, idx, funcs,
-                              iat_map=iat, sem={"functions": sums})
+                              iat_map=iat, sem={"functions": sums},
+                              thunk_map=thunks, str_map=str_map)
     if feats.get("errors"):
         return False, f"特征抽取报错：{feats['errors'][:2]}"
 
@@ -4159,6 +4160,177 @@ def t_rules_bytes_leaf_reported():
     return True, ("bytes 叶子登记了含「无法求值」的错误（%d 条），普通规则不产生该告警"
                   % len(errs))
 
+
+def _mk_feats(recs, loop_blocks=()):
+    """合成一个单函数特征袋（recs: InsnFeat 列表），供规则求值用。"""
+    import lib_rules as LR
+    tgts = set()
+    fb = {
+        "api": set(), "number": set(), "string": set(), "mnemonic": set(),
+        "characteristic": {"loop"} if loop_blocks else set(),
+        "tag": set(), "section": set(), "function-name": set(),
+        "bytes": set(), "export": set(), "import": set(), "offset": set(),
+        "insns": list(recs),
+        "blocks": [(0, len(recs))] if recs else [],
+        "loop_blocks": set(loop_blocks),
+    }
+    for r in recs:
+        fb["mnemonic"].add(r.mnem)
+        fb["number"].update(r.imms)
+        if r.api:
+            fb["api"].add(r.api)
+        if r.disp is not None:
+            fb["offset"].add(r.disp & 0xFFFFFFFFFFFFFFFF)
+        if r.flags & 1:
+            fb["characteristic"].add("peb-access")
+        if r.flags & 2:
+            fb["characteristic"].add("nzxor")
+    return {
+        "file": {"arch": {"x86-64"}, "os": {"windows"}, "section": set(),
+                 "import": set(), "export": set(), "string": set(),
+                 "function-name": set(), "format": {"pe"},
+                 "characteristic": set()},
+        "functions": {0x1000: fb},
+    }
+
+
+def t_rules_lib_isolated():
+    """
+    辅助规则（lib）不得混入能力结论，但被 `match:` 引用时必须留证据链。
+
+    【为什么】capa 的 lib/ 是构件库（"contain loop" 这种积木），不是能力。
+    实测教训：873 条导入规则在良性 PE 上 116 条命中里 89 条是 lib 噪声
+   （contain-loop 一家 86 处）——把积木当成品卖，能力结论被淹没。
+    现在 lib 规则只经 match: 求值：不进 hits/by_namespace/att_ck，
+    命中记入 aux_hits 供复核，不静默丢弃。
+
+    反向验证（2026-10-14 实施时做过）：撤掉 match_rules 里
+    `if getattr(r, "lib", False): continue` → 本用例变红（contain loop
+    混进 hits）；删 aux_hits 输出 → 本用例变红（证据链断）。
+    """
+    import lib_rules as LR
+    lib_r = LR.Rule({"rule": {
+        "meta": {"name": "contain loop", "namespace": "lib",
+                 "scope": "basic block", "lib": True},
+        "features": [{"characteristic": "loop"}]}})
+    main_r = LR.Rule({"rule": {
+        "meta": {"name": "借助循环构件的能力", "namespace": "test",
+                 "scope": "function"},
+        "features": [{"and": [{"match": "contain loop"},
+                              {"mnemonic": "call"}]}]}})
+    rec = LR.InsnFeat(0x1000, "call", (), "", (), None, b"\xe8\x00\x00\x00\x00",
+                      "call", 0)
+    feats = _mk_feats([rec], loop_blocks=(0,))
+
+    # lib 规则单独放进规则列表也不得产生能力结论（顶层跳过）
+    res0 = LR.match_rules([lib_r], feats)
+    if res0["hits"]:
+        return False, "lib 规则单独求值混进了 hits：%r" % (
+            [h["rule"] for h in res0["hits"]],)
+
+    res = LR.match_rules([lib_r, main_r], feats)
+    names = {h["rule"] for h in res["hits"]}
+    if "contain loop" in names:
+        return False, "辅助规则 contain loop 混进能力结论（积木当成品卖）"
+    if "借助循环构件的能力" not in names:
+        return False, "引用辅助构件的能力规则未能命中（match: 依赖求值断了）"
+    aux = {h["rule"] for h in (res.get("aux_hits") or [])}
+    if "contain loop" not in aux:
+        return False, ("contain loop 被 match: 引用且命中，aux_hits 证据链里"
+                       "却没有它（辅助命中被静默丢弃）")
+    if res.get("by_namespace", {}).get("lib"):
+        return False, "by_namespace 里出现 lib 分组（辅助规则被当结论统计）"
+    return True, "lib 规则不进结论（hits 干净），引用命中留证据链（aux_hits 有登记）"
+
+
+def t_rules_instruction_scope_cooccurrence():
+    """
+    `instruction:` 节点必须做**同一条指令**的共现判定，不得放松成函数级。
+
+    【为什么】capa 的「同一条指令 xor + 立即数 4」若被展平成函数级合取，
+    就变成「函数里既有 xor 又有 4」——实测 193 条降级规则的误报根源
+   （hide window / parse PE 等在良性 PE 上刷屏）。
+
+    三侧对照（缺一不可）：
+      X  instruction:{xor ∧ 4}  —— 4 在 mov 上、xor 无立即数 → 不得命中
+      Y  instruction:{mov ∧ 4}  —— 同一条指令同时具备 → 必须命中
+      Z  函数级 and:{xor ∧ 4}   —— 放松语义 → 命中（证明 X 不命中不是
+                                   「规则太严全不报」，而是共现判定生效）
+    反向验证：把 instruction: 分支改成函数级求值 → X 误命中变红。
+    """
+    import lib_rules as LR
+
+    def _mk(name, features):
+        # scope 必须是 function：翻译件里的 instruction: 节点就活在函数级
+        # 规则里，收缩语义完全靠节点自身 —— 这才是要锁住的行为。
+        # （若用 scope: instruction，driver 层已按指令展开，撤回节点收缩
+        #   也测不出来，守卫会退化成摆设 —— 反向验证实测过。）
+        return LR.Rule({"rule": {"meta": {"name": name, "scope": "function",
+                                          "namespace": "test"},
+                                 "features": features}})
+
+    # 同一函数：xor eax, eax（无立即数）+ mov [x], 4（立即数 4）
+    r1 = LR.InsnFeat(0x1000, "xor", (), "", (), None,
+                     b"\x33\xc0", "other", 0)
+    r2 = LR.InsnFeat(0x1002, "mov", (4,), "", (), None,
+                     b"\xc7\x00\x04\x00\x00\x00", "other", 0)
+    feats = _mk_feats([r1, r2])
+
+    x = _mk("同指令共现-反例", {"instruction": [
+        {"and": [{"mnemonic": "xor"}, {"number": 4}]}]})
+    y = _mk("同指令共现-正例", {"instruction": [
+        {"and": [{"mnemonic": "mov"}, {"number": 4}]}]})
+    z = LR.Rule({"rule": {"meta": {"name": "函数级放松对照", "scope": "function",
+                                   "namespace": "test"},
+                          "features": [{"and": [{"mnemonic": "xor"},
+                                                {"number": 4}]}]}})
+    res = LR.match_rules([x, y, z], feats)
+    got = {h["rule"] for h in res["hits"]}
+    if "同指令共现-反例" in got:
+        return False, "instruction: 共现被放松成函数级（xor 与 4 不同指令却命中）"
+    if "同指令共现-正例" not in got:
+        return False, "同一条指令 xor∧4 没命中（instruction: 求值断了）"
+    if "函数级放松对照" not in got:
+        return False, "函数级对照组没命中（对照失效，无法区分共现与放松）"
+    return True, "instruction: 同指令共现判定正确（反例不误报、正例命中、对照组成立）"
+
+
+def t_rules_bytes_block_stream():
+    """
+    bytes 判据匹配**作用域字节流**（跨指令拼接），不是单指令字节。
+
+    【为什么】DES/AES 的 S-box 模式是 60+ 字节的表，横跨多条指令。
+    只搜单指令字节（≤15B）会让这些规则永不命中 —— 静默失效。
+    三侧对照：
+      跨指令模式 "02 03"（r1 尾 + r2 头）在 basic block scope → 必须命中
+      同模式在 instruction scope → 不得命中（单指令流里没有）
+      块内不存在的 "02 04" → 不得命中（不是无脑全报）
+    反向验证：把块流 join 改回逐指令搜索 → 第一条变红。
+    """
+    import lib_rules as LR
+
+    def _mk(name, scope, pat):
+        return LR.Rule({"rule": {"meta": {"name": name, "scope": scope,
+                                          "namespace": "test"},
+                                 "features": [{"bytes": pat}]}})
+
+    r1 = LR.InsnFeat(0x1000, "db", (), "", (), None, b"\x01\x02", "other", 0)
+    r2 = LR.InsnFeat(0x1002, "db", (), "", (), None, b"\x03\x04", "other", 0)
+    feats = _mk_feats([r1, r2])
+
+    cross = _mk("跨指令模式-块级", "basic block", "02 03")
+    insn = _mk("跨指令模式-指令级", "instruction", "02 03")
+    absent = _mk("块内不存在", "basic block", "02 04")
+    res = LR.match_rules([cross, insn, absent], feats)
+    got = {h["rule"] for h in res["hits"]}
+    if "跨指令模式-块级" not in got:
+        return False, "跨指令 bytes 模式在块级未命中（块字节流 join 语义失效）"
+    if "跨指令模式-指令级" in got:
+        return False, "指令级 bytes 命中了跨指令模式（单指令流语义错了）"
+    if "块内不存在" in got:
+        return False, "不存在的模式也命中（bytes 判定退化成无脑全报）"
+    return True, "bytes 块流语义正确（跨指令可命中、指令级不越界、无假阳性）"
+
 def t_code_truncation_reported():
     """
     find_functions / _walk 撞到预算时必须留痕，不许交出偏小却看似完整的数字。
@@ -5417,6 +5589,123 @@ def t_pe_export_ordinal_table_semantics():
         len(with_rva), len(ex), ratio * 100)
 
 
+def t_rule_regex_string_and_count_operator():
+    """capa 风格正则字符串 + `N or more` 计数算子的求值契约。
+
+    背景：capa 规则大量使用 `/pattern/i` 正则字符串与 `2 or more` 计数
+    算子。正则如果退化成子串匹配，`/avghook(x|a)\\.dll/i` 这类规则要么
+    永不命中要么乱命中；计数算子如果不解析，整条规则会被 YAML 层拒绝。
+    本用例锁住三个语义边界：
+      1) 正则带 i 标志忽略大小写；
+      2) 字面路径 `/etc/passwd` **不能**被当成正则（尾段不是合法 flags）；
+      3) `2 or more` 恰好按「至少 N 个子项命中」计数；
+      4) 写坏的正则必须在**加载期**报错，不许静默失效。
+    """
+    import lib_rules as R
+
+    def mk(name, features):
+        return R.Rule({"rule": {"meta": {"name": name, "scope": "function"},
+                                "features": features}}, "selftest")
+
+    base = {"api": set(), "number": set(), "mnemonic": set(),
+            "characteristic": set(), "tag": set(), "section": set(),
+            "import": set(), "export": set(), "os": set(), "arch": set(),
+            "format": set(), "function-name": set(), "string": set()}
+    import copy
+    f1 = copy.deepcopy(base); f2 = copy.deepcopy(base)
+    # 字符串放**函数级**袋（f1）：函数级 string 判据看的是本函数的字符串，
+    # 不是全文件池 —— 后者会把共现约束放松成「文件里有就算」。
+    # （历史上这两串放文件级袋，依赖旧合并语义；语义收紧后用例跟着改，
+    #   并用第 5 条分辨率断言把新语义锁死。）
+    ff = copy.deepcopy(base)
+    f1["string"] = {"C:\\Windows\\System32\\drivers\\sbiedll.dll",
+                    "GET /etc/passwd HTTP/1.1"}
+    f1["mnemonic"] = {"cmp"}; f1["number"] = {0xCC}
+    f2["mnemonic"] = {"ret"}; f2["number"] = {1}
+    feats = {"file": ff, "functions": {0x1000: f1, 0x2000: f2}}
+
+    # 1) 正则 + i 标志：大小写混合也必须命中（且只在有该字符串的 f1 命中）
+    r1 = mk("regex-ci", {"string": "/SBIEDLL\\.DLL/i"})
+    out = R.match_rules([r1], feats)
+    if not out["hits"]:
+        return False, "正则字符串 /SBIEDLL\\.DLL/i 未命中（i 标志失效？）"
+    locs1 = {h.get("location") for h in out["hits"]}
+    # 5) 分辨率：f2 的袋里没有这两个字符串，不得搭便车命中 ——
+    #    锁死「函数级 string 不查全文件池」的共现语义。
+    if locs1 != {"0x1000"}:
+        return False, "函数级 string 越权命中了无字符串的函数：%s" % locs1
+
+    # 2) 字面路径不是正则：按子串匹配必须命中
+    r2 = mk("literal-path", {"string": "/etc/passwd"})
+    out = R.match_rules([r2], feats)
+    if not out["hits"]:
+        return False, "字面路径 /etc/passwd 被误当正则而丢失命中"
+
+    # 3) 计数算子：fn1 有 cmp + 0xCC（2 个命中）该匹配；fn2 只有 1 个不该匹配
+    r3 = mk("count-op", {"2 or more": [
+        {"mnemonic": "cmp"}, {"number": 0xCC}, {"api": "nope::nothing"}]})
+    out = R.match_rules([r3], feats)
+    locs = {h.get("location") for h in out["hits"]}
+    if "0x1000" not in locs:
+        return False, "2 or more 在 2/3 命中时未匹配：%s" % locs
+    if "0x2000" in locs:
+        return False, "2 or more 在 1/3 命中时误匹配：%s" % locs
+
+    # 4) 非法正则必须加载期报错（静默失效是最危险的失败模式）
+    try:
+        mk("bad-regex", {"string": "/[unclosed/i"})
+    except R.RuleError as e:
+        if "正则" not in str(e):
+            return False, "非法正则报错但措辞没提正则：%s" % e
+        return True, "正则/字面边界、2 or more 计数、非法正则加载期拦截 全部正确"
+    return False, "非法正则 /[unclosed/i 竟然通过了加载期校验"
+
+
+def t_imported_ruleset_integrity():
+    """capa 翻译规则库必须整体可加载、无悬空 match 引用、数量不缩水。
+
+    悬空引用（match 指向不存在的规则）的危险不在报错本身，而在
+    「每次运行都报一次错」会淹没真警告，或规则永远不命中被当成
+    「样本干净」。所以在加载器层面一次锁死。
+    """
+    import lib_rules as R
+    import os as _os
+    rules_dir = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                              "..", "rules")
+    t0 = time.time()
+    rules, errs = R.load_rules(rules_dir)
+    dt = time.time() - t0
+    if errs:
+        return False, "规则库加载错误 %d 条，例：%s" % (len(errs), errs[0])
+    if len(rules) < 800:
+        return False, "规则库缩水：%d 条（capa 翻译产物 873 + 自研 20，应 ≥800）" % len(rules)
+
+    def refs(node, acc):
+        if isinstance(node, list):
+            for x in node:
+                refs(x, acc)
+        elif isinstance(node, dict):
+            for k, v in node.items():
+                if k == "match":
+                    for nm in (v if isinstance(v, list) else [v]):
+                        acc.add(str(nm))
+                else:
+                    refs(v, acc)
+
+    names = {r.name for r in rules}
+    dangling = []
+    for r in rules:
+        acc = set()
+        refs(r.features, acc)
+        for need in acc:
+            if need not in names:
+                dangling.append((r.name, need))
+    if dangling:
+        return False, "悬空 match 引用 %d 处，例：%s" % (len(dangling), dangling[:2])
+    return True, ("规则库 %d 条全部可加载、无悬空引用（加载 %.1fs）"
+                  % (len(rules), dt))
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -5525,6 +5814,9 @@ def main():
         ("混淆串：VMA 到文件偏移换算", t_obfstr_vma2off_translates_vma),
         ("语义：_as_vma_int 十进制分支", t_semantics_as_vma_int_decimal),
         ("能力规则：bytes 叶子必须报错", t_rules_bytes_leaf_reported),
+        ("能力规则：辅助规则不进结论", t_rules_lib_isolated),
+        ("能力规则：instruction 同指令共现", t_rules_instruction_scope_cooccurrence),
+        ("能力规则：bytes 块流跨指令", t_rules_bytes_block_stream),
         ("函数识别：截断与丢弃种子留痕", t_code_truncation_reported),
         ("证据：内容哈希 ID 确定性", t_evidence_content_hash_deterministic),
         ("证据：冻结后不可改写", t_evidence_immutable),
@@ -5561,6 +5853,8 @@ def main():
         ("规则预算按规则隔离（不误报成环）", t_rule_budget_isolation),
         ("导出表截断诚实（真实总数+truncated）", t_export_truncation_is_honest),
         ("PE 导出 ordinal 表语义（rva 命中率）", t_pe_export_ordinal_table_semantics),
+        ("capa 正则字符串与计数算子契约", t_rule_regex_string_and_count_operator),
+        ("capa 翻译规则库完整性（无悬空引用）", t_imported_ruleset_integrity),
     ]
 
     t0 = time.time()
