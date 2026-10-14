@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: allocate or change RW memory
+    namespace: lib
+    scope: basic block
+    authors:
+      - 0x534a@mailbox.org
+      - "@mr-tz"
+    description: allocate or change RW memory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - and:
+        - or:
+            - match: allocate memory
+            - match: change memory protection
+        - or:
+            - number: 4
+            - instruction:
+                and:
+                  - mnemonic: lea
+                  - offset: 4

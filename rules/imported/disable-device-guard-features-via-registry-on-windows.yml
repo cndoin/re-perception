@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: disable Device Guard features via registry on Windows
+    namespace: impact/features
+    scope: function
+    authors:
+      - mehunhoff@google.com
+    description: disable Device Guard features via registry on Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - match: set registry value
+        - or:
+            - and:
+                - string: /SYSTEM\\(ControlSet\d{3}|CurrentControlSet)\\Control\\DeviceGuard/i
+                - or:
+                    - string: /RequirePlatformSecurityFeatures/i
+                    - string: /HVCIMATRequired/i
+                    - string: /RequireSignedBoot/i
+                    - string: /EnableVirtualizationBasedSecurity/i
+            - and:
+                - string: /SOFTWARE\\Policies\\Microsoft\\Windows\\DeviceGuard/i
+                - string: /LsaCfgFlags/i

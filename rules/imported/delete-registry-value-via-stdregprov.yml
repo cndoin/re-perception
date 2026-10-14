@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: delete registry value via StdRegProv
+    namespace: host-interaction/registry
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: delete registry value via StdRegProv
+    references:
+      - https://docs.microsoft.com/en-us/previous-versions/windows/desktop/regprov/stdregprov#methods
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: StdRegProv
+        - string: DeleteValue

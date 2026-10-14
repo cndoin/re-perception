@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: encrypt data using RC4 KSA
+    namespace: data-manipulation/encryption/rc4
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: encrypt data using RC4 KSA
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - or:
+            - number: 50462976
+            - number: 4294901244
+        - instruction:
+            and:
+              - or:
+                  - mnemonic: add
+                  - mnemonic: sub
+              - number: 67372036

@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: upload file to OneDrive
+    namespace: communication/c2/file-transfer
+    scope: file
+    authors:
+      - jaredswilson@google.com
+      - ervinocampo@google.com
+    description: upload file to OneDrive
+    references:
+      - https://cloud.google.com/blog/topics/threat-intelligence/apt41-arisen-from-dust
+      - https://learn.microsoft.com/en-us/onedrive/developer/rest-api/concepts/upload?view=odsp-graph-online
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Exfiltration::Exfiltration Over Web Service::Exfiltration to Cloud Storage [T1567.002]
+  features:
+    - and:
+        - substring: graph.microsoft.com
+        - or:
+            - substring: /createUploadSession
+            - substring: /content
+            - or:
+                - substring: /:children
+                - substring: /children
+        - or:
+            - substring: /drive/items/
+            - substring: /drive/root

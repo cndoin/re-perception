@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: send data on socket
+    namespace: communication/socket/send
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - joakim@intezer.com
+      - anushka.virgaonkar@mandiant.com
+    description: send data on socket
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: send
+        - api: ws2_32.send
+        - api: ws2_32.#19 = send
+        - api: ws2_32.sendto
+        - api: ws2_32.#20 = sendto
+        - api: ws2_32.WSASend
+        - api: ws2_32.#76 = WSASend
+        - api: ws2_32.WSASendMsg
+        - api: ws2_32.WSASendTo
+        - api: ws2_32.#78 = WSASendTo
+        - api: System.Net.Sockets.Socket::Send
+        - api: System.Net.Sockets.Socket::SendAsync
+        - api: System.Net.Sockets.Socket::SendTo
+        - api: System.Net.Sockets.Socket::SendToAsync
+        - api: System.Net.Sockets.UdpClient::Send

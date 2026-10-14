@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: upload or download file via Dropbox
+    namespace: communication/c2/file-transfer
+    scope: function
+    authors:
+      - mehunhoff@google.com
+    description: upload or download file via Dropbox
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: set HTTP header
+        - string: Dropbox-API-Arg

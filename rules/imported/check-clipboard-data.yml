@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: check clipboard data
+    namespace: host-interaction/clipboard
+    scope: function
+    authors:
+      - anushka.virgaonkar@mandiant.com
+    description: check clipboard data
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Clipboard Data [T1115]
+  features:
+    - or:
+        - api: System.Windows.Forms.Clipboard::ContainsAudio
+        - api: System.Windows.Forms.Clipboard::ContainsData
+        - api: System.Windows.Forms.Clipboard::ContainsFileDropList
+        - api: System.Windows.Forms.Clipboard::ContainsImage
+        - api: System.Windows.Forms.Clipboard::ContainsText

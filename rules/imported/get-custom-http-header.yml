@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: get custom HTTP header
+    namespace: communication/http
+    scope: basic block
+    authors:
+      - "@msanchit-dev"
+    description: get custom HTTP header
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: wininet.HttpQueryInfo
+        - number: 65535

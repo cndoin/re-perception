@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: get domain information
+    namespace: host-interaction/network/domain
+    scope: instruction
+    authors:
+      - awillia2@cisco.com
+      - anushka.virgaonkar@mandiant.com
+      - mehunhoff@google.com
+    description: Detect collection of Windows domain information
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery [T1016]
+  features:
+    - or:
+        - api: netapi32.DsRoleGetPrimaryDomainInformation
+        - api: System.DirectoryServices.ActiveDirectory.Domain::GetComputerDomain

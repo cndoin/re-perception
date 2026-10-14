@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: access unmanaged COM objects in .NET
+    namespace: host-interaction/com
+    scope: function
+    authors:
+      - mehunhoff@google.com
+    description: access unmanaged COM objects in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: System.Runtime.InteropServices.Marshal::GetTypeFromCLSID

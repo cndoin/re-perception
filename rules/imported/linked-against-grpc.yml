@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: linked against gRPC
+    namespace: linking/static/grpc
+    scope: file
+    authors:
+      - jakubjozwiak@google.com
+    description: linked against gRPC
+    references:
+      - https://grpc.io
+      - https://github.com/grpc/grpc
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - 2 or more:
+        - string: GRPC_SLICE_LENGTH(*slice_) <= INT_MAX
+        - string: GRPC_SLICE_LENGTH(slice_) <= INT_MAX
+        - string: grpc-status-details-bin
+        - string: "!ran_hijacking_interceptor_"
+        - string: orig_send_message_ != nullptr
+        - string: serializer_(msg_).ok()
+        - string: GRPC_CALL_ERROR
+        - string: Bad GRPC frame type 0x%02x
+        - string: grpc.http_proxy
+        - string: grpc_shutdown

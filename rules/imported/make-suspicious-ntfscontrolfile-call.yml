@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: make suspicious NtFsControlFile call
+    namespace: exploitation/spraying
+    scope: basic block
+    authors:
+      - zdw@google.com
+    description: look for suspicious possible NtFsControlFile calls that may be used for spraying objects into kernel heap pools
+    references:
+      - https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntfscontrolfile
+      - https://www.sstic.org/media/SSTIC2020/SSTIC-actes/pool_overflow_exploitation_since_windows_10_19h1/SSTIC2020-Article-pool_overflow_exploitation_since_windows_10_19h1-bayet_fariello.pdf
+      - https://github.com/vp777/Windows-Non-Paged-Pool-Overflow-Exploitation
+      - https://gist.github.com/daaximus/e813aa52980fc2a97a8a8a1082338de4
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - or:
+            - number: 1114172
+            - number: 1114168
+            - number: 1155064
+        - instruction:
+            mnemonic: xor
+        - instruction:
+            mnemonic: call
+        - not:
+            characteristic: nzxor

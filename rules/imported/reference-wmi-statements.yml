@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: reference WMI statements
+    namespace: collection/database/wmi
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: reference WMI statements
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Data from Information Repositories [T1213]
+  features:
+    - or:
+        - string: /SELECT\s+\*\s+FROM\s+CIM_.+/
+        - string: /SELECT\s+\*\s+FROM\s+Win32_.+/
+        - string: /SELECT\s+\*\s+FROM\s+MSAcpi_.+/

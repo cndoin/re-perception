@@ -1,0 +1,42 @@
+rule:
+  meta:
+    name: inspect section memory permissions
+    namespace: load-code/pe
+    scope: function
+    authors:
+      - "@Ana06"
+    description: translate section memory permissions (specified in the 'Characteristics' field of the image section header) into page protection constants
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - 3 or more:
+            - and:
+                - number: 1073741824
+                - number: 2
+            - and:
+                - number: 536870912
+                - number: 16
+            - and:
+                - or:
+                    - number: 1610612736
+                    - and:
+                        - number: 1073741824
+                        - number: 536870912
+                - number: 32
+            - and:
+                - or:
+                    - number: 3221225472
+                    - and:
+                        - number: 1073741824
+                        - number: 2147483648
+                - number: 4
+            - and:
+                - or:
+                    - number: 3758096384
+                    - and:
+                        - number: 1073741824
+                        - number: 2147483648
+                        - number: 536870912
+                - number: 64

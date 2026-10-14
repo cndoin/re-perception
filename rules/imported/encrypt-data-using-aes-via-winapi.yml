@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: encrypt data using AES via WinAPI
+    namespace: data-manipulation/encryption/aes
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: encrypt data using AES via WinAPI
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - or:
+            - number: 26129
+            - number: 26126
+            - number: 26127
+            - number: 26128
+        - or:
+            - api: CryptGenKey
+            - api: CryptDeriveKey
+            - api: CryptImportKey

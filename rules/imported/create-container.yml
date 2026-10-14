@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: create container
+    namespace: host-interaction/container/docker
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: create container
+    references:
+      - https://docs.docker.com/engine/api/v1.24/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Deploy Container [T1610]
+  features:
+    - or:
+        - string: /^docker(\.exe)? create/
+        - string: /^docker(\.exe)? start/
+        - and:
+            - match: send HTTP request
+            - string: /\/v1\.[0-9]{1,2}\/containers\/create/
+        - and:
+            - match: send HTTP request
+            - string: /\/v1\.[0-9]{1,2}\/containers\/[0-9a-fA-F]+\/start/

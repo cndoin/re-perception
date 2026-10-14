@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: find process by PID
+    namespace: host-interaction/process/list
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: find process by PID
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Process Discovery [T1057]
+  features:
+    - or:
+        - api: ntoskrnl.PsLookupProcessByProcessId
+        - api: System.Diagnostics.Process::GetProcessById

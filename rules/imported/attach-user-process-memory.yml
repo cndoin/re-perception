@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: attach user process memory
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: attach user process memory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Process Injection [T1055]
+  features:
+    - and:
+        - api: ntoskrnl.KeStackAttachProcess
+        - api: ntoskrnl.KeUnstackDetachProcess

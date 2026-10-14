@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: gather softx-ftp information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather softx-ftp information
+    references:
+      - http://www.softx.org/ftp.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - or:
+        - substring: Software\\FTPClient\\Sites
+        - substring: Software\\SoftX.org\\FTPClient\\Sites

@@ -1,0 +1,25 @@
+rule:
+  meta:
+    name: search for credit card data
+    namespace: collection/credit-card
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+    description: search for credit card data
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - instruction:
+            and:
+              - mnemonic: cmp
+              - number: 94
+        - instruction:
+            and:
+              - mnemonic: cmp
+              - number: 61
+        - instruction:
+            and:
+              - mnemonic: cmp
+              - number: 68
+        - match: read process memory

@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: gather robo-ftp information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather robo-ftp information
+    references:
+      - https://www.robo-ftp.com/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - or:
+        - and:
+            - substring: SOFTWARE\\Robo-FTP
+            - or:
+                - substring: \\FTPServers
+                - substring: FTP File
+                - string: FTP Count
+        - and:
+            - string: Password
+            - string: ServerName
+            - string: UserID
+            - string: PortNumber
+            - string: InitialDirectory
+            - string: ServerType

@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: read HTTP header
+    namespace: communication/http
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: read HTTP header
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: winhttp.WinHttpQueryHeaders

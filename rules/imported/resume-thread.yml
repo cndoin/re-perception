@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: resume thread
+    namespace: host-interaction/thread/resume
+    scope: basic block
+    authors:
+      - 0x534a@mailbox.org
+      - anushka.virgaonkar@mandiant.com
+    description: resume thread
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.ResumeThread
+        - api: ntdll.NtResumeThread
+        - api: ntdll.ZwResumeThread
+        - api: System.Threading.Thread::Resume

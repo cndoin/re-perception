@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: reference Verisign DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference Verisign DNS server
+    references:
+      - https://www.techradar.com/news/best-dns-server
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: 64.6.64.6
+        - string: 64.6.65.6

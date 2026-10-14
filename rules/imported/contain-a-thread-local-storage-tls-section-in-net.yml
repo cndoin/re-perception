@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: contain a thread local storage (.tls) section in .NET
+    namespace: executable/pe/section/tls
+    scope: file
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: .NET file contains uncommon TLS section
+    references:
+      - https://washi.dev/blog/posts/entry-points/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: contain a thread local storage (.tls) section
+        - format: dotnet

@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: create shortcut via IShellLink
+    namespace: persistence
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+    description: create shortcut via IShellLink
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/shell/links#creating-a-shortcut-and-a-folder-shortcut-to-a-file
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Shortcut Modification [T1547.009]
+  features:
+    - and:
+        - bytes: 01 14 02 00 00 00 00 00 C0 00 00 00 00 00 00 46
+        - or:
+            - bytes: EE 14 02 00 00 00 00 00 C0 00 00 00 00 00 00 46
+            - bytes: F9 14 02 00 00 00 00 00 C0 00 00 00 00 00 00 46
+        - bytes: 0B 01 00 00 00 00 00 00 C0 00 00 00 00 00 00 46
+        - offset: 80
+        - offset: 24
+        - api: ole32.CoCreateInstance

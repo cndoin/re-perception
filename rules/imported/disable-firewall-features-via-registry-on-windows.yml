@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: disable firewall features via registry on Windows
+    namespace: impact/features
+    scope: function
+    authors:
+      - mehunhoff@google.com
+    description: disable firewall features via registry on Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - match: set registry value
+        - or:
+            - and:
+                - or:
+                    - string: /SYSTEM\\(ControlSet\d{3}|CurrentControlSet)\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\PublicProfile/i
+                    - string: /SYSTEM\\(ControlSet\d{3}|CurrentControlSet)\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile/i
+                - or:
+                    - string: /EnableFirewall/i
+                    - string: /DisableNotifications/i
+            - and:
+                - string: /SYSTEM\\(ControlSet\d{3}|CurrentControlSet)\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\DomainProfile/i
+                - string: /DisableNotifications/i

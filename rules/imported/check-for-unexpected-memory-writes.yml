@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: check for unexpected memory writes
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check for unexpected memory writes
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/WriteWatch.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: kernel32.GetWriteWatch
+        - number: 0

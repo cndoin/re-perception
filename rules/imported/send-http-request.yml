@@ -1,0 +1,42 @@
+rule:
+  meta:
+    name: send HTTP request
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - mehunhoff@google.com
+    description: send HTTP request
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - or:
+                - api: wininet.HttpOpenRequest
+                - api: wininet.InternetConnect
+            - or:
+                - api: wininet.HttpSendRequest
+                - api: wininet.HttpSendRequestEx
+        - and:
+            - api: winhttp.WinHttpSendRequest
+            - api: winhttp.WinHttpWriteData
+        - and:
+            - match: send data on socket
+            - and:
+                - string: /^(GET|POST|PUT|PATCH|HEAD|DELETE)/i
+                - string: /HTTP\/1\.\d/i
+        - and:
+            - format: dotnet
+            - or:
+                - api: System.Net.WebRequest::GetResponse
+                - api: System.Net.WebRequest::GetResponseAsync
+                - api: System.Net.Http.HttpClient::PostAsync
+                - api: System.Net.Http.HttpClient::GetAsync
+                - api: System.Net.Http.HttpClient::GetByteArrayAsync
+                - api: System.Net.Http.HttpClient::GetStreamAsync
+                - api: System.Net.Http.HttpClient::GetStringAsync
+                - api: System.Net.Http.HttpClient::Send
+                - api: System.Net.Http.HttpClient::SendAsync
+                - api: System.Net.Http.HttpClientHandler::Send
+                - api: System.Net.Http.HttpClientHandler::SendAsync

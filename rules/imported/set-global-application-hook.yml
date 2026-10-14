@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: set global application hook
+    namespace: host-interaction/gui
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: set global application hook
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: user32.SetWindowsHookEx
+        - number: 3
+        - number: 0

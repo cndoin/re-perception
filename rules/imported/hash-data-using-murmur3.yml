@@ -1,0 +1,39 @@
+rule:
+  meta:
+    name: hash data using murmur3
+    namespace: data-manipulation/hashing/murmur
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: hash data using murmur3
+    references:
+      - https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - number: 2246822507
+            - number: 3266489909
+        - and:
+            - number: 18397679294719823053
+            - number: 14181476777654086739
+        - and:
+            - number: 3432918353
+            - number: 461845907
+        - and:
+            - number: 597399067
+            - number: 2869860233
+            - number: 951274213
+            - number: 2716044179
+        - and:
+            - number: 9782798678568883157
+            - number: 5545529020109919103
+        - and:
+            - instruction:
+                and:
+                  - mnemonic: rol
+                  - number: 15
+            - instruction:
+                and:
+                  - mnemonic: rol
+                  - number: 13

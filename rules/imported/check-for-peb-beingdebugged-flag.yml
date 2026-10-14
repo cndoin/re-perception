@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: check for PEB BeingDebugged flag
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: basic block
+    authors:
+      - moritz.raabe@mandiant.com
+    description: check for PEB BeingDebugged flag
+    references:
+      - Practical Malware Analysis, Chapter 16, p. 353
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: PEB access
+        - offset: 2

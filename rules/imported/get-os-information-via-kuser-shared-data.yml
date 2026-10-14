@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: get OS information via KUSER_SHARED_DATA
+    namespace: host-interaction/os/version
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: get OS information via KUSER_SHARED_DATA
+    references:
+      - https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/ntexapi_x/kuser_shared_data/index.htm
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - or:
+        - number: 2147353184
+        - number: 2147353196
+        - number: 2147353200

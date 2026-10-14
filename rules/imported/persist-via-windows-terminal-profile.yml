@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: persist via Windows Terminal Profile
+    namespace: persistence/file-system
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Windows Terminal Profile
+    references:
+      - https://nasbench.medium.com/persistence-using-windows-terminal-profiles-5035d3fc86fe
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - or:
+            - match: copy file
+            - match: move file
+            - match: write file on Windows
+        - string: /Local\\Packages\\Microsoft\.WindowsTerminal_.*\\LocalState\\settings\.json/i

@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: execute shell command received from socket on Linux
+    namespace: communication/c2/shell
+    scope: function
+    authors:
+      - joakim@intezer.com
+    description: execute shell command received from socket on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Command and Scripting Interpreter::Unix Shell [T1059.004]
+  features:
+    - and:
+        - os: linux
+        - match: receive data on socket
+        - api: system

@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: check license value
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check license value
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiVM/Generic.cpp#L1224
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::System Checks [T1497.001]
+  features:
+    - and:
+        - api: NtQueryLicenseValue
+        - string: Kernel-VMDetection-Private

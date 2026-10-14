@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: lock file
+    namespace: host-interaction/mutex
+    scope: basic block
+    authors:
+      - joakim@intezer.com
+    description: lock file
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - api: fcntl
+        - number: 1
+        - number: 6

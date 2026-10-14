@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: access firewall settings via INetFwMgr
+    namespace: host-interaction/firewall/modify
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: access firewall settings via INetFwMgr
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Software Discovery::Security Software Discovery [T1518.001]
+      - Defense Evasion::Impair Defenses::Disable or Modify System Firewall [T1562.004]
+  features:
+    - and:
+        - api: ole32.CoCreateInstance
+        - bytes: 42 E9 4C 30 39 6E D8 40 94 3A B9 13 C4 0C 9C D4
+        - bytes: F5 8A 89 F7 C4 CA 32 46 A2 EC DA 06 E5 11 1A F2

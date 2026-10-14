@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: disable System Restore features via registry on Windows
+    namespace: impact/features
+    scope: function
+    authors:
+      - mehunhoff@google.com
+    description: disable System Restore features via registry on Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - match: set registry value
+        - string: /SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore/i
+        - or:
+            - string: /DisableSR/i
+            - string: /DisableConfig/i

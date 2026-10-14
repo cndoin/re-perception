@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: open RecentDocs registry key
+    namespace: host-interaction/registry
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: In the example sample, a RecentDocs registry value was leveraged for anti-sandbox purposes. See the referenced Palo Alto blog for details.
+    references:
+      - https://www.magnetforensics.com/blog/what-is-mru-most-recently-used/
+      - https://unit42.paloaltonetworks.com/snipbot-romcom-malware-variant/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: create or open registry key
+        - string: /SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RecentDocs/i

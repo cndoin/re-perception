@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: get UEFI variable
+    namespace: host-interaction/bootloader
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: get UEFI variable
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/sysinfo/access-uefi-firmware-variables-from-a-universal-windows-app
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Pre-OS Boot::System Firmware [T1542.001]
+  features:
+    - or:
+        - api: ntdll.NtEnumerateSystemEnvironmentValuesEx
+        - api: ntdll.NtQuerySystemEnvironmentValueEx
+        - api: ntdll.NtQuerySystemEnvironmentValue
+        - api: kernel32.GetFirmwareEnvironmentVariable
+        - api: kernel32.GetFirmwareEnvironmentVariableEx
+        - api: ntoskrnl.ExGetFirmwareEnvironmentVariable

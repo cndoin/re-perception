@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: disable AppInit_DLLs code signature enforcement
+    namespace: persistence/registry/appinitdlls
+    scope: function
+    authors:
+      - william.ballenthin@fireye.com
+    description: disable AppInit_DLLs code signature enforcement
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/win7appqual/appinit-dlls-in-windows-7-and-windows-server-2008-r2
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution::AppInit DLLs [T1546.010]
+      - Defense Evasion::Subvert Trust Controls::Code Signing Policy Modification [T1553.006]
+  features:
+    - and:
+        - string: /RequireSignedAppInit_DLLs/i
+        - number: 0
+        - or:
+            - match: set registry value
+            - number: 2147483650
+        - or:
+            - string: /Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows/i
+            - string: /Software\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows/i

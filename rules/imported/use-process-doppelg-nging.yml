@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: use process Doppelgänging
+    namespace: host-interaction/process/inject
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: use process Doppelgänging
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Process Injection::Process Doppelgänging [T1055.013]
+  features:
+    - and:
+        - substring: CreateFileTransacted
+        - or:
+            - string: ZwCreateSection
+            - string: NtCreateSection
+        - string: RollbackTransaction

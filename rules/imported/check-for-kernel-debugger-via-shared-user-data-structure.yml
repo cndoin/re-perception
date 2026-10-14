@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: check for kernel debugger via shared user data structure
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check for kernel debugger via shared user data structure
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/SharedUserData_KernelDebugger.cpp
+      - http://www.geoffchappell.com/studies/windows/km/ntoskrnl/structs/kuser_shared_data.htm
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - number: 2147353300
+        - instruction:
+            and:
+              - mnemonic: and
+              - number: 2
+        - instruction:
+            and:
+              - mnemonic: and
+              - number: 1

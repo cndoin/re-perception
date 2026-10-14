@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: persist via Image File Execution Options registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Image File Execution Options registry key
+    references:
+      - https://www.malwarebytes.com/blog/101/2015/12/an-introduction-to-image-file-execution-options
+      - https://oddvar.moe/2018/04/10/persistence-using-globalflags-in-image-file-execution-options-hidden-from-autoruns-exe/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution::Image File Execution Options Injection [T1546.012]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\/i
+        - string: /Debugger/i

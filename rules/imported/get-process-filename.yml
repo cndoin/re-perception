@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: get process filename
+    namespace: host-interaction/process
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: Retrieves the current process' filename. In the example sample, this was part of a sandbox evasion technique that computed and verified the checksum of the sample's filename.
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb_ldr_data
+      - https://research.openanalysis.net/rhadamanthys/config/ida/shifted%20pointers/peb/_list_entry/_ldr_data_table_entry/2023/01/19/rhadamanthys.html#PEB-Walk-_LDR_DATA_TABLE_ENTRY-and-Shifted-Pointers-in-IDA
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Process Discovery [T1057]
+  features:
+    - or:
+        - and:
+            - arch: i386
+            - characteristic: peb-access
+            - offset: 12
+            - offset: 20
+            - offset: 40
+        - and:
+            - arch: amd64
+            - characteristic: peb-access
+            - offset: 24
+            - offset: 32
+            - offset: 80

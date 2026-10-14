@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: hide graphical window
+    namespace: host-interaction/gui/window/hide
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: hide graphical window
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Hide Artifacts::Hidden Window [T1564.003]
+  features:
+    - and:
+        - number: 0
+        - api: user32.ShowWindow

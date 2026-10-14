@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: enable safe mode boot
+    namespace: host-interaction/bootloader
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: enable safe mode boot
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Safe Mode Boot [T1562.009]
+  features:
+    - and:
+        - os: windows
+        - or:
+            - substring: bootcfg /raw /a /safeboot:network
+            - string: bcdedit /set {current} safeboot minimal
+            - string: bcdedit /set {current} safeboot network

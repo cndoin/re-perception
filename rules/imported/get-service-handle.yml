@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: get service handle
+    namespace: lib
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: get service handle
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - or:
+        - api: advapi32.CreateService
+        - api: advapi32.OpenService

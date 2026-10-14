@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: use .NET library SharpVectors
+    namespace: data-manipulation/svg
+    scope: file
+    authors:
+      - "@johnk3r"
+    description: use .NET library SharpVectors
+    references:
+      - https://www.welivesecurity.com/2021/04/06/janeleiro-time-traveler-new-old-banking-trojan-brazil/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: compiled to the .NET platform
+        - string: SharpVectors.Converters.Wpf

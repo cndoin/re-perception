@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: enumerate processes via NtQuerySystemInformation
+    namespace: host-interaction/process/list
+    scope: basic block
+    authors:
+      - "@_re_fox"
+    description: enumerate processes via NtQuerySystemInformation
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Process Discovery [T1057]
+      - Discovery::Software Discovery [T1518]
+  features:
+    - and:
+        - number: 5
+        - or:
+            - api: NtQuerySystemInformation
+            - api: NtQuerySystemInformationEx
+            - api: ZwQuerySystemInformation
+            - api: ZwQuerySystemInformationEx

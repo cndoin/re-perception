@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: send TCP data via WFP API
+    namespace: communication/socket/tcp/send
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: send TCP data via WFP API
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: fwpkclnt.FwpsStreamInjectAsync0
+        - number: 65536

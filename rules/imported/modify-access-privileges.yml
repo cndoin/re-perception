@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: modify access privileges
+    namespace: host-interaction/process/modify
+    scope: instruction
+    authors:
+      - moritz.raabe@mandiant.com
+    description: modify access privileges
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Privilege Escalation::Access Token Manipulation [T1134]
+  features:
+    - api: advapi32.AdjustTokenPrivileges

@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: clear Windows event logs
+    namespace: anti-analysis/anti-forensic/clear-logs
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: clear Windows event logs
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Indicator Removal::Clear Windows Event Logs [T1070.001]
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: advapi32.ElfClearEventLogFile
+            - api: advapi32.ClearEventLog
+            - api: wevtapi.EvtClearLog

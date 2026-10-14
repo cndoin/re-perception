@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: detect VM via disk hardware WMI queries
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: function
+    authors:
+      - anders.vejlby@mandiant.com
+    description: detect VM via disk hardware WMI queries
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::System Checks [T1497.001]
+  features:
+    - and:
+        - string: Win32_DiskDrive
+        - string: Model
+        - string: Virtual

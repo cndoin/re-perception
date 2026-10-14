@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: linked against CPP regex library
+    namespace: linking/static/cppregex
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: linked against CPP regex library
+    references:
+      - http://www.cplusplus.com/reference/regex/regex_error/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: regex_error(error_syntax)
+        - string: "regex_error(error_collate): The expression contained an invalid collating element name."

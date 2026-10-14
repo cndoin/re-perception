@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: reference L3 DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference L3 DNS server
+    references:
+      - https://www.quora.com/What-is-a-4-2-2-1-DNS-server
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: 4.2.2.1
+        - string: 4.2.2.2
+        - string: 4.2.2.3
+        - string: 4.2.2.4
+        - string: 4.2.2.5
+        - string: 4.2.2.6

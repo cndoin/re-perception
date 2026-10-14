@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: persist via AutodialDLL registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via AutodialDLL registry key
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/rras/autodial-connection-operations
+      - https://www.hexacorn.com/blog/2015/01/13/beyond-good-ol-run-key-part-24/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - string: /System\\(ControlSet\d{3}|CurrentControlSet)\\Services\\WinSock2\\Parameters/i
+        - string: /AutodialDLL/i

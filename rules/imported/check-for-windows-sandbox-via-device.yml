@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: check for Windows sandbox via device
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: basic block
+    authors:
+      - "@_re_fox"
+    description: check for Windows sandbox via device
+    references:
+      - https://github.com/LloydLabs/wsb-detect
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::System Checks [T1497.001]
+  features:
+    - and:
+        - match: create or open file
+        - string: \\\\.\\GLOBALROOT\\device\\vmsmb

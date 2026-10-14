@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: read .ini file
+    namespace: host-interaction/file-system/read
+    scope: function
+    authors:
+      - "@_re_fox"
+      - michael.hunhoff@mandiant.com
+    description: read .ini file
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: GetPrivateProfileInt
+        - api: GetPrivateProfileString
+        - api: GetPrivateProfileStruct
+        - api: GetPrivateProfileSection
+        - api: GetPrivateProfileSectionNames

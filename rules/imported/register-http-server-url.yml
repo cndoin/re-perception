@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: register HTTP server URL
+    namespace: communication/http/server
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: register HTTP server URL
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: httpapi.HttpAddUrl
+        - api: httpapi.HttpAddUrlToUrlGroup

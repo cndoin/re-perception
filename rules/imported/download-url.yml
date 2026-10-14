@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: download URL
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: download URL
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: urlmon.URLDownloadToFile
+        - api: urlmon.URLDownloadToCacheFile
+        - api: urlmon.URLOpenBlockingStream
+        - api: urlmon.URLOpenPullStream
+        - api: urlmon.URLOpenStream
+        - api: System.Net.WebClient::DownloadFile
+        - api: System.Net.WebClient::DownloadFileAsync
+        - api: System.Net.WebClient::DownloadFileTaskAsync
+        - api: Microsoft.VisualBasic.Devices.Network::DownloadFile

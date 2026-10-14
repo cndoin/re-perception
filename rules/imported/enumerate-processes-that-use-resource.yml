@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: enumerate processes that use resource
+    namespace: host-interaction/process
+    scope: function
+    authors:
+      - "@Ana06"
+    description: enumerate processes that use resource
+    references:
+      - https://www.malwarebytes.com/blog/threat-intelligence/2021/07/avoslocker-enters-the-ransomware-scene-asks-for-partners
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: rstrtmgr.RmRegisterResources
+        - api: rstrtmgr.RmGetList

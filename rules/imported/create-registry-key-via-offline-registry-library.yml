@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: create registry key via offline registry library
+    namespace: host-interaction/registry
+    scope: function
+    authors:
+      - johnk3r
+    description: create registry key via offline registry library
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Modify Registry [T1112]
+  features:
+    - or:
+        - api: ORCreateHive
+        - api: ORCreateKey

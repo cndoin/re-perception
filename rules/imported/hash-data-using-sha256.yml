@@ -1,0 +1,46 @@
+rule:
+  meta:
+    name: hash data using SHA256
+    namespace: data-manipulation/hashing/sha256
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+      - william.ballenthin@mandiant.com
+      - mehunhoff@google.com
+    description: hash data using SHA256
+    references:
+      - https://www.rfc-editor.org/rfc/rfc6234
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - number: 1779033703
+            - number: 3144134277
+            - number: 1013904242
+            - number: 2773480762
+            - number: 1359893119
+            - number: 2600822924
+            - number: 528734635
+            - number: 1541459225
+        - bytes: 67 E6 09 6A 85 AE 67 BB 72 F3 6E 3C 3A F5 4F A5 7F 52 0E 51 8C 68 05 9B AB D9 83 1F 19 CD E0 5B
+        - and:
+            - number: 1116352408
+            - number: 1899447441
+            - number: 3049323471
+            - number: 3921009573
+            - number: 961987163
+            - number: 1508970993
+            - number: 2453635748
+            - number: 2870763221
+            - not:
+                or:
+                  - number: 3609767458
+                  - number: 602891725
+        - and:
+            - format: dotnet
+            - or:
+                - api: System.Security.Cryptography.SHA256Managed::Initialize
+                - api: System.Security.Cryptography.SHA256CryptoServiceProvider::Initialize
+                - api: System.Security.Cryptography.SHA256::Create
+                - api: System.Security.Cryptography.SHA256Managed::ctor

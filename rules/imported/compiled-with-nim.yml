@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: compiled with Nim
+    namespace: compiler/nim
+    scope: file
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: compiled with Nim
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - substring: NimMain
+        - substring: NimMainModule
+        - substring: NimMainInner
+        - substring: io.nim
+        - substring: fatal.nim
+        - substring: system.nim
+        - substring: alloc.nim
+        - substring: osalloc.nim

@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: persist via TelemetryController registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via TelemetryController registry key
+    references:
+      - https://www.trustedsec.com/blog/abusing-windows-telemetry-for-persistence
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Scheduled Task/Job [T1053]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\TelemetryController\\/i
+        - string: /^Command$/i

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: reference SQL statements
+    namespace: collection/database/sql
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference SQL statements
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Data from Information Repositories [T1213]
+  features:
+    - string: /SELECT.*FROM.*WHERE/

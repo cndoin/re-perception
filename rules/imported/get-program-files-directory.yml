@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: get Program Files directory
+    namespace: host-interaction/file-system
+    scope: basic block
+    authors:
+      - moritz.raabe@mandiant.com
+    description: get Program Files directory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::File and Directory Discovery [T1083]
+  features:
+    - and:
+        - or:
+            - number: 38
+            - number: 42
+        - or:
+            - api: shell32.SHGetFolderPath
+            - api: shell32.SHGetFolderLocation
+            - api: shell32.SHGetSpecialFolderPath
+            - api: shell32.SHGetSpecialFolderLocation

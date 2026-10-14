@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: get user security identifier
+    namespace: host-interaction/session
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get user security identifier
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Account Discovery [T1087]
+  features:
+    - or:
+        - api: advapi32.LookupAccountName
+        - api: advapi32.LsaLookupNames
+        - api: advapi32.LsaLookupNames2

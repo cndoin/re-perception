@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: find graphical window
+    namespace: host-interaction/gui/window/find
+    scope: instruction
+    authors:
+      - moritz.raabe@mandiant.com
+    description: find graphical window
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Application Window Discovery [T1010]
+  features:
+    - or:
+        - api: user32.FindWindow
+        - api: user32.FindWindowEx

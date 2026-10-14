@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: check for sandbox and av modules
+    namespace: anti-analysis/anti-av
+    scope: basic block
+    authors:
+      - "@_re_fox"
+    description: check for sandbox and av modules
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: GetModuleHandle
+        - or:
+            - string: /avghook(x|a)\.dll/i
+            - string: /snxhk\.dll/i
+            - string: /sf2\.dll/i
+            - string: /sbiedll\.dll/i
+            - string: /dbghelp\.dll/i
+            - string: /api_log\.dll/i
+            - string: /dir_watch\.dll/i
+            - string: /pstorec\.dll/i
+            - string: /vmcheck\.dll/i
+            - string: /wpespy\.dll/i
+            - string: /cmdvrt(64|32)\.dll/i
+            - string: /sxin\.dll/i
+            - string: /dbghelp\.dll/i
+            - string: /printfhelp\.dll/i

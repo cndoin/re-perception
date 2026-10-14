@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: gather coreftp information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather coreftp information
+    references:
+      - http://www.coreftp.com/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - or:
+        - substring: Software\\FTPWare\\COREFTP\\Sites
+        - and:
+            - string: Host
+            - string: User
+            - string: Port
+            - string: PthR

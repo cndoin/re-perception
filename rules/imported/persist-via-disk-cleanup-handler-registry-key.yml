@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: persist via Disk Cleanup Handler registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Disk Cleanup Handler registry key
+    references:
+      - https://www.hexacorn.com/blog/2018/09/02/beyond-good-ol-run-key-part-86/
+      - https://learn.microsoft.com/en-us/windows/win32/lwef/disk-cleanup
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Microsoft\\Windows\\CurrentVersion\\Explorer\\VolumeCaches\\/i

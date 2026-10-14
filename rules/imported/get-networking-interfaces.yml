@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: get networking interfaces
+    namespace: host-interaction/network/interface
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - joakim@intezer.com
+      - anushka.virgaonkar@mandiant.com
+    description: get networking interfaces
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery [T1016]
+  features:
+    - or:
+        - and:
+            - os: windows
+            - api: iphlpapi.GetIfTable
+            - api: iphlpapi.GetAdaptersInfo
+        - and:
+            - os: linux
+            - api: getifaddrs
+        - or:
+            - api: System.Net.NetworkInformation.NetworkInterface::GetIPProperties
+            - api: System.Net.NetworkInformation.NetworkInterface::GetIPStatistics
+            - api: System.Net.NetworkInformation.NetworkInterface::GetIPv4Statistics

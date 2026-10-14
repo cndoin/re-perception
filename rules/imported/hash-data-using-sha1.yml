@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: hash data using SHA1
+    namespace: data-manipulation/hashing/sha1
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+      - william.ballenthin@mandiant.com
+    description: hash data using SHA1
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - number: 1732584193
+            - number: 4023233417
+            - number: 2562383102
+            - number: 271733878
+            - number: 3285377520
+        - and:
+            - number: 1518500249
+            - number: 1859775393
+            - number: 2400959708
+            - number: 3395469782
+        - api: System.Security.Cryptography.SHA1Managed::ctor

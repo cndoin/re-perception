@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: decrypt data using AES via .NET
+    namespace: data-manipulation/encryption/aes
+    scope: function
+    authors:
+      - mehunhoff@google.com
+    description: decrypt data using AES via .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - format: dotnet
+        - api: System.Security.Cryptography.Aes::Create
+        - api: System.Security.Cryptography.SymmetricAlgorithm::CreateDecryptor

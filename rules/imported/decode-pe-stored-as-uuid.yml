@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: decode PE stored as UUID
+    namespace: load-code/pe
+    scope: function
+    authors:
+      - corkami@google.com
+    description: decode PE stored as UUID
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: UuidFromString
+        - and:
+            - substring: "90909090"
+            - substring: "00000000"
+            - substring: "-0000-"
+            - substring: ffffffff
+            - substring: "-ffff-"
+            - string: /.*4d-?5a.*/

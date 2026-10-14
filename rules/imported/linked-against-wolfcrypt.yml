@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: linked against wolfCrypt
+    namespace: linking/static/wolfcrypt
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: linked against wolfCrypt
+    references:
+      - https://www.wolfssl.com/products/wolfcrypt-2/
+      - https://github.com/wolfSSL/wolfssl/blob/master/wolfcrypt/src/error.c
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: mp_init error state
+        - string: wolfcrypt cleanup failed
+        - string: Async Init error
+        - string: Compress Init error
+        - string: wolfCrypt Initialize Failure error
+        - string: wolfCrypt operation not pending error

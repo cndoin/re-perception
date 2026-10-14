@@ -1,0 +1,31 @@
+rule:
+  meta:
+    name: bypass UAC via token manipulation
+    namespace: host-interaction/uac/bypass
+    scope: function
+    authors:
+      - richard.cole@mandiant.com
+      - david.cannings@pwc.com
+    description: bypass UAC via token manipulation
+    references:
+      - https://github.com/hfiref0x/UACME/blob/0a4d2bd67f4872c595f0217ef6ebdcf135186945/Source/Akagi/methods/tyranid.c#L83
+      - https://gist.github.com/dezhub/c0fee68d1e06657a45ec39365362fca7
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Abuse Elevation Control Mechanism::Bypass User Account Control [T1548.002]
+  features:
+    - and:
+        - string: wusa.exe
+        - or:
+            - api: ShellExecuteEx
+            - api: ShellExecuteExW
+        - or:
+            - api: NtOpenProcessToken
+            - api: NtFilterToken
+            - api: NtDuplicateToken
+            - number: 983551
+        - or:
+            - api: NtSetInformationToken
+            - api: ImpersonateLoggedOnUser
+            - api: CreateProcessWithLogon
+            - api: CreateProcessWithLogonW

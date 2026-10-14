@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: copy network traffic
+    namespace: host-interaction/network/traffic/copy
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: copy network traffic
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Network Sniffing [T1040]
+  features:
+    - api: fwpkclnt.FwpsCopyStreamDataToBuffer0

@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: check for software breakpoints
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check for software breakpoints
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/SoftwareBreakpoints.cpp
+      - https://anti-debug.checkpoint.com/techniques/assembly.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 204
+            - and:
+                - instruction:
+                    and:
+                      - mnemonic: cmp
+                      - number: 205
+                - instruction:
+                    and:
+                      - mnemonic: cmp
+                      - number: 3
+        - match: contain loop

@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: hash data with MD5
+    namespace: data-manipulation/hashing/md5
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: hash data with MD5
+    references:
+      - https://github.com/rwfpl/rewolf-x86-virtualizer/blob/master/src/test_app/main.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - number: 1732584193
+            - number: 4023233417
+            - number: 2562383102
+            - number: 271733878
+            - not:
+                number: 3285377520
+        - and:
+            - format: dotnet
+            - or:
+                - api: System.Security.Cryptography.MD5::Create
+                - api: System.Security.Cryptography.MD5CryptoServiceProvider::ctor

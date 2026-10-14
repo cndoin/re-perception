@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: schedule task via ITaskScheduler
+    namespace: persistence/scheduled-tasks
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: schedule task via ITaskScheduler
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Scheduled Task/Job::Scheduled Task [T1053.005]
+  features:
+    - and:
+        - api: ole32.CoCreateInstance
+        - bytes: 2A D5 8B 14 AB A2 CE 11 B1 1F 00 AA 00 53 05 03
+        - bytes: 27 D5 8B 14 AB A2 CE 11 B1 1F 00 AA 00 53 05 03
+        - or:
+            - offset: 32
+            - offset: 36

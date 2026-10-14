@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: persist via Filter Handlers registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Filter Handlers registry key
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/search/-search-ifilter-about
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - or:
+            - string: /\\\..*\\PersistentHandler/i
+            - string: /CLSID\\.*\\PersistentHandler/i

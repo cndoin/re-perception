@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: persist via Code signing registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Code signing registry key
+    references:
+      - https://specterops.io/wp-content/uploads/sites/3/2022/06/SpecterOps_Subverting_Trust_in_Windows.pdf
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - and:
+            - string: /Microsoft\\Cryptography\\OID\\/i
+            - string: /^Dll$/i

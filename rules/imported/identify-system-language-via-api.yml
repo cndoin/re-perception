@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: identify system language via API
+    namespace: targeting/language
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: identify system language via API
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Location Discovery::System Language Discovery [T1614.001]
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: GetUserDefaultUILanguage
+            - api: GetSystemDefaultUILanguage
+            - api: GetUserDefaultLangID

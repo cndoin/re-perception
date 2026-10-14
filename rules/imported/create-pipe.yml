@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: create pipe
+    namespace: communication/named-pipe/create
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: create pipe
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.CreatePipe
+        - api: kernel32.CreateNamedPipe
+        - api: System.IO.Pipes.AnonymousPipeClientStream::ctor
+        - api: System.IO.Pipes.NamedPipeClientStream::ctor
+        - api: System.IO.Pipes.AnonymousPipeServerStream::ctor
+        - api: System.IO.Pipes.AnonymousPipeServerStreamAcl::Create
+        - api: System.IO.Pipes.NamedPipeServerStream::ctor
+        - api: System.IO.Pipes.NamedPipeServerStreamAcl::Create

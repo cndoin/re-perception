@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: persist via PowerShell profile
+    namespace: persistence/file-system
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via PowerShell profile
+    references:
+      - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution::PowerShell Profile [T1546.013]
+  features:
+    - and:
+        - or:
+            - match: copy file
+            - match: move file
+            - match: write file on Windows
+        - or:
+            - string: /Profile\.ps1/i
+            - string: /Microsoft\.PowerShell_profile\.ps1/i

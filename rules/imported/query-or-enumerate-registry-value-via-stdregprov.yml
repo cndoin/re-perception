@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: query or enumerate registry value via StdRegProv
+    namespace: host-interaction/registry
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: query or enumerate registry value via StdRegProv
+    references:
+      - https://docs.microsoft.com/en-us/previous-versions/windows/desktop/regprov/stdregprov#methods
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: StdRegProv
+        - or:
+            - string: EnumValues
+            - string: GetBinaryValue
+            - string: GetDWORDValue
+            - string: GetExpandedStringValue
+            - string: GetMultiStringValue
+            - string: GetQWORDValue
+            - string: GetStringValue

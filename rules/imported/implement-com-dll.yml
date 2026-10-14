@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: implement COM DLL
+    namespace: executable/pe
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: implement COM DLL
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-dllgetclassobject
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - export: DllGetClassObject

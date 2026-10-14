@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: linked against wolfSSL
+    namespace: linking/static/wolfssl
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: linked against wolfSSL
+    references:
+      - https://www.wolfssl.com/
+      - https://github.com/wolfSSL/wolfssl/blob/2841b5c93b87311dadcf2278151df7453e56db96/wolfssl/internal.h#L4646
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: SSLeay wolfSSL compatibility
+        - string: wolfSSL_Init
+        - string: Please supply a buffer for error string
+        - 3 or more:
+            - substring: CLNTSRVR
+            - substring: server finished
+            - substring: client finished
+            - substring: DOGNGRD
+            - substring: DOWNGRD

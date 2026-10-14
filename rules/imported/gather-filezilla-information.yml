@@ -1,0 +1,34 @@
+rule:
+  meta:
+    name: gather filezilla information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather filezilla information
+    references:
+      - https://filezilla-project.org/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - or:
+        - and:
+            - substring: \\sitemanager.xml
+            - substring: \\recentservers.xml
+            - substring: \\filezilla.xml
+        - and:
+            - substring: Software\\FileZilla
+            - string: Install_Dir
+            - substring: Software\\FileZilla Client
+        - 3 or more:
+            - string: Server Type
+            - string: Remote Dir
+            - string: Server.Port
+            - string: Server.Host
+            - string: Server.User
+            - string: Last Server Type
+            - string: Last Server Port
+            - string: Last Server User
+            - string: Last Server Host
+            - string: Last Server Pass

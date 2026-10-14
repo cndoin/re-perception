@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: linked against libcurl
+    namespace: linking/static/libcurl
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: linked against libcurl
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - substring: CLIENT libcurl
+        - substring: curl.haxx.se

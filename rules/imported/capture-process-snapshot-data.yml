@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: capture process snapshot data
+    namespace: host-interaction/process/dump
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: capture process snapshot data
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: PssCaptureSnapshot
+        - api: PssQuerySnapshot
+        - api: PssWalkSnapshot

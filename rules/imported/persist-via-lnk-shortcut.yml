@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: persist via lnk shortcut
+    namespace: persistence/file-system
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via lnk shortcut
+    references:
+      - https://www.ired.team/offensive-security/persistence/modifying-.lnk-shortcuts
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Shortcut Modification [T1547.009]
+  features:
+    - and:
+        - or:
+            - match: copy file
+            - match: move file
+            - match: write file on Windows
+        - string: /\.lnk$/i

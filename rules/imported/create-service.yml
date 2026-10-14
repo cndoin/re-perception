@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: create service
+    namespace: host-interaction/service/create
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: create service
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Create or Modify System Process::Windows Service [T1543.003]
+      - Execution::System Services::Service Execution [T1569.002]
+  features:
+    - or:
+        - api: advapi32.CreateService
+        - or:
+            - substring: sc.exe create
+            - substring: sc create

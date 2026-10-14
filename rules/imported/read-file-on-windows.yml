@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: read file on Windows
+    namespace: host-interaction/file-system/read
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: read file on Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: kernel32.ReadFile
+            - api: ReadFileEx
+            - api: NtReadFile
+            - api: ZwReadFile
+            - api: LZRead
+            - api: _read
+            - api: fread

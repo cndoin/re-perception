@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: bypass Windows File Protection
+    namespace: host-interaction/file-system/windows-file-protection
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: bypass Windows File Protection
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: sfc_os.dll
+        - number: 2
+        - match: link function at runtime on Windows

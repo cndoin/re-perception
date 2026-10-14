@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: compiled from EPL
+    namespace: compiler/epl
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: compiled from EPL
+    references:
+      - https://www.hexacorn.com/blog/2019/02/13/pe-files-and-the-easy-programming-language-epl/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: GetNewSock
+        - string: Software\\FlySky\\E\\Install
+        - string: Not found the kernel library or the kernel library is invalid!
+        - string: Failed to allocate memory!
+        - string: / MADE BY E COMPILER – WUTAO
+        - section: .ecode
+        - import: krnln.fne
+        - import: krnln.fnr
+        - import: eAPI.fne
+        - import: RegEx.fnr

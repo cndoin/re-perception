@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: reference 114DNS DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference 114DNS DNS server
+    references:
+      - https://www.114dns.com/
+      - https://www.amazon.com/ask/questions/Tx27CUHKMM403NP
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: 114.114.114.114
+        - string: 114.114.115.115
+        - string: 114.114.114.119
+        - string: 114.114.115.119
+        - string: 114.114.114.110
+        - string: 114.114.115.110

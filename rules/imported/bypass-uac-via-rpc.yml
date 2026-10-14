@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: bypass UAC via RPC
+    namespace: host-interaction/uac/bypass
+    scope: function
+    authors:
+      - david.cannings@pwc.com
+      - david@edeca.net
+    description: bypass UAC via RPC
+    references:
+      - https://googleprojectzero.blogspot.com/2019/12/
+      - https://github.com/hfiref0x/UACME/blob/master/Source/Shared/consts.h
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Abuse Elevation Control Mechanism::Bypass User Account Control [T1548.002]
+  features:
+    - or:
+        - string: "{201ef99a-7fa0-444c-9399-19ba84f12a1a}"
+        - string: 201ef99a-7fa0-444c-9399-19ba84f12a1a
+        - bytes: 9A F9 1E 20 A0 7F 4C 44 93 99 19 BA 84 F1 2A 1A

@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: linked against CPP standard library
+    namespace: linking/static
+    scope: file
+    authors:
+      - "@mr-tz"
+    description: linked against CPP standard library
+    references:
+      - https://en.wikipedia.org/wiki/P._J._Plauger
+      - https://www.dinkumware.com/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: Copyright (c) by P.J. Plauger, licensed by Dinkumware, Ltd. ALL RIGHTS RESERVED.
+        - string: Copyright (c) 1992-2004 by P.J. Plauger, licensed by Dinkumware, Ltd. ALL RIGHTS RESERVED.

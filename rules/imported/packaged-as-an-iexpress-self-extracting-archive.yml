@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: packaged as an IExpress self-extracting archive
+    namespace: executable/installer/iexpress
+    scope: file
+    authors:
+      - awillia2@cisco.com
+    description: packaged as an IExpress self-extracting archive
+    references:
+      - https://en.wikipedia.org/wiki/IExpress
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - string: wextract_cleanup%d
+            - string: Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce
+        - string: <description>IExpress extraction tool</description>

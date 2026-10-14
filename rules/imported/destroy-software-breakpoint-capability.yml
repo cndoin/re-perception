@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: destroy software breakpoint capability
+    namespace: anti-analysis/anti-debugging
+    scope: function
+    authors:
+      - echernofsky@google.com
+    description: destroy software breakpoint capability
+    references:
+      - https://www.microsoft.com/en-us/security/blog/2018/03/01/finfisher-exposed-a-researchers-tale-of-defeating-traps-tricks-and-complex-virtual-machines/
+      - https://anti-debug.checkpoint.com/techniques/assembly.html
+      - https://www.mandiant.com/sites/default/files/2021-10/09-evil.pdf
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: VirtualProtect
+        - api: DbgBreakPoint

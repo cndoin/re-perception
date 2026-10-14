@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: parse PE header
+    namespace: load-code/pe
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: parse PE header
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Shared Modules [T1129]
+  features:
+    - and:
+        - os: windows
+        - and:
+            - mnemonic: cmp
+            - or:
+                - number: 17744
+                - and:
+                    - number: 80
+                    - number: 69
+            - or:
+                - number: 23117
+                - and:
+                    - number: 77
+                    - number: 90

@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: manipulate boot configuration
+    namespace: host-interaction/bootloader
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: manipulate boot configuration
+    references:
+      - https://docs.microsoft.com/en-us/windows-hardware/manufacture/desktop/bcdedit-command-line-options
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: /bcdedit\.exe/i
+        - string: /boot\.ini/i

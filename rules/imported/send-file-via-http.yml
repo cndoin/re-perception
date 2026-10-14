@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: send file via HTTP
+    namespace: communication/http/client
+    scope: instruction
+    authors:
+      - matthew.williams@mandiant.com
+    description: send file via HTTP
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: wininet.InternetWriteFile

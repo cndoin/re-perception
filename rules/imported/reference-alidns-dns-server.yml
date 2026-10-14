@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: reference AliDNS DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference AliDNS DNS server
+    references:
+      - https://www.alidns.com/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: 223.5.5.5
+        - string: 223.6.6.6
+        - string: 2400:3200::1
+        - string: 2400:3200:baba::1

@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: patch Event Tracing for Windows function
+    namespace: anti-analysis/anti-av
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: patch Event Tracing for Windows function
+    references:
+      - https://unprotect.it/technique/disabling-event-tracing-for-windows-etw/
+      - https://github.com/Mr-Un1k0d3r/AMSI-ETW-Patch/blob/main/patch-etw-x64.c
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - match: change memory protection
+        - or:
+            - string: EventWrite
+            - string: EtwEventWrite
+            - string: EtwEventWriteFull
+            - string: TraceEvent
+            - string: NtTraceEvent
+            - string: ZwTraceEvent
+            - string: NtTraceControl
+            - string: ZwTraceControl

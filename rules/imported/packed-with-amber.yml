@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: packed with amber
+    namespace: anti-analysis/packer/amber
+    scope: file
+    authors:
+      - john.gorman@mandiant.com
+    description: packed with amber
+    references:
+      - https://github.com/EgeBalci/amber
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Software Packing [T1027.002]
+  features:
+    - string: Amber - Reflective PE Packer

@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: linked against PolarSSL/mbed TLS
+    namespace: linking/static/polarssl
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: linked against PolarSSL/mbed TLS
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: PolarSSLTest
+        - string: mbedtls_cipher_setup
+        - string: mbedtls_pk_verify
+        - string: mbedtls_ssl_write_record
+        - string: mbedtls_ssl_fetch_input

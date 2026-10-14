@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: execute JScript via VsaEngine in .NET
+    namespace: load-code
+    scope: function
+    authors:
+      - jakubjozwiak@google.com
+    description: Match on files capable of evaluating JScript code via Visual Studio for Applications engine.
+    references:
+      - https://weblog.west-wind.com/posts/2007/Feb/14/Evaluating-JavaScript-code-from-C
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Command and Scripting Interpreter::JavaScript [T1059.007]
+  features:
+    - and:
+        - or:
+            - api: Microsoft.JScript.Vsa.VsaEngine::CreateEngine
+            - api: Microsoft.JScript.Vsa.VsaEngine::CreateEngineAndGetGlobalScope
+            - api: Microsoft.JScript.Vsa.VsaEngine::CreateEngineAndGetGlobalScopeWithType
+            - api: Microsoft.JScript.Vsa.VsaEngine::CreateEngineAndGetGlobalScopeWithTypeAndRootNamespace
+            - api: Microsoft.JScript.Vsa.VsaEngine::CreateEngineWithType
+        - api: Microsoft.JScript.Eval::JScriptEvaluate

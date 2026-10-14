@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: execute via .NET startup hook
+    namespace: runtime/dotnet
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: execute via .NET startup hook
+    references:
+      - https://rastamouse.me/net-startup-hooks/
+      - https://github.com/dotnet/runtime/blob/main/docs/design/features/host-startup-hook.md
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - format: dotnet
+        - function-name: StartupHook::Initialize

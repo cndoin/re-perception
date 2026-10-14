@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: make suspicious NtQuerySystemInformation call
+    namespace: exploitation/enumeration
+    scope: basic block
+    authors:
+      - zdw@google.com
+    description: look for suspicious NtQuerySystemInformation calls used to enumerate kernel information in LPEs
+    references:
+      - https://www.geoffchappell.com/studies/windows/km/ntoskrnl/api/ex/sysinfo/query.htm?tx=61
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - api: NtQuerySystemInformation
+        - or:
+            - number: 11
+            - number: 16
+            - number: 64
+            - number: 66

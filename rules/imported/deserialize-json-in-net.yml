@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: deserialize JSON in .NET
+    namespace: data-manipulation/json
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: deserialize JSON in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.Web.Script.Serialization.JavaScriptSerializer::Deserialize
+        - api: System.Web.Script.Serialization.JavaScriptSerializer::DeserializeObject
+        - api: System.Text.Json.JsonSerializer::Deserialize
+        - api: System.Text.Json.JsonSerializer::DeserializeAsync
+        - api: System.Text.Json.JsonSerializer::DeserializeAsyncEnumerable

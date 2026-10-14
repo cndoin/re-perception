@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: persist via Natural Language registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Natural Language registry key
+    references:
+      - https://www.hexacorn.com/blog/2018/12/30/beyond-good-ol-run-key-part-98/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution [T1547]
+  features:
+    - and:
+        - match: set registry value
+        - string: /SYSTEM\\(ControlSet\d{3}|CurrentControlSet)\\Control\\ContentIndex\\Language\\/i
+        - or:
+            - string: /StemmerDLLPathOverride/i
+            - string: /WBDLLPathOverride/i

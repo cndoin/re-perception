@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: reference HTTP User-Agent string
+    namespace: communication/http
+    scope: function
+    authors:
+      - "@mr-tz"
+      - mehunhoff@google.com
+    description: reference HTTP User-Agent string
+    references:
+      - https://www.useragents.me/
+      - https://www.whatismybrowser.com/guides/the-latest-user-agent/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - substring: Mozilla/5.0
+        - substring: like Gecko
+        - api: urlmon.ObtainUserAgentString

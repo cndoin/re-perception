@@ -1,0 +1,64 @@
+rule:
+  meta:
+    name: hash data using SHA512
+    namespace: data-manipulation/hashing/sha512
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: hash data using SHA512
+    references:
+      - https://www.rfc-editor.org/rfc/rfc6234
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - number: 7640891576956012808
+            - number: 13503953896175478587
+            - number: 4354685564936845355
+            - number: 11912009170470909681
+            - number: 5840696475078001361
+            - number: 11170449401992604703
+            - number: 2270897969802886507
+            - number: 6620516959819538809
+        - and:
+            - or:
+                - number: 4794697086780616226
+                - and:
+                    - number: 1116352408
+                    - number: 3609767458
+            - or:
+                - number: 8158064640168781261
+                - and:
+                    - number: 1899447441
+                    - number: 602891725
+            - or:
+                - number: 13096744586834688815
+                - and:
+                    - number: 3049323471
+                    - number: 3964484399
+            - or:
+                - number: 16840607885511220156
+                - and:
+                    - number: 3921009573
+                    - number: 2173295548
+            - or:
+                - number: 4131703408338449720
+                - and:
+                    - number: 961987163
+                    - number: 4081628472
+            - or:
+                - number: 6480981068601479193
+                - and:
+                    - number: 1508970993
+                    - number: 3053834265
+            - or:
+                - number: 10538285296894168987
+                - and:
+                    - number: 2453635748
+                    - number: 2937671579
+            - or:
+                - number: 12329834152419229976
+                - and:
+                    - number: 2870763221
+                    - number: 3664609560
+        - bytes: 08 C9 BC F3 67 E6 09 6A 3B A7 CA 84 85 AE 67 BB 2B F8 94 FE 72 F3 6E 3C F1 36 1D 5F 3A F5 4F A5 D1 82 E6 AD 7F 52 0E 51 1F 6C 3E 2B 8C 68 05 9B 6B BD 41 FB AB D9 83 1F 79 21 7E 13 19 CD E0 5B

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: find taskbar
+    namespace: host-interaction/gui/taskbar/find
+    scope: basic block
+    authors:
+      - moritz.raabe@mandiant.com
+    description: find taskbar
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: Shell_TrayWnd
+        - match: find graphical window

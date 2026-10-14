@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: truncate file on Linux
+    namespace: host-interaction/file-system/truncate
+    scope: basic block
+    authors:
+      - mehunhoff@google.com
+    description: truncate file on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - os: android
+            - os: linux
+        - api: ftruncate

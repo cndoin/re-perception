@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: delete directory
+    namespace: host-interaction/file-system/delete
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: delete directory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: RemoveDirectory
+        - api: RemoveDirectoryTransacted
+        - api: rmdir
+        - api: _rmdir
+        - api: _wrmdir
+        - api: System.IO.DirectoryInfo::Delete
+        - api: System.IO.Directory::Delete

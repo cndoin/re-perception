@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: decrypt data via SSPI
+    namespace: data-manipulation/encryption
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: decrypt data via SSPI
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-decryptmessage
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Deobfuscate/Decode Files or Information [T1140]
+  features:
+    - api: secur32.DecryptMessage

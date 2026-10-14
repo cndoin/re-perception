@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: get HTTP response content encoding
+    namespace: communication/http/client
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: get HTTP response content encoding
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: wininet.HttpQueryInfo
+        - number: 29

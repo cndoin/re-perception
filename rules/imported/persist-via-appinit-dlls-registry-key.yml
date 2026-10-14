@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: persist via AppInit_DLLs registry key
+    namespace: persistence/registry/appinitdlls
+    scope: function
+    authors:
+      - michael.hunhoff@fireye.com
+    description: persist via AppInit_DLLs registry key
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/win7appqual/appinit-dlls-in-windows-7-and-windows-server-2008-r2
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution::AppInit DLLs [T1546.010]
+  features:
+    - and:
+        - or:
+            - match: set registry value
+            - number: 2147483650
+        - or:
+            - string: /Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows/i
+            - string: /Software\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows/i
+        - string: /AppInit_DLLs/i

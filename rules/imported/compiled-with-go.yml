@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: compiled with Go
+    namespace: compiler/go
+    scope: file
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: compiled with Go
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: /^Go build ID:/
+        - substring: go.buildid
+        - string: /^Go buildinf:/
+        - string: /\bgo1\.\d/
+        - substring: runtime.main
+        - substring: main.main
+        - substring: runtime.gcWork

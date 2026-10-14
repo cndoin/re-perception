@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: persist via application shimming
+    namespace: persistence
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via application shimming
+    references:
+      - https://cloud.google.com/blog/topics/threat-intelligence/fin7-shim-databases-persistence/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution::Application Shimming [T1546.011]
+  features:
+    - or:
+        - and:
+            - match: set registry value
+            - string: /Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\InstalledSDB\\/i
+            - string: /DatabasePath/i
+        - and:
+            - or:
+                - match: copy file
+                - match: move file
+            - string: /.sdb/i

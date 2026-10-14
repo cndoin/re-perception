@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: compiled with Odin
+    namespace: compiler/odin
+    scope: file
+    authors:
+      - corkami@google.com
+    description: compiled with Odin
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - substring: .odin
+        - 2 or more:
+            - string: all_or_none
+            - string: runtime
+            - substring: soa_
+            - substring: base/
+            - substring: core/
+            - substring: arena

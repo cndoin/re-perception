@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: act as DHCP server callout DLL
+    namespace: persistence
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: act as DHCP server callout DLL
+    references:
+      - https://learn.microsoft.com/en-gb/previous-versions/windows/desktop/dhcp/how-the-dhcp-server-api-operates
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Server Software Component [T1505]
+  features:
+    - export: DhcpServerCalloutEntry

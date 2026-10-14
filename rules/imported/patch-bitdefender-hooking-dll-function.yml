@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: patch BitDefender Hooking DLL function
+    namespace: anti-analysis/anti-av
+    scope: function
+    authors:
+      - jakubjozwiak@google.com
+    description: patch BitDefender Hooking DLL function
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - match: change memory protection
+        - match: link function at runtime on Windows
+        - string: BdhkmInstallInlineHook

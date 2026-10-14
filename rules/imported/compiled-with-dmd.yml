@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: compiled with dmd
+    namespace: compiler/d
+    scope: file
+    authors:
+      - "@_re_fox"
+    description: compiled with dmd
+    references:
+      - https://github.com/dlang/dmd
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - section: ._deh
+        - section: .tp
+        - section: .dp
+        - section: .minfo

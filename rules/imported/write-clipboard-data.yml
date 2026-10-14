@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: write clipboard data
+    namespace: host-interaction/clipboard
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: write clipboard data
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/dataxchg/using-the-clipboard
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: user32.SetClipboardData
+        - api: System.Windows.Forms.Clipboard::SetAudio
+        - api: System.Windows.Forms.Clipboard::SetData
+        - api: System.Windows.Forms.Clipboard::SetDataObject
+        - api: System.Windows.Forms.Clipboard::SetFileDropList
+        - api: System.Windows.Forms.Clipboard::SetImage
+        - api: System.Windows.Forms.Clipboard::SetText

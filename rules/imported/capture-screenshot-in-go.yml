@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: capture screenshot in Go
+    namespace: collection/screenshot
+    scope: file
+    authors:
+      - joakim@intezer.com
+    description: Detects screenshot capability via WinAPI for Go files.
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Screen Capture [T1113]
+  features:
+    - and:
+        - match: compiled with Go
+        - and:
+            - string: syscall.NewLazyDLL
+            - or:
+                - and:
+                    - substring: user32.dll
+                    - or:
+                        - substring: GetWindowDC
+                        - substring: GetDC
+                - and:
+                    - substring: gdi32.dll
+                    - or:
+                        - substring: BitBlt
+                        - substring: GetDIBits
+            - substring: CreateCompatibleDC

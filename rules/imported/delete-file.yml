@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: delete file
+    namespace: host-interaction/file-system/delete
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: delete file
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.DeleteFile
+        - api: DeleteFileTransacted
+        - api: NtDeleteFile
+        - api: ZwDeleteFile
+        - api: remove
+        - api: _wremove
+        - api: System.IO.File::Delete
+        - api: System.IO.FileSystemInfo::Delete

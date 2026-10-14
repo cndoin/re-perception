@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: enumerate PE sections in .NET
+    namespace: load-code/pe
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: enumerate PE sections in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - format: dotnet
+        - api: System.Runtime.InteropServices.Marshal::ReadInt32
+        - number: 60
+        - number: 6

@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: capture network configuration via ifconfig
+    namespace: collection/network
+    scope: basic block
+    authors:
+      - joakim@intezeer.com
+    description: capture network configuration via ifconfig
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery [T1016]
+  features:
+    - and:
+        - os: linux
+        - api: system
+        - substring: ifconfig

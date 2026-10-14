@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: change memory protection
+    namespace: lib
+    scope: basic block
+    authors:
+      - "@mr-tz"
+    description: change memory protection
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - or:
+        - api: kernel32.VirtualProtect
+        - api: kernel32.VirtualProtectEx
+        - api: NtProtectVirtualMemory
+        - api: ZwProtectVirtualMemory

@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: create device object
+    namespace: host-interaction/driver
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: create device object
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: IoCreateDevice

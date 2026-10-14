@@ -1,0 +1,25 @@
+rule:
+  meta:
+    name: resolve ntoskrnl gadgets
+    namespace: exploitation/gadgets
+    scope: basic block
+    authors:
+      - zdw@google.com
+    description: look for suspicious GetProcAddress calls used to resolve addresses of functions often used for gadgets in LPEs
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - api: GetProcAddress
+        - or:
+            - string: RtlSetAllBits
+            - string: RtlClearAllBits
+            - string: RtlClearBit
+            - string: RtlCopyLuid
+            - string: PsInitialSystemProcess
+            - string: PsReferencePrimaryToken
+            - string: SeQueryInformationToken
+            - string: SeSetAccessStateGenericMapping
+            - string: PoFxProcessorNotification
+            - string: HalDispatchTable

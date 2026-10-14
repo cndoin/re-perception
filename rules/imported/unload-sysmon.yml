@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: unload sysmon
+    namespace: anti-analysis/anti-forensic
+    scope: file
+    authors:
+      - JakePeralta7
+    description: unload sysmon
+    references:
+      - https://github.com/getel-arch/Unload-Sysmon/blob/main/src/main.c
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - match: unload minifilter driver
+        - string: /SysmonDrv/i

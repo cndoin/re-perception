@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: encrypt or decrypt via WinCrypt
+    namespace: data-manipulation/encryption
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: encrypt or decrypt via WinCrypt
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - or:
+        - api: CryptEncrypt
+        - api: CryptDecrypt

@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: delete drive layout via IOCTL
+    namespace: impact/wipe-disk
+    scope: basic block
+    authors:
+      - william.ballenthin@mandiant.com
+    description: delete drive layout via IOCTL
+    references:
+      - https://www.crowdstrike.com/blog/the-anatomy-of-wiper-malware-part-3/
+      - http://www.ioctls.net/
+      - https://tyleo.github.io/sharedlib/doc/winapi/winioctl/constant.IOCTL_DISK_DELETE_DRIVE_LAYOUT.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Impact::Disk Wipe::Disk Structure Wipe [T1561.002]
+  features:
+    - and:
+        - match: interact with driver via IOCTL
+        - number: 508160

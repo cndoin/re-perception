@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: unload minifilter driver
+    namespace: host-interaction/filter
+    scope: basic block
+    authors:
+      - JakePeralta7
+    description: unload minifilter driver
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: fltlib.FilterUnload

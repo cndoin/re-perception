@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: set HTTP header
+    namespace: communication/http
+    scope: function
+    authors:
+      - mehunhoff@google.com
+      - anushka.virgaonkar@mandiant.com
+    description: set HTTP header
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: winhttp.WinHttpAddRequestHeaders
+        - api: System.Net.WebSockets.ClientWebSocketOptions::SetRequestHeader

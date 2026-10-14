@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: execute SQLite statement in .NET
+    namespace: data-manipulation/database/sql
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: execute SQLite statement in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.Data.SQLite.SQLiteCommand::ExecuteReader
+        - api: System.Data.SQLite.SQLiteCommand::ExecuteReaderAsync
+        - api: System.Data.SQLite.SQLiteCommand::ExecuteScalar
+        - api: System.Data.SQLite.SQLiteCommand::ExecuteDbDataReader
+        - api: System.Data.SQLite.SQLiteCommand::ExecuteDbDataReaderAsync
+        - api: System.Data.SQLite.SQLiteCommand::ExecuteNonQuery

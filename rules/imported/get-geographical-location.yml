@@ -1,0 +1,32 @@
+rule:
+  meta:
+    name: get geographical location
+    namespace: collection
+    scope: function
+    authors:
+      - moritz.raabe
+      - michael.hunhoff@mandiant.com
+    description: get geographical location
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Location Discovery [T1614]
+  features:
+    - or:
+        - api: GetLocaleInfo
+        - api: GetLocaleInfoEx
+        - api: kernel32.GetUserGeoID
+        - api: kernel32.GetGeoInfo
+        - string: /geolocation/i
+        - string: /geo-location/i
+        - string: /^city/i
+        - string: /region_code/i
+        - string: /region_name/i
+        - string: /^country/i
+        - string: /country_code/i
+        - string: /countrycode/i
+        - string: /country_name/i
+        - string: /continent_code/i
+        - string: /continent_name/i
+        - string: /^latitude/i
+        - string: /^longitude/i

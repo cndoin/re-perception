@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: gather bulletproof-ftp information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather bulletproof-ftp information
+    references:
+      - https://bpftp.com/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - or:
+        - and:
+            - string: .dat
+            - string: .bps
+        - and:
+            - or:
+                - substring: Software\\BPFTP\\Bullet Proof FTP\\Main
+                - substring: Software\\BulletProof Software\\BulletProof FTP Client\\Main
+                - substring: Software\\BulletProof Software\\BulletProof FTP Client\\Options
+                - substring: Software\\BPFTP\\Bullet Proof FTP\\Options
+                - substring: Software\\BPFTP
+            - or:
+                - string: LastSessionFile
+                - string: SitesDir

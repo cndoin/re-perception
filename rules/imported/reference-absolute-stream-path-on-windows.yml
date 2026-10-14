@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: reference absolute stream path on Windows
+    namespace: host-interaction/file-system
+    scope: basic block
+    authors:
+      - blas.kojusner@mandiant.com
+      - william.ballenthin@mandiant.com
+    description: reference absolute stream path on Windows
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/fileio/file-streams
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - string: /^(\\\\\?\\)?([\w]\:|\\)(\\([\x20-\x21\x23-\x29\x2B-\x2E\x30-\x39\x3B\x3D\x40-\x5B\x5D-\x7B\x7D-\x7E])+)+\:\$?[a-zA-Z0-9_]+/

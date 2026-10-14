@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: linked against CppSQLite3
+    namespace: linking/static/sqlite3
+    scope: file
+    authors:
+      - still@teamt5.org
+    description: linked against CppSQLite3
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - substring: CppSQLite3DB
+        - substring: CppSQLite3Query

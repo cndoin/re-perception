@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: reference processor manufacturer constants
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: reference processor manufacturer constants
+    references:
+      - https://en.wikipedia.org/wiki/CPUID
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::System Checks [T1497.001]
+  features:
+    - and:
+        - mnemonic: cmp
+        - or:
+            - number: 1635208534
+            - number: 1450075480
+            - number: 1919117645
+            - number: 1263359563
+            - number: 1886546976
+            - number: 2020557398

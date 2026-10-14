@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: terminate process by name
+    namespace: host-interaction/process/terminate
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: terminate process by name
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: terminate process
+        - match: enumerate processes
+        - offset: 36

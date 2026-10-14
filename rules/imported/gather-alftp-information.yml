@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: gather alftp information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather alftp information
+    references:
+      - https://en.wikipedia.org/wiki/ALFTP
+      - https://www.altools.co.kr/Main/Default.aspx
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - and:
+        - string: ESTdb2.dat
+        - string: QData.dat
+        - substring: \\Estsoft\\ALFTP

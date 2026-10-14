@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: shutdown system
+    namespace: host-interaction/os
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: shutdown system
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Impact::System Shutdown/Reboot [T1529]
+  features:
+    - or:
+        - api: user32.ExitWindowsEx
+        - api: user32.ExitWindows
+        - api: advapi32.InitiateSystemShutdownEx
+        - api: advapi32.InitiateSystemShutdown
+        - api: advapi32.InitiateShutdown

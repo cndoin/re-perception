@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: persist via SilentProcessExit registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via SilentProcessExit registry key
+    references:
+      - https://oddvar.moe/2018/04/10/persistence-using-globalflags-in-image-file-execution-options-hidden-from-autoruns-exe/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Microsoft\\Windows NT\\CurrentVersion\\SilentProcessExit\\.*/i
+        - string: /^MonitorProcess$/i

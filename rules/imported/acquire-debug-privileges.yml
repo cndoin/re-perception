@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: acquire debug privileges
+    namespace: host-interaction/process/modify
+    scope: basic block
+    authors:
+      - william.ballenthin@mandiant.com
+    description: acquire debug privileges
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Privilege Escalation::Access Token Manipulation [T1134]
+  features:
+    - or:
+        - string: SeDebugPrivilege
+        - and:
+            - api: RtlAdjustPrivilege
+            - number: 20

@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: read process memory
+    namespace: host-interaction/process
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+      - "@_re_fox"
+      - michael.hunhoff@mandiant.com
+    description: read process memory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: kernel32.ReadProcessMemory
+        - api: kernel32.Toolhelp32ReadProcessMemory

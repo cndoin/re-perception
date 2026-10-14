@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: process ghostly hollowing
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - sara.rincon@mandiant.com
+    description: process ghostly hollowing
+    references:
+      - https://github.com/hasherezade/transacted_hollowing/tree/main#ghostly-hollowing
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: NtWriteFile
+        - api: NtSetInformationFile
+        - api: NtCreateSection

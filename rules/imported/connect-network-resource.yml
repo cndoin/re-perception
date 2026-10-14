@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: connect network resource
+    namespace: communication/http
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: connect to disk or print resource
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: mpr.WNetAddConnection
+        - api: mpr.WNetAddConnection2
+        - api: mpr.WNetAddConnection3

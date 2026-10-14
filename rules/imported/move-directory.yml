@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: move directory
+    namespace: host-interaction/file-system/move
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: move directory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.IO.DirectoryInfo::MoveTo
+        - api: System.IO.Directory::Move

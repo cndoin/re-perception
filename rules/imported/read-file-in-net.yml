@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: read file in .NET
+    namespace: host-interaction/file-system/read
+    scope: instruction
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: read file in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - format: dotnet
+        - or:
+            - api: System.IO.File::ReadAllBytes
+            - api: System.IO.File::ReadAllBytesAsync
+            - api: System.IO.File::ReadAllLines
+            - api: System.IO.File::ReadAllLinesAsync
+            - api: System.IO.File::ReadAllText
+            - api: System.IO.File::ReadAllTextAsync
+            - api: System.IO.File::ReadLines

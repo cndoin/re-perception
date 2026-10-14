@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: encrypt data using Salsa20 or ChaCha
+    namespace: data-manipulation/encryption/salsa20
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: encrypt data using Salsa20 or ChaCha
+    references:
+      - http://cr.yp.to/snuffle/ecrypt.c
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - or:
+        - string: expand 32-byte k
+        - string: expand 16-byte k
+        - string: expand 32-byte kexpand 16-byte k
+        - bytes: 65 78 70 61 6E 64 20 33 32 2D 62 79 74 65 20 6B
+        - bytes: 65 78 70 61 6E 64 20 31 36 2D 62 79 74 65 20 6B
+        - and:
+            - string: expa
+            - string: nd 3
+            - string: 2-by
+            - string: te k
+        - and:
+            - number: 1634760805
+            - number: 857760878
+            - number: 2036477234
+            - number: 1797285236

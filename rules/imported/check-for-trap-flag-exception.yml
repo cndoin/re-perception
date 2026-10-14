@@ -1,0 +1,32 @@
+rule:
+  meta:
+    name: check for trap flag exception
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check for trap flag exception
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/TrapFlag.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - and:
+                - mnemonic: pushf
+                - mnemonic: popf
+            - and:
+                - mnemonic: pushfd
+                - mnemonic: popfd
+            - and:
+                - mnemonic: pushfq
+                - mnemonic: popfq
+        - or:
+            - instruction:
+                and:
+                  - mnemonic: or
+                  - number: 256
+            - instruction:
+                and:
+                  - mnemonic: bts
+                  - number: 8

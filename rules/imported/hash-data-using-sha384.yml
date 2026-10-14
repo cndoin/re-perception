@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: hash data using SHA384
+    namespace: data-manipulation/hashing/sha384
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: hash data using SHA384
+    references:
+      - https://www.rfc-editor.org/rfc/rfc6234
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - number: 14680500436340154072
+            - number: 7105036623409894663
+            - number: 10473403895298186519
+            - number: 1526699215303891257
+            - number: 7436329637833083697
+            - number: 10282925794625328401
+            - number: 15784041429090275239
+            - number: 5167115440072839076
+        - bytes: D8 9E 05 C1 5D 9D BB CB 07 D5 7C 36 2A 29 9A 62 17 DD 70 30 5A 01 59 91 39 59 0E F7 D8 EC 2F 15 31 0B C0 FF 67 26 33 67 11 15 58 68 87 4A B4 8E A7 8F F9 64 0D 2E 0C DB A4 4F FA BE 1D 48 B5 47

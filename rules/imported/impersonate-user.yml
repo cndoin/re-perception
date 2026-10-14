@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: impersonate user
+    namespace: host-interaction/user
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - 99.elad.levi@gmail.com
+    description: impersonate user
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Privilege Escalation::Access Token Manipulation::Token Impersonation/Theft [T1134.001]
+  features:
+    - or:
+        - api: advapi32.LogonUser
+        - api: userenv.LoadUserProfile
+        - and:
+            - api: advapi32.OpenProcessToken
+            - or:
+                - api: advapi32.DuplicateToken
+                - api: advapi32.DuplicateTokenEx
+            - api: advapi32.CreateProcessWithToken

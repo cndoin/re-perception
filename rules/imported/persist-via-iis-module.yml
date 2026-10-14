@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: persist via IIS module
+    namespace: persistence
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: IIS 7.0 introduced modules that provide the same unrestricted access to HTTP requests and responses as ISAPI extensions and filters.
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Server Software Component::IIS Components [T1505.004]
+  features:
+    - and:
+        - os: windows
+        - export: RegisterModule
+        - substring: CHttpModule

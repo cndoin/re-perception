@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: act as Time Provider DLL
+    namespace: persistence
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: act as Time Provider DLL
+    references:
+      - https://learn.microsoft.com/en-gb/windows/win32/sysinfo/creating-a-time-provider
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Time Providers [T1547.003]
+  features:
+    - or:
+        - export: TimeProvClose
+        - export: TimeProvCommand
+        - export: TimeProvOpen

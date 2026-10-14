@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: encrypt data via SSPI
+    namespace: data-manipulation/encryption
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: encrypt data via SSPI
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-encryptmessage
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - api: secur32.EncryptMessage

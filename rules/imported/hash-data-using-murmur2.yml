@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: hash data using murmur2
+    namespace: data-manipulation/hashing/murmur
+    scope: instruction
+    authors:
+      - william.ballenthin@mandiant.com
+    description: hash data using murmur2
+    references:
+      - https://github.com/abrandoned/murmur2/blob/master/MurmurHash2.c
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - mnemonic: imul
+        - or:
+            - number: 14313749767032793493
+            - number: 1540483477

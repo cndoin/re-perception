@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: start service
+    namespace: host-interaction/service/start
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: start service
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Create or Modify System Process::Windows Service [T1543.003]
+  features:
+    - api: advapi32.StartService

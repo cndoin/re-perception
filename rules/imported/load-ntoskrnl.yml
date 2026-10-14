@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: load ntoskrnl
+    namespace: exploitation/gadgets
+    scope: basic block
+    authors:
+      - zdw@google.com
+    description: look for calls to LoadLibrary* for ntoskrnl.exe, which can be indicative of kernel gadgets being resolved in user-mode for LPEs
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - string: ntoskrnl.exe
+        - or:
+            - api: LoadLibrary
+            - api: LoadLibraryEx

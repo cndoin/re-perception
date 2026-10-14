@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: hash data via WinCrypt
+    namespace: data-manipulation/hashing
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: hash data via WinCrypt
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: advapi32.CryptHashData

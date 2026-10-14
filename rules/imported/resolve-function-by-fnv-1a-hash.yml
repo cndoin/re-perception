@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: resolve function by FNV-1a hash
+    namespace: linking/runtime-linking
+    scope: function
+    authors:
+      - still@teamt5.org
+    description: known import name hashes calculated using the non-cryptographic FNV-1a hashing algorithm
+    references:
+      - https://blog.xorhex.com/blog/reddeltaplugxchangeup/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Indicator Removal from Tools [T1027.005]
+  features:
+    - or:
+        - number: 1404176143
+        - number: 4206493797
+        - number: 52974849
+        - number: 2181439987
+        - number: 4176762661
+        - number: 3184183758
+        - number: 2949297092
+        - number: 1425852739
+        - number: 799419560

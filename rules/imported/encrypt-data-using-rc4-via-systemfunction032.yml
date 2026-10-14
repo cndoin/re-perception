@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: encrypt data using RC4 via SystemFunction032
+    namespace: data-manipulation/encryption/rc4
+    scope: function
+    authors:
+      - richard.weiss@mandiant.com
+    description: encrypt data using RC4 via SystemFunction032
+    references:
+      - https://doxygen.reactos.org/df/d13/sysfunc_8c_source.html
+      - https://blog.gentilkiwi.com/tag/systemfunction032
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - api: SystemFunction032

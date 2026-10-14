@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: check for OutputDebugString error
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check for OutputDebugString error
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: kernel32.SetLastError
+        - api: kernel32.GetLastError
+        - api: kernel32.OutputDebugString

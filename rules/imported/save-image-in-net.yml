@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: save image in .NET
+    namespace: collection
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: save image in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: System.Drawing.Image::Save

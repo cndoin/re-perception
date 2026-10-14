@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: linked against ZLIB
+    namespace: linking/static/zlib
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: linked against ZLIB
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: /deflate .* Copyright/
+        - string: /inflate .* Copyright/

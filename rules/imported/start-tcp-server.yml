@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: start TCP server
+    namespace: communication/tcp/serve
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: start TCP server
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - match: create TCP socket
+            - api: listen
+            - or:
+                - api: accept
+                - api: WSAAccept
+        - api: System.Net.Sockets.TcpListener::Start
+        - api: System.Net.Sockets.TcpListener::AcceptTcpClient
+        - api: System.Net.Sockets.TcpListener::BeginAcceptTcpClient
+        - api: System.Net.Sockets.TcpListener::AcceptTcpClientAsync
+        - api: System.Net.Sockets.TcpListener::AcceptSocket
+        - api: System.Net.Sockets.TcpListener::BeginAcceptSocket
+        - api: System.Net.Sockets.TcpListener::AcceptSocketAsync

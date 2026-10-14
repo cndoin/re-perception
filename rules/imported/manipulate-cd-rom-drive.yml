@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: manipulate CD-ROM drive
+    namespace: host-interaction/hardware/cdrom
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: manipulate CD-ROM drive
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: winmm.mciSendString
+        - or:
+            - string: set cdaudio door closed wait
+            - string: set cdaudio door open

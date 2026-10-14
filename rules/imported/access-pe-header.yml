@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: access PE header
+    namespace: load-code/pe
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: access PE header
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Shared Modules [T1129]
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: RtlImageNtHeader
+            - api: RtlImageNtHeaderEx

@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: suspend thread
+    namespace: host-interaction/thread/suspend
+    scope: basic block
+    authors:
+      - 0x534a@mailbox.org
+      - anushka.virgaonkar@mandiant.com
+    description: suspend thread
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.SuspendThread
+        - api: ntdll.NtSuspendThread
+        - api: ntdll.ZwSuspendThread
+        - api: System.Threading.Thread::Suspend
+        - api: System.Threading.Thread::Sleep

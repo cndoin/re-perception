@@ -1,0 +1,32 @@
+rule:
+  meta:
+    name: encrypt data using OpenSSL RSA
+    namespace: data-manipulation/encryption/rsa
+    scope: function
+    authors:
+      - Ana06
+    description: encrypt data using OpenSSL RSA
+    references:
+      - https://github.com/openssl/openssl/blob/fdc5043d58900663b493147298e64f11353b35fe/crypto/objects/obj_dat.h
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - bytes: 2A 86 48 86 F7 0D 01 01 01
+        - bytes: 2A 86 48 86 F7 0D 01 01 02
+        - bytes: 2A 86 48 86 F7 0D 01 01 04
+        - bytes: 2B 0E 03 02 0F
+        - bytes: 2A 86 48 86 F7 0D 01 01 05
+        - bytes: 2A 86 48 86 F7 0D 01 01 03
+        - bytes: 2A 86 48 86 F7 0D 01 01 0B
+        - bytes: 2A 86 48 86 F7 0D 01 01 0C
+        - bytes: 2A 86 48 86 F7 0D 01 01 0D
+        - bytes: 2A 86 48 86 F7 0D 01 01 0E
+        - bytes: 2A 81 1C CF 55 01 83 78
+        - bytes: 2A 86 48 86 F7 0D 01 01 0F
+        - bytes: 2A 86 48 86 F7 0D 01 01 10
+        - bytes: 55 08 03 64
+        - bytes: 2B 24 03 03 01 02
+        - bytes: 60 86 48 01 65 03 04 03 0D
+        - bytes: 60 86 48 01 65 03 04 03 0E
+        - bytes: 60 86 48 01 65 03 04 03 0F
+        - bytes: 60 86 48 01 65 03 04 03 10

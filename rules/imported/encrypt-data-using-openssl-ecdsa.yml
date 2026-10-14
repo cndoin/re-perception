@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: encrypt data using OpenSSL ECDSA
+    namespace: data-manipulation/encryption/ecdsa
+    scope: function
+    authors:
+      - Ana06
+    description: encrypt data using OpenSSL ECDSA
+    references:
+      - https://github.com/openssl/openssl/blob/fdc5043d58900663b493147298e64f11353b35fe/crypto/objects/obj_dat.h
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - bytes: 2A 86 48 CE 3D 04 02
+        - bytes: 2A 86 48 CE 3D 04 03
+        - bytes: 2A 86 48 CE 3D 04 03 01
+        - bytes: 2A 86 48 CE 3D 04 03 02
+        - bytes: 2A 86 48 CE 3D 04 03 03
+        - bytes: 2A 86 48 CE 3D 04 03 04
+        - bytes: 60 86 48 01 65 03 04 03 09
+        - bytes: 60 86 48 01 65 03 04 03 0A
+        - bytes: 60 86 48 01 65 03 04 03 0B
+        - bytes: 60 86 48 01 65 03 04 03 0C
+        - bytes: 2A 86 48 CE 3D 04 01

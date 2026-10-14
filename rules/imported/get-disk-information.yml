@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: get disk information
+    namespace: host-interaction/hardware/storage
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: get disk information
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - or:
+        - api: kernel32.GetDriveType
+        - api: kernel32.GetLogicalDrives
+        - api: kernel32.GetVolumeInformation
+        - api: kernel32.GetVolumeNameForVolumeMountPoint
+        - api: kernel32.GetVolumePathNamesForVolumeName
+        - api: kernel32.GetLogicalDriveStrings
+        - api: kernel32.QueryDosDevice

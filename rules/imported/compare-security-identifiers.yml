@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: compare security identifiers
+    namespace: host-interaction/sid
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: compare security identifiers
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: advapi32.EqualSid

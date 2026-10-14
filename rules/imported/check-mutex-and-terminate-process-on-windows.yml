@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: check mutex and terminate process on Windows
+    namespace: host-interaction/mutex
+    scope: function
+    authors:
+      - "@_re_fox"
+      - moritz.raabe@mandiant.com
+      - mehunhoff@google.com
+    description: check mutex and terminate process on Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: check mutex on Windows
+        - match: terminate process

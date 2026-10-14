@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: generate random numbers using the Delphi LCG
+    namespace: data-manipulation/prng/lcg
+    scope: basic block
+    authors:
+      - william.ballenthin@mandiant.com
+    description: generate random numbers using the Delphi LCG
+    references:
+      - https://en.wikipedia.org/wiki/Linear_congruential_generator
+      - https://community.osr.com/discussion/130410/generating-random-numbers
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - instruction:
+            and:
+              - mnemonic: imul
+              - number: 134775813
+        - mnemonic: inc = increment c

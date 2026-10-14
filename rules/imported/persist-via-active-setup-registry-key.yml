@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: persist via Active Setup registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: persist via Active Setup registry key
+    references:
+      - https://www.fireeye.com/blog/threat-research/2017/02/spear_phishing_techn.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Active Setup [T1547.014]
+  features:
+    - and:
+        - or:
+            - match: set registry value
+            - number: 2147483650
+        - string: /Software\\Microsoft\\Active Setup\\Installed Components/i
+        - string: StubPath

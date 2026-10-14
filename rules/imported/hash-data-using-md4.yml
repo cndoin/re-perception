@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: hash data using MD4
+    namespace: data-manipulation/hashing/md4
+    scope: basic block
+    authors:
+      - anamaria.martinezgom@mandiant.com
+    description: hash data using MD4
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - number: 32770
+        - api: advapi32.CryptCreateHash

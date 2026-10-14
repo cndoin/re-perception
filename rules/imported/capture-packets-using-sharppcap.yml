@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: capture packets using SharpPcap
+    namespace: collection/network
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: capture packets using SharpPcap
+    references:
+      - https://github.com/dotpcap/sharppcap
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Network Sniffing [T1040]
+  features:
+    - and:
+        - format: dotnet
+        - api: SharpPcap.LibPcap.PcapDevice::add_OnPacketArrival

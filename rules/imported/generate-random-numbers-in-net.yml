@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: generate random numbers in .NET
+    namespace: data-manipulation/prng
+    scope: function
+    authors:
+      - anushka.virgaonkar@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: generate random numbers in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.Random::Next
+        - api: System.Random::NextBytes
+        - api: System.Random::NextDouble
+        - api: System.Random::NextIn64
+        - api: System.Random::NextSingle
+        - api: System.Random::Sample
+        - api: System.Security.Cryptography.RandomNumberGenerator::GetInt32

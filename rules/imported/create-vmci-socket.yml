@@ -1,0 +1,25 @@
+rule:
+  meta:
+    name: create VMCI socket
+    namespace: communication/socket
+    scope: basic block
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: create VMCI socket
+    references:
+      - https://www.vmware.com/products/beta/ws/VMCIsockets.pdf
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - os: windows
+            - or:
+                - api: socket
+                - api: DeviceIoControl
+            - number: 2164465768
+        - and:
+            - os: linux
+            - or:
+                - api: ioctl
+                - api: socket
+            - number: 1976

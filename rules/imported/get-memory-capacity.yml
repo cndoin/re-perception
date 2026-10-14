@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: get memory capacity
+    namespace: host-interaction/hardware/memory
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: get memory capacity
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - or:
+        - api: kernel32.GlobalMemoryStatus
+        - api: kernel32.GlobalMemoryStatusEx

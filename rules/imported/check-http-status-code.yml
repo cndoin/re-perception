@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: check HTTP status code
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: check HTTP status code
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - or:
+            - number: 536870931
+            - number: 19
+        - instruction:
+            and:
+              - or:
+                  - mnemonic: cmp
+                  - mnemonic: test
+              - or:
+                  - number: 200
+                  - number: 400
+                  - number: 401
+                  - number: 403
+                  - number: 404

@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: delete volume shadow copies
+    namespace: impact/inhibit-system-recovery
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: delete volume shadow copies
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Impact::Inhibit System Recovery [T1490]
+      - Defense Evasion::Indicator Removal::File Deletion [T1070.004]
+  features:
+    - or:
+        - string: /vssadmin.* delete shadows/i
+        - string: /vssadmin.* resize shadowstorage/i
+        - string: /wmic.* shadowcopy delete/i

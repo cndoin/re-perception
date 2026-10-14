@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: send SMS on Android
+    namespace: communication/sms
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: send SMS on Android
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: android
+        - string: android/telephony/SmsManager
+        - string: sendTextMessage

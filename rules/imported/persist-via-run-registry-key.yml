@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: persist via Run registry key
+    namespace: persistence/registry/run
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - mehunhoff@google.com
+    description: persist via Run registry key
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Registry Run Keys / Startup Folder [T1547.001]
+  features:
+    - and:
+        - or:
+            - match: set registry value
+            - number: 2147483649
+            - number: 2147483650
+        - or:
+            - string: /Software\\Microsoft\\Windows\\CurrentVersion\\Run/i
+            - string: /Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders/i
+            - string: /Software\\Microsoft\\Windows\\CurrentVersion\\User Shell Folders/i
+            - string: /Software\\Microsoft\\Windows\\CurrentVersion\\RunServices/i
+            - string: /Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run/i
+            - string: /Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Load/i
+            - string: /System\\(ControlSet\d{3}|CurrentControlSet)\\Control\\Session Manager\\BootExecute/i

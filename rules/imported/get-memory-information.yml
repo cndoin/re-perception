@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: get memory information
+    namespace: host-interaction/hardware/memory
+    scope: function
+    authors:
+      - joakim@intezer.com
+    description: get memory information
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - api: system
+        - or:
+            - substring: /proc/meminfo
+            - string: /^free/

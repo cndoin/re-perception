@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: empty the recycle bin
+    namespace: host-interaction/recycle-bin
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: empty the recycle bin
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: SHEmptyRecycleBin

@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: check for debugger via API
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: check for debugger via API
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/CheckRemoteDebuggerPresent.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.CheckRemoteDebuggerPresent
+        - api: WUDFPlatform.WudfIsAnyDebuggerPresent
+        - api: WUDFPlatform.WudfIsKernelDebuggerPresent
+        - api: WUDFPlatform.WudfIsUserDebuggerPresent
+        - api: System.Diagnostics.Debugger::IsLogging

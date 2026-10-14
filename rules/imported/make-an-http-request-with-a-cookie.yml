@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: make an HTTP request with a Cookie
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - anamaria.martinezgom@mandiant.com
+    description: make an HTTP request with a Cookie
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: send HTTP request
+        - string: /Cookie:/i

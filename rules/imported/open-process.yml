@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: open process
+    namespace: lib
+    scope: basic block
+    authors:
+      - 0x534a@mailbox.org
+    description: open process
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - or:
+        - api: kernel32.OpenProcess
+        - api: NtOpenProcess
+        - api: ZwOpenProcess

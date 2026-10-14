@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: compile .NET assembly
+    namespace: load-code/dotnet
+    scope: function
+    authors:
+      - anushka.virgaonkar@mandiant.com
+    description: compile .NET assembly
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Compile After Delivery [T1027.004]
+  features:
+    - or:
+        - api: System.CodeDom.Compiler.CodeDomProvider::CompileAssemblyFromDom
+        - api: System.CodeDom.Compiler.CodeDomProvider::CompileAssemblyFromFile
+        - api: System.CodeDom.Compiler.CodeDomProvider::CompileAssemblyFromSource

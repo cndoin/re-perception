@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: bypass Mark of the Web
+    namespace: host-interaction/file-system
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: bypass Mark of the Web
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Subvert Trust Controls::Mark-of-the-Web Bypass [T1553.005]
+  features:
+    - and:
+        - api: DeleteFile
+        - or:
+            - string: :Zone.Identifier
+            - string: "%s:Zone.Identifier"

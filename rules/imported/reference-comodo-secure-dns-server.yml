@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: reference Comodo Secure DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference Comodo Secure DNS server
+    references:
+      - https://www.techradar.com/news/best-dns-server
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: 8.26.56.26
+        - string: 8.20.247.20

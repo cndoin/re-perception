@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: protect spawned processes with mitigation policies
+    namespace: anti-analysis/anti-av
+    scope: basic block
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: protect spawned processes with mitigation policies
+    references:
+      - https://blog.xpnsec.com/protecting-your-malware/
+      - https://github.com/byt3bl33d3r/OffensiveNim/blob/master/src/blockdlls_acg_ppid_spoof_bin.nim
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - api: UpdateProcThreadAttribute
+        - number: 131079
+        - or:
+            - number: 68719476736
+            - number: 17592186044416
+            - number: 52776558133248
+            - number: 17660905521152
+            - number: 52845277609984

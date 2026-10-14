@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: enumerate network shares
+    namespace: host-interaction/network
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: enumerate network shares
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Network Share Discovery [T1135]
+  features:
+    - and:
+        - or:
+            - api: netapi32.NetShareEnum
+            - api: mpr.WNetEnumResource
+        - match: contain loop

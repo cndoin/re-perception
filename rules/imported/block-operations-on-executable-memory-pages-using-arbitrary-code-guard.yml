@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: block operations on executable memory pages using Arbitrary Code Guard
+    namespace: anti-analysis/anti-av
+    scope: basic block
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: block operations on executable memory pages using Arbitrary Code Guard
+    references:
+      - https://blog.xpnsec.com/protecting-your-malware/
+      - https://blogs.windows.com/msedgedev/2017/02/23/mitigating-arbitrary-native-code-execution/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - or:
+        - and:
+            - api: SetProcessMitigationPolicy
+            - number: 4
+            - number: 1
+            - number: 2
+        - and:
+            - api: SetProcessMitigationPolicy
+            - number: 4
+            - number: 1
+            - or:
+                - number: 8
+                - offset: 4

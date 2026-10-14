@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: linked against aPLib
+    namespace: linking/static/aplib
+    scope: file
+    authors:
+      - still@teamt5.org
+    description: linked against aPLib
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - string: /aPLib v.* the smaller the better/

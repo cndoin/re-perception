@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: listen for remote procedure calls
+    namespace: communication/rpc/server
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: listen for remote procedure calls
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: rpcrt4.RpcServerListen

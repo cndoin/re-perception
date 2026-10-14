@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: contain a thread local storage (.tls) section
+    namespace: executable/pe/section/tls
+    scope: file
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: contain a thread local storage (.tls) section
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - section: .tls

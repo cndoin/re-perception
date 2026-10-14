@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: create zip archive in .NET
+    namespace: data-manipulation/compression
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: create zip archive in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.IO.Compression.ZipFile::CreateFromDirectory
+        - api: System.IO.Compression.ZipFile::CreateEntryFromFile

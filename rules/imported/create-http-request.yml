@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: create HTTP request
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: create HTTP request
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: wininet.InternetOpen
+        - api: System.Net.WebRequest::Create
+        - api: System.Net.WebRequest::CreateDefault
+        - api: System.Net.WebRequest::CreateHttp

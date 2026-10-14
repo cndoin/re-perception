@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: get current process command line
+    namespace: host-interaction/process
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: get current process command line
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: linux
+        - api: open
+        - string: /proc/self/cmdline
+        - api: read

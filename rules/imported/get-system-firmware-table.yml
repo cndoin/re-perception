@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: get system firmware table
+    namespace: host-interaction/hardware/firmware
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get system firmware table
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/Shared/Utils.cpp#L854
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Reconnaissance::Gather Victim Host Information::Firmware [T1592.003]
+  features:
+    - api: kernel32.GetSystemFirmwareTable

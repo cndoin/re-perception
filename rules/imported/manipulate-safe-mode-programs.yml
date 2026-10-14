@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: manipulate safe mode programs
+    namespace: host-interaction/bootloader
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: manipulate safe mode programs
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Safe Mode Boot [T1562.009]
+  features:
+    - and:
+        - os: windows
+        - or:
+            - substring: Control\\SafeBoot\\Minimal\\
+            - substring: Control\\SafeBoot\\Network\\

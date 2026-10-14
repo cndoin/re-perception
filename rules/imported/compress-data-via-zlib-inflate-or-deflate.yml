@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: compress data via ZLIB inflate or deflate
+    namespace: data-manipulation/compression
+    scope: function
+    authors:
+      - blas.kojusner@mandiant.com
+    description: compress data via ZLIB inflate or deflate
+    references:
+      - https://github.com/madler/zlib/blob/cacf7f1d4e3d44d871b605da3b647f07d718623f/inflate.c#L622
+      - https://github.com/madler/zlib/blob/cacf7f1d4e3d44d871b605da3b647f07d718623f/deflate.c#L763
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - bytes: 10 05 01 00 17 05 01 01 13 05 11 00 1B 05 01 10
+        - bytes: 60 07 00 00 00 08 50 00 00 08 10 00 14 08 73 00

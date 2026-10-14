@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: bypass PowerShell Constrained Language Mode via GetSystemLockdownPolicy patch
+    namespace: host-interaction/powershell
+    scope: function
+    authors:
+      - jakubjozwiak@google.com
+    description: Match on files capable of patching the GetSystemLockdownPolicy method in order to bypass PowerShell Constrained Language Mode.
+    references:
+      - https://github.com/calebstewart/bypass-clm/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Software Discovery::Security Software Discovery [T1518.001]
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - match: change memory protection
+        - string: System.Management.Automation.Security.SystemPolicy
+        - string: GetSystemLockdownPolicy

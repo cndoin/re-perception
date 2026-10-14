@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: get hostname
+    namespace: host-interaction/os/hostname
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - joakim@intezer.com
+      - anushka.virgaonkar@mandiant.com
+    description: get hostname
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - or:
+        - api: kernel32.GetComputerName
+        - api: kernel32.GetComputerNameEx
+        - api: GetComputerObjectName
+        - api: ws2_32.gethostname
+        - api: gethostname

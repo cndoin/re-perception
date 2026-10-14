@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: packed with y0da crypter
+    namespace: anti-analysis/packer/y0da
+    scope: file
+    authors:
+      - "@_re_fox"
+    description: packed with y0da crypter
+    references:
+      - https://www.hexacorn.com/blog/2016/12/15/pe-section-names-re-visited/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Software Packing [T1027.002]
+  features:
+    - or:
+        - section: .y0da
+        - section: .y0da_1
+        - section: .yP

@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: impersonate file version information
+    namespace: anti-analysis/anti-forensic
+    scope: function
+    authors:
+      - awillia2@cisco.com
+    description: Looks for Windows API calls associated with reading and then writing file version information of executables on disk. Malware can use these calls to overwrite its own version information with that of a legitimate executable on the system (for instance, explorer.exe) to make it appear to be a legitimate application.
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-updateresourcea
+      - https://www.carbonblack.com/blog/threat-analysis-dont-forget-about-kangaroo-ransomware/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Indicator Removal [T1070]
+  features:
+    - and:
+        - match: get file version info
+        - api: kernel32.BeginUpdateResource
+        - api: kernel32.UpdateResource
+        - api: kernel32.EndUpdateResource

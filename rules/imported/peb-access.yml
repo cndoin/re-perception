@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: PEB access
+    namespace: lib
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: PEB access
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/NtGlobalFlag.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - characteristic: peb-access

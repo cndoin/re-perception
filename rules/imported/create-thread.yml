@@ -1,0 +1,37 @@
+rule:
+  meta:
+    name: create thread
+    namespace: host-interaction/thread/create
+    scope: basic block
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+      - joakim@intezer.com
+      - anushka.virgaonkar@mandiant.com
+    description: create thread
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - os: windows
+            - or:
+                - api: kernel32.CreateThread
+                - api: _beginthread
+                - api: _beginthreadex
+                - api: PsCreateSystemThread
+                - api: SHCreateThread
+                - api: SHCreateThreadWithHandle
+                - api: kernel32.CreateRemoteThread
+                - api: kernel32.CreateRemoteThreadEx
+                - api: RtlCreateUserThread
+                - api: ntdll.NtCreateThread
+                - api: ntdll.NtCreateThreadEx
+                - api: ntdll.ZwCreateThread
+                - api: ntdll.ZwCreateThreadEx
+        - and:
+            - or:
+                - os: linux
+                - os: android
+            - api: pthread_create
+        - api: System.Threading.Thread::Start

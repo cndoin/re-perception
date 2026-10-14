@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: query service status
+    namespace: host-interaction/service
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: query service status
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Service Discovery [T1007]
+  features:
+    - or:
+        - api: advapi32.QueryServiceStatusEx
+        - api: advapi32.QueryServiceStatus

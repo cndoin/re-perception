@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: add value to global atom table
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: add value to global atom table
+    references:
+      - https://www.fortinet.com/blog/threat-research/atombombing-brand-new-code-injection-technique-for-windows
+      - https://github.com/BreakingMalwareResearch/atom-bombing
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: AddAtom
+        - api: GlobalAddAtom
+        - api: GlobalAddAtomEx

@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: enumerate device drivers on Linux
+    namespace: collection
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: enumerate device drivers on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Device Driver Discovery [T1652]
+  features:
+    - and:
+        - os: linux
+        - api: system
+        - or:
+            - substring: lsmod
+            - substring: modinfo

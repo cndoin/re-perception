@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: gather ffftp information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather ffftp information
+    references:
+      - http://www2.biglobe.ne.jp/sota/ffftp-e.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - or:
+        - and:
+            - or:
+                - substring: Software\\Sota\\FFFTP\\Options
+                - substring: Software\\Sota\\FFFTP
+            - or:
+                - substring: CredentialSalt
+                - substring: CredentialCheck
+        - and:
+            - string: Password
+            - string: UserName
+            - string: HostAdrs
+            - string: RemoteDir
+            - string: Port

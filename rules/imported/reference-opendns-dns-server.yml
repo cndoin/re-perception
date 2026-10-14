@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: reference OpenDNS DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference OpenDNS DNS server
+    references:
+      - https://www.techradar.com/news/best-dns-server
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: 208.67.222.222
+        - string: 208.67.220.220

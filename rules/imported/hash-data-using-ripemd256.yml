@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: hash data using RIPEMD256
+    namespace: data-manipulation/hashing/ripemd256
+    scope: function
+    authors:
+      - raymond.leong@mandiant.com
+    description: hash data using RIPEMD256
+    references:
+      - https://en.wikipedia.org/wiki/RIPEMD-256
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - and:
+                - number: 1732584193
+                - number: 4023233417
+                - number: 2562383102
+                - number: 271733878
+                - number: 1985229328
+                - number: 4275878552
+                - number: 2309737967
+                - number: 19088743
+            - bytes: 01 23 45 67 89 AB CD EF FE DC BA 98 76 54 32 10 10 32 54 76 98 BA DC FE EF CD AB 89 67 45 23 01
+        - not:
+            or:
+              - number: 3285377520
+              - number: 1009589775

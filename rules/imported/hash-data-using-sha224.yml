@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: hash data using SHA224
+    namespace: data-manipulation/hashing/sha224
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: hash data using SHA224
+    references:
+      - https://www.rfc-editor.org/rfc/rfc6234
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - number: 3238371032
+        - number: 914150663
+        - number: 812702999
+        - number: 4144912697
+        - number: 4290775857
+        - number: 1750603025
+        - number: 1694076839
+        - number: 3204075428

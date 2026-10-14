@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: write pipe
+    namespace: communication/named-pipe/write
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: write pipe
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - or:
+                - match: create pipe
+                - match: connect pipe
+            - api: kernel32.WriteFile
+        - api: kernel32.TransactNamedPipe
+        - api: kernel32.CallNamedPipe

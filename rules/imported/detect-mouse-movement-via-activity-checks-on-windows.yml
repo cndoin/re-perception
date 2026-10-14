@@ -1,0 +1,53 @@
+rule:
+  meta:
+    name: detect mouse movement via activity checks on Windows
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: function
+    authors:
+      - tevajdr@gmail.com
+    description: Identifies code that analyzes mouse movement patterns to detect non-human/sandbox behavior
+    references:
+      - https://evasions.checkpoint.com/src/Evasions/techniques/human-like-behavior.html#check-mouse-movement
+      - https://www.joesecurity.org/blog/5852460122427342172
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::User Activity Based Checks [T1497.002]
+  features:
+    - or:
+        - and:
+            - api: user32.GetCursorPos
+            - or:
+                - api: winmm.timeGetTime
+                - api: kernel32.Sleep
+                - api: kernel32.GetTickCount
+                - api: kernel32.GetTickCount64
+                - api: kernel32.QueryPerformanceCounter
+            - or:
+                - api: msvcrt.acos
+                - api: msvcrt.sqrt
+                - api: msvcrt.atan2
+                - api: msvcrt.pow
+                - api: msvcrt.sin
+                - api: msvcrt.cos
+        - and:
+            - api: user32.GetCursorPos
+            - or:
+                - api: winmm.timeGetTime
+                - api: kernel32.Sleep
+                - api: kernel32.GetTickCount
+                - api: kernel32.GetTickCount64
+                - api: kernel32.QueryPerformanceCounter
+            - characteristic: loop
+        - and:
+            - api: user32.GetCursorPos
+            - characteristic: loop
+            - or:
+                - api: user32.GetAsyncKeyState
+                - api: user32.GetKeyState
+                - api: user32.mouse_event
+                - api: user32.SetCursorPos
+                - api: user32.GetMousePointsEx
+            - or:
+                - api: kernel32.Sleep
+                - api: kernel32.GetTickCount
+                - api: winmm.timeGetTime

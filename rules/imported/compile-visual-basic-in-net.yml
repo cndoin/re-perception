@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: compile Visual Basic in .NET
+    namespace: load-code/dotnet/vb
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: compile Visual Basic in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Compile After Delivery [T1027.004]
+  features:
+    - and:
+        - match: compile .NET assembly
+        - api: Microsoft.VisualBasic.VBCodeProvider::ctor

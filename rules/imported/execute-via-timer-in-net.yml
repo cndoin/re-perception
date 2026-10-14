@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: execute via timer in .NET
+    namespace: host-interaction/thread/timer
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: execute via timer in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: System.Threading.Timer::ctor

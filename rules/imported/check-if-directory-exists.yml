@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: check if directory exists
+    namespace: host-interaction/file-system/exists
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check if directory exists
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::File and Directory Discovery [T1083]
+  features:
+    - api: System.IO.Directory::Exists

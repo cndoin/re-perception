@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: compiled with py2exe
+    namespace: compiler/py2exe
+    scope: basic block
+    authors:
+      - "@_re_fox"
+    description: compiled with py2exe
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: PY2EXE_VERBOSE
+        - api: getenv

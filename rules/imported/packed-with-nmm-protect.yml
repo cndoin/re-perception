@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: packed with nmm-protect
+    namespace: anti-analysis/packer/nmm-protect
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: nmm-protect is a virtualizing packer, like VMProtect, that protects Android applications
+    references:
+      - https://github.com/maoabc/nmmp#nmm-protect
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Software Packing [T1027.002]
+  features:
+    - and:
+        - os: android
+        - string: vmInterpret
+        - string: cacheInitial
+        - string: getCacheClass

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: get file system object information
+    namespace: host-interaction/file-system
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get file system object information
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::File and Directory Discovery [T1083]
+  features:
+    - api: SHGetFileInfo

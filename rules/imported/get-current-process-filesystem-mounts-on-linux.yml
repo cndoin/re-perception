@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: get current process filesystem mounts on Linux
+    namespace: host-interaction/process
+    scope: basic block
+    authors:
+      - mehunhoff@google.com
+    description: get current process filesystem mounts on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - match: create or open file
+        - string: /proc/self/mounts

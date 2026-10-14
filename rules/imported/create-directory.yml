@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: create directory
+    namespace: host-interaction/file-system/create
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: create directory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.CreateDirectory
+        - api: kernel32.CreateDirectoryEx
+        - api: kernel32.CreateDirectoryTransacted
+        - api: NtCreateDirectoryObject
+        - api: ZwCreateDirectoryObject
+        - api: SHCreateDirectory
+        - api: SHCreateDirectoryEx
+        - api: mkdir
+        - api: _mkdir
+        - api: _wmkdir
+        - api: System.IO.Directory::CreateDirectory
+        - api: System.IO.DirectoryInfo::Create
+        - api: System.IO.DirectoryInfo::CreateSubdirectory

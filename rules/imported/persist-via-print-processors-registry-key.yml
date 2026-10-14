@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: persist via Print Processors registry key
+    namespace: persistence
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Print Processors registry key
+    references:
+      - https://stmxcsr.com/persistence/print-processor.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Print Processors [T1547.012]
+  features:
+    - or:
+        - and:
+            - match: set registry value
+            - string: /SYSTEM\\(ControlSet\d{3}|CurrentControlSet)\\Control\\Print\\Environments\\.*\\Print Processors\\/i
+            - string: /^Driver$/i
+        - and:
+            - or:
+                - match: copy file
+                - match: move file
+            - string: /\\spool\\PRTPROCS\\/i

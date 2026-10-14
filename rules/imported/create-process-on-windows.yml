@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: create process on Windows
+    namespace: host-interaction/process/create
+    scope: instruction
+    authors:
+      - moritz.raabe@mandiant.com
+    description: create process on Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: kernel32.WinExec
+            - api: kernel32.CreateProcess
+            - api: shell32.ShellExecute
+            - api: shell32.ShellExecuteEx
+            - api: advapi32.CreateProcessAsUser
+            - api: advapi32.CreateProcessWithLogon
+            - api: advapi32.CreateProcessWithToken
+            - api: kernel32.CreateProcessInternal
+            - api: ntdll.NtCreateUserProcess
+            - api: ntdll.NtCreateProcess
+            - api: ntdll.NtCreateProcessEx
+            - api: ntdll.ZwCreateProcess
+            - api: ZwCreateProcessEx
+            - api: ntdll.ZwCreateUserProcess
+            - api: ntdll.RtlCreateUserProcess

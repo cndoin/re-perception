@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: log keystrokes via Input Method Manager
+    namespace: collection/keylog
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: log keystrokes via Input Method Manager
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: ImmGetCompositionString
+        - api: ImmGetVirtualKey

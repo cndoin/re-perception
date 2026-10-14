@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: change registry key timestamp
+    namespace: host-interaction/registry
+    scope: basic block
+    authors:
+      - wballenthin@google.com
+    description: change registry key timestamp
+    references:
+      - https://www.inversecos.com/2022/04/malicious-registry-timestamp.html
+      - https://chentiangemalc.wordpress.com/2020/03/14/get-set-registry-key-timestamp-with-c-powershell/
+      - https://github.com/jschicht/SetRegTime
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Modify Registry [T1112]
+  features:
+    - and:
+        - api: NtSetInformationKey
+        - number: 8

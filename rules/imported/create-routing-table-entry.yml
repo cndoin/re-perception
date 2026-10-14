@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: create routing table entry
+    namespace: host-interaction/network/routing-table
+    scope: instruction
+    authors:
+      - jakubjozwiak@google.com
+    description: create routing table entry
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-createipforwardentry
+      - https://github.com/T04R/collection/blob/main/evasion/03.Local-admin/EPP-comms/netblk-route/implant.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: iphlpapi.CreateIpForwardEntry

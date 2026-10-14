@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: duplicate stdin and stdout
+    namespace: lib
+    scope: basic block
+    authors:
+      - joakim@intezer.com
+    description: duplicate stdin and stdout
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - api: dup2
+        - number: 0
+        - number: 1

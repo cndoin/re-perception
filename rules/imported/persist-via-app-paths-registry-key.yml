@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: persist via App paths registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via App paths registry key
+    references:
+      - https://www.cyberark.com/resources/threat-research-blog/persistence-techniques-that-persist
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Hijack Execution Flow::Path Interception by PATH Environment Variable [T1574.007]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Microsoft\\Windows\\CurrentVersion\\App Paths\\/i

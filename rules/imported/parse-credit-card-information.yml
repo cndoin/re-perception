@@ -1,0 +1,59 @@
+rule:
+  meta:
+    name: parse credit card information
+    namespace: collection/credit-card
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: parse credit card information
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - 3 or more:
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 94
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 61
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 37
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 66
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 68
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 63
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 59
+        - not:
+            and:
+              - instruction:
+                  and:
+                    - mnemonic: cmp
+                    - number: 109
+              - instruction:
+                  and:
+                    - mnemonic: cmp
+                    - number: 110
+              - instruction:
+                  and:
+                    - mnemonic: cmp
+                    - number: 111
+              - instruction:
+                  and:
+                    - mnemonic: cmp
+                    - number: 112

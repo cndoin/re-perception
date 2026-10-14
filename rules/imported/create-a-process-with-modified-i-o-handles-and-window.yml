@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: create a process with modified I/O handles and window
+    namespace: host-interaction/process/create
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: create a process with modified I/O handles and window
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfoa
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - api: kernel32.CreateProcess
+            - api: kernel32.CreateProcessInternal
+            - api: advapi32.CreateProcessAsUser
+            - api: advapi32.CreateProcessWithLogon
+            - api: advapi32.CreateProcessWithToken
+        - number: 257
+        - or:
+            - and:
+                - arch: i386
+                - number: 68
+            - and:
+                - arch: amd64
+                - number: 104

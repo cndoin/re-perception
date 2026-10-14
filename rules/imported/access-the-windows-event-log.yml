@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: access the Windows event log
+    namespace: host-interaction/log/winevt/access
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: access the Windows event log
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: OpenEventLog
+        - api: ClearEventLog
+        - api: OpenBackupEventLog
+        - api: ReportEvent

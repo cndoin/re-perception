@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: list TCP connections and listeners
+    namespace: collection/network
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: list TCP connections and listeners
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: iphlpapi.GetExtendedTcpTable

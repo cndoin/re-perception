@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: hash data using CRC32b
+    namespace: data-manipulation/checksum/crc32
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: hash data using CRC32b
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - number: 79764919
+        - characteristic: nzxor

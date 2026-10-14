@@ -1,0 +1,36 @@
+rule:
+  meta:
+    name: hash data using aphash
+    namespace: data-manipulation/hashing/aphash
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: hash data using aphash
+    references:
+      - https://www.partow.net/programming/hashfunctions/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - number: 2863311530
+        - instruction:
+            and:
+              - mnemonic: shl
+              - number: 7
+        - instruction:
+            and:
+              - mnemonic: shl
+              - number: 11
+        - instruction:
+            and:
+              - mnemonic: shr
+              - number: 5
+        - instruction:
+            and:
+              - mnemonic: shr
+              - number: 3
+        - instruction:
+            and:
+              - mnemonic: and
+              - number: 1
+        - characteristic: nzxor
+        - characteristic: loop

@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: inject thread
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - anamaria.martinezgom@mandiant.com
+      - 0x534a@mailbox.org
+    description: inject thread
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Process Injection::Thread Execution Hijacking [T1055.003]
+      - Defense Evasion::Reflective Code Loading [T1620]
+  features:
+    - and:
+        - match: allocate or change RW memory
+        - match: write process memory
+        - match: create thread

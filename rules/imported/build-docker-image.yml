@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: build Docker image
+    namespace: host-interaction/container/docker
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: build Docker image
+    references:
+      - https://docs.docker.com/engine/api/v1.24/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Build Image on Host [T1612]
+  features:
+    - or:
+        - string: /^docker(\.exe)? build/
+        - and:
+            - match: send HTTP request
+            - string: /\/v1\.[0-9]{1,2}\/build/

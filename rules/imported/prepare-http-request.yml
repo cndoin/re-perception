@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: prepare HTTP request
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: prepare HTTP request
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: winhttp.WinHttpOpenRequest

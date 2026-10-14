@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: obfuscated with Babel Obfuscator
+    namespace: anti-analysis/obfuscation
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: obfuscated with Babel Obfuscator
+    references:
+      - https://www.babelfor.net/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - match: compiled to the .NET platform
+        - or:
+            - string: BabelAttribute
+            - string: BabelObfuscatorAttribute

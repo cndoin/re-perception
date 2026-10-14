@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: get file version info
+    namespace: host-interaction/file-system/meta
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: get file version info
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::File and Directory Discovery [T1083]
+  features:
+    - or:
+        - api: version.GetFileVersionInfo
+        - api: version.GetFileVersionInfoEx
+        - api: System.Diagnostics.FileVersionInfo::GetVersionInfo

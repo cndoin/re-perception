@@ -1,0 +1,35 @@
+rule:
+  meta:
+    name: get common file path
+    namespace: host-interaction/file-system
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: get common file path
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::File and Directory Discovery [T1083]
+  features:
+    - or:
+        - api: kernel32.GetTempPath
+        - api: kernel32.GetTempFileName
+        - api: kernel32.GetSystemDirectory
+        - api: kernel32.GetWindowsDirectory
+        - api: kernel32.GetSystemWow64Directory
+        - api: GetAllUsersProfileDirectory
+        - api: GetAppContainerFolderPath
+        - api: GetCurrentDirectory
+        - api: GetDefaultUserProfileDirectory
+        - api: GetProfilesDirectory
+        - api: GetUserProfileDirectory
+        - api: SHGetFolderPathAndSubDir
+        - api: shell32.SHGetFolderPath
+        - api: shell32.SHGetFolderLocation
+        - api: shell32.SHGetKnownFolderPath
+        - api: shell32.SHGetSpecialFolderPath
+        - api: shell32.SHGetSpecialFolderLocation
+        - api: System.IO.Directory::GetCurrentDirectory
+        - api: System.Environment::GetFolderPath

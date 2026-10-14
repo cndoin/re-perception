@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: empty recycle bin quietly
+    namespace: host-interaction/recycle-bin
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: empty recycle bin quietly
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shemptyrecyclebina
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Indicator Removal [T1070]
+  features:
+    - and:
+        - api: SHEmptyRecycleBin
+        - instruction:
+            or:
+              - and:
+                  - mnemonic: cmp
+                  - number: 7
+              - and:
+                  - mnemonic: lea
+                  - offset: 7

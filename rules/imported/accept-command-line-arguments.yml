@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: accept command line arguments
+    namespace: host-interaction/cli
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: accept command line arguments
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Command and Scripting Interpreter [T1059]
+  features:
+    - or:
+        - api: GetCommandLine
+        - api: CommandLineToArgv
+        - api: System.Environment::GetCommandLineArgs

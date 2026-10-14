@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: unload driver
+    namespace: host-interaction/driver
+    scope: basic block
+    authors:
+      - moritz.raabe@mandiant.com
+    description: unload driver
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Create or Modify System Process::Windows Service [T1543.003]
+  features:
+    - or:
+        - api: NtUnloadDriver
+        - api: ZwUnloadDriver

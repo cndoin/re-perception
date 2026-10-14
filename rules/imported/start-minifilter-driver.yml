@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: start minifilter driver
+    namespace: host-interaction/filter
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: start minifilter driver
+    references:
+      - https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/filter-manager-concepts
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: FltStartFiltering

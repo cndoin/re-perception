@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: write process memory
+    namespace: lib
+    scope: instruction
+    authors:
+      - moritz.raabe@mandiant.com
+    description: write process memory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+    att_ck:
+      - Defense Evasion::Process Injection [T1055]
+  features:
+    - or:
+        - api: kernel32.WriteProcessMemory
+        - api: ntdll.NtWriteVirtualMemory
+        - api: ntdll.ZwWriteVirtualMemory
+        - api: NtWow64WriteVirtualMemory64

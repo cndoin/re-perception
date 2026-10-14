@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: register Netfilter hook on Linux
+    namespace: host-interaction/network
+    scope: instruction
+    authors:
+      - aryanyk
+    description: kernel rootkits can register Netfilter hooks to inspect or modify packet flow
+    references:
+      - https://inferi.club/post/the-art-of-linux-kernel-rootkits
+      - https://www.kernel.org/doc/html/latest/networking/netfilter.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses [T1562]
+  features:
+    - and:
+        - os: linux
+        - or:
+            - api: nf_register_net_hook
+            - api: nf_register_hook

@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: get domain trust relationships
+    namespace: collection/network
+    scope: function
+    authors:
+      - johnk3r
+    description: get domain trust relationships
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Domain Trust Discovery [T1482]
+  features:
+    - or:
+        - and:
+            - string: /nltest/i
+            - or:
+                - string: /\/domain_trusts/i
+                - string: /\/dclist/i
+                - string: /\/all_trusts/i
+        - api: DsEnumerateDomainTrusts

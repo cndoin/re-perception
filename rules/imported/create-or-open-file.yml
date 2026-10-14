@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: create or open file
+    namespace: lib
+    scope: instruction
+    authors:
+      - michael.hunhoff@mandiant.com
+      - joakim@intezer.com
+    description: create or open file
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - or:
+        - api: CreateFile
+        - api: CreateFileEx
+        - api: IoCreateFile
+        - api: IoCreateFileEx
+        - api: ZwOpenFile
+        - api: ZwCreateFile
+        - api: NtOpenFile
+        - api: NtCreateFile
+        - api: LZCreateFile
+        - api: LZOpenFile
+        - api: fopen
+        - api: fopen64
+        - api: fdopen
+        - api: freopen
+        - api: open
+        - api: openat

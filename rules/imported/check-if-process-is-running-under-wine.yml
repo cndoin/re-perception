@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: check if process is running under wine
+    namespace: anti-analysis/anti-emulation/wine
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: check if process is running under wine
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiVM/Wine.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::System Checks [T1497.001]
+  features:
+    - or:
+        - string: /SOFTWARE\\Wine/i
+        - and:
+            - api: GetModuleHandle
+            - api: GetProcAddress
+            - string: wine_get_unix_file_name
+            - or:
+                - string: kernel32.dll
+                - string: ntdll.dll

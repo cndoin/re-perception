@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: use bigint function
+    namespace: data-manipulation/encryption
+    scope: instruction
+    authors:
+      - Ana06
+    description: use bigint function such as bi_copy and bi_permanent. Useful to identify crypto.
+    references:
+      - https://github.com/ezhangle/krypton/blob/147d69429bfb03cce7113dca6dba36e77f8a9325/src/bigint.c#L149
+      - https://github.com/bnoordhuis/mongrel2/blob/3e9b57d82aeb627be0aebfb346199bfdfd67e530/src/crypto/bigint.c#L162
+      - https://github.com/ezhangle/krypton/blob/147d69429bfb03cce7113dca6dba36e77f8a9325/src/bigint.c#L161
+      - https://github.com/bnoordhuis/mongrel2/blob/3e9b57d82aeb627be0aebfb346199bfdfd67e530/src/crypto/bigint.c#L176
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - mnemonic: mov
+            - mnemonic: cmp
+        - number: 2147440042
+        - offset: 8

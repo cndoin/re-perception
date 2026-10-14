@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: send file using FTP
+    namespace: communication/ftp/send
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: send file using FTP
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: wininet.FtpPutFile

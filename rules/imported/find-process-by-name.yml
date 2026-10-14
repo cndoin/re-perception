@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: find process by name
+    namespace: host-interaction/process/list
+    scope: function
+    authors:
+      - anushka.virgaonkar@mandiant.com
+    description: find process by name
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Process Discovery [T1057]
+  features:
+    - api: System.Diagnostics.Process::GetProcessesByName

@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: create or open section object
+    namespace: lib
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: create or open section object
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: NtCreateSection
+            - api: ZwCreateSection
+            - api: NtOpenSection
+            - api: ZwOpenSection

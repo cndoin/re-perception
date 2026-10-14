@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: inspect load icon resource
+    namespace: anti-analysis
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: inspect load icon resource
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: user32.LoadIcon
+        - number: 0
+        - mnemonic: test
+        - not:
+            or:
+              - number: 32517
+              - number: 32518
+              - number: 32514
+              - number: 32512
+              - number: 32516
+              - number: 32513
+              - number: 32515

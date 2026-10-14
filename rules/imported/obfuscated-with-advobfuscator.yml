@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: obfuscated with ADVobfuscator
+    namespace: anti-analysis/obfuscation
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: obfuscated with ADVobfuscator
+    references:
+      - https://github.com/andrivet/ADVobfuscator
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - substring: "@ADVobfuscator@andrivet@@"

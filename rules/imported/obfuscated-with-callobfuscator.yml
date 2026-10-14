@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: obfuscated with callobfuscator
+    namespace: anti-analysis/obfuscation
+    scope: file
+    authors:
+      - johnk3r
+    description: obfuscated with callobfuscator
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - section: .cobf

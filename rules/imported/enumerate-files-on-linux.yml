@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: enumerate files on Linux
+    namespace: host-interaction/file-system/files/list
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: enumerate files on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::File and Directory Discovery [T1083]
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - or:
+            - and:
+                - match: create or open file
+                - or:
+                    - api: getdents
+                    - api: getdents64
+            - and:
+                - api: opendir
+                - api: readdir

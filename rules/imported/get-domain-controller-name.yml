@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: get domain controller name
+    namespace: host-interaction/network/domain
+    scope: function
+    authors:
+      - awillia2@cisco.com
+    description: Looks for calls to Windows APIs that can be used to determine the name of the domain controller for a Windows domain that a computer is connected to.
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/lmaccess/nf-lmaccess-netgetdcname
+      - https://docs.microsoft.com/en-us/windows/win32/api/dsgetdc/nf-dsgetdc-dsgetdcnamea
+      - https://chuongdong.com/reverse%20engineering/2021/05/23/MountLockerRansomware/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery [T1016]
+  features:
+    - or:
+        - api: NetGetDCName
+        - api: DsGetDcName

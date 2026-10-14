@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: connect TCP socket
+    namespace: communication/socket/tcp
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - joakim@intezer.com
+      - mrhafizfarhad@gmail.com
+    description: connect TCP socket
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: create TCP socket
+        - match: connect socket

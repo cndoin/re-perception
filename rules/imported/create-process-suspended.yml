@@ -1,0 +1,38 @@
+rule:
+  meta:
+    name: create process suspended
+    namespace: host-interaction/process/create
+    scope: basic block
+    authors:
+      - william.ballenthin@mandiant.com
+      - mehunhoff@google.com
+    description: create process suspended
+    references:
+      - https://www.trustwave.com/en-us/resources/blogs/spiderlabs-blog/an-in-depth-look-at-mailto-ransomware-part-two-of-three/
+      - https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags#flags
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - or:
+                - number: 134217732
+                - number: 134217740
+                - number: 4
+                - number: 2
+            - or:
+                - api: kernel32.CreateProcess
+                - api: kernel32.CreateProcessInternal
+                - api: advapi32.CreateProcessAsUser
+                - api: advapi32.CreateProcessWithLogon
+                - api: advapi32.CreateProcessWithToken
+        - and:
+            - or:
+                - number: 16
+                - number: 33554448
+                - number: 17
+            - or:
+                - api: ntdll.NtCreateProcessEx
+                - api: ZwCreateProcessEx
+                - api: ntdll.NtCreateUserProcess
+                - api: ntdll.ZwCreateUserProcess
+                - api: ntdll.RtlCreateUserProcess

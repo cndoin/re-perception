@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: get COMSPEC environment variable
+    namespace: host-interaction/environment-variable
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+    description: get COMSPEC environment variable
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - and:
+        - match: query environment variable
+        - or:
+            - string: COMSPEC
+            - string: "%COMSPEC%"

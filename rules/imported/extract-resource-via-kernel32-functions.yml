@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: extract resource via kernel32 functions
+    namespace: executable/resource
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: extract resource via kernel32 functions
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.LoadResource
+        - api: kernel32.LockResource
+        - api: LdrAccessResource

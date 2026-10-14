@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: create process via WMI in .NET
+    namespace: host-interaction/wmi
+    scope: function
+    authors:
+      - anushka.virgaonkar@mandiant.com
+    description: create process via WMI in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Windows Management Instrumentation [T1047]
+  features:
+    - and:
+        - string: Win32_Process
+        - string: Create
+        - api: System.Management.ManagementObject::GetMethodParameters
+        - api: System.Management.ManagementObject::InvokeMethod

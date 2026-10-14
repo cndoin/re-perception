@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: generate random filename in .NET
+    namespace: host-interaction/file-system
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: generate random filename in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.IO.Path::GetRandomFileName
+        - api: System.IO.Path::GetTempFileName

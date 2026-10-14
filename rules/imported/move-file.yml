@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: move file
+    namespace: host-interaction/file-system/move
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: move file
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.MoveFile
+        - api: kernel32.MoveFileEx
+        - api: MoveFileWithProgress
+        - api: MoveFileTransacted
+        - api: rename
+        - api: _wrename
+        - api: System.IO.FileInfo::MoveTo
+        - api: System.IO.File::Move

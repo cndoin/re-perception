@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: encrypt data using RSA via WinAPI
+    namespace: data-manipulation/encryption/rsa
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: encrypt data using RSA via WinAPI
+    references:
+      - https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.rsacryptoserviceprovider.encrypt
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - api: System.Security.Cryptography.RSACryptoServiceProvider::Encrypt

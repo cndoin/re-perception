@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: delete registry value
+    namespace: host-interaction/registry/delete
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: delete registry value
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Modify Registry [T1112]
+  features:
+    - or:
+        - api: advapi32.RegDeleteValue
+        - api: advapi32.RegDeleteKeyValue
+        - api: ZwDeleteValueKey
+        - api: NtDeleteValueKey
+        - api: RtlDeleteRegistryValue
+        - api: SHDeleteValue
+        - api: SHRegDeleteUSValue
+        - api: Microsoft.Win32.RegistryKey::DeleteValue

@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: create Restart Manager session
+    namespace: host-interaction/process
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: Windows Restart Manager can be used to close/unlock specific files, often abused by Ransomware
+    references:
+      - https://www.carbonblack.com/blog/tau-threat-discovery-conti-ransomware/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: rstrtmgr.RmStartSession

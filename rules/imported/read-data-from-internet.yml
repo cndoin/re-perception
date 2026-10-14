@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: read data from Internet
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: read data from Internet
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: wininet.InternetReadFile
+        - api: wininet.InternetReadFileEx
+        - api: System.Net.WebClient::DownloadString
+        - api: System.Net.WebClient::DownloadStringAsync
+        - api: System.Net.WebClient::DownloadStringTaskAsync
+        - api: System.Net.WebClient::DownloadData
+        - api: System.Net.WebClient::DownloadDataAsync
+        - api: System.Net.WebClient::DownloadDataTaskAsync

@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: escalate privileges via commit_creds on Linux
+    namespace: host-interaction/process/modify
+    scope: function
+    authors:
+      - aryanyk
+    description: detect Linux kernel modules that escalate privileges using prepare_kernel_cred and commit_creds, a technique commonly used by rootkits
+    references:
+      - https://inferi.club/post/the-art-of-linux-kernel-rootkits
+      - https://www.kernel.org/doc/html/latest/security/credentials.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Privilege Escalation::Exploitation for Privilege Escalation [T1068]
+  features:
+    - and:
+        - os: linux
+        - api: prepare_kernel_cred
+        - api: commit_creds

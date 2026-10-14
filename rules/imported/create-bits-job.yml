@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: create BITS job
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: BITS jobs can be used to download data or achieve persistence (via SetNotifyCmdLine)
+    references:
+      - https://www.mandiant.com/resources/attacker-use-of-windows-background-intelligent-transfer-service
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::BITS Jobs [T1197]
+      - Persistence::BITS Jobs [T1197]
+  features:
+    - and:
+        - bytes: 0D 4C E3 5C C9 0D 1F 4C 89 7C DA A1 B7 8C EE 7C
+        - bytes: 4B D3 91 49 A1 80 91 42 83 B6 33 28 36 6B 90 97
+        - offset: 12
+        - offset: 16

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: get logon sessions
+    namespace: host-interaction/session
+    scope: function
+    authors:
+      - awillia2@cisco.com
+    description: Looks for imported Windows APIs being called to enumerate user sessions.
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Account Discovery [T1087]
+  features:
+    - api: secur32.LsaEnumerateLogonSessions

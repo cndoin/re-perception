@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: load Windows Common Language Runtime
+    namespace: load-code/dotnet
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - blas.kojusner@mandiant.com
+      - jakub.jozwiak@mandiant.com
+    description: load Windows Common Language Runtime
+    references:
+      - https://modexp.wordpress.com/2019/05/10/dotnet-loader-shellcode/
+      - https://github.com/TheWover/donut/blob/master/loader/inmem_dotnet.c
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - or:
+                - api: mscoree.CorBindToRuntime
+                - api: mscoree.CorBindToRuntimeEx
+                - api: mscoree.CorBindToRuntimeHost
+                - api: mscoree.CorBindToRuntimeByCfg
+                - api: mscoree.CorBindToCurrentRuntime
+                - api: ole32.CoCreateInstance
+            - bytes: 23 67 2F CB 3A AB D2 11 9C 40 00 C0 4F A3 0A 3E
+            - bytes: 22 67 2F CB 3A AB D2 11 9C 40 00 C0 4F A3 0A 3E
+        - and:
+            - api: mscoree.CLRCreateInstance
+            - bytes: 8D 18 80 92 8E 0E 67 48 B3 0C 7F A8 38 84 E8 DE
+            - bytes: 9E DB 32 D3 B3 B9 25 41 82 07 A1 48 84 F5 32 16

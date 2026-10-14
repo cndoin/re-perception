@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: gather total-commander information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather total-commander information
+    references:
+      - https://www.ghisler.com/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - and:
+        - or:
+            - substring: Software\\Ghisler\\Total Commander
+            - substring: Software\\Ghisler\\Windows Commander
+        - or:
+            - string: FtpIniName
+            - string: wcx_ftp.ini
+            - string: InstallDir
+            - substring: \\GHISLER

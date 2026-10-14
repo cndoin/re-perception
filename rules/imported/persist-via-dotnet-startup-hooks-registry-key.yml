@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: persist via DOTNET_STARTUP_HOOKS registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via DOTNET_STARTUP_HOOKS registry key
+    references:
+      - https://github.com/dotnet/runtime/blob/main/docs/design/features/host-startup-hook.md
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Hijack Execution Flow::DLL Side-Loading [T1574.002]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Environment/i
+        - string: /DOTNET_STARTUP_HOOKS/i

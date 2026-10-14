@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: get startup folder
+    namespace: persistence/startup-folder
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: get startup folder
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Registry Run Keys / Startup Folder [T1547.001]
+  features:
+    - and:
+        - or:
+            - number: 7
+            - number: 24
+        - or:
+            - api: shell32.SHGetFolderPath
+            - api: shell32.SHGetFolderLocation
+            - api: shell32.SHGetSpecialFolderPath
+            - api: shell32.SHGetSpecialFolderLocation

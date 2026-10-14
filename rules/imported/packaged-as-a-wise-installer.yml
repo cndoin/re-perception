@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: packaged as a Wise installer
+    namespace: executable/installer/wiseinstall
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: packaged as a Wise installer
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: WiseMain
+        - substring: Wise Installation Wizard

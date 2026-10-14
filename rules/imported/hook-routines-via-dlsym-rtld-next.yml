@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: hook routines via dlsym RTLD_NEXT
+    namespace: linking/hooking
+    scope: basic block
+    authors:
+      - william.ballenthin@mandiant.com
+    description: hook routines via dlsym RTLD_NEXT
+    references:
+      - https://stackoverflow.com/questions/71695007/hook-library-function-using-custom-method-using-dlsym
+      - https://liveoverflow.com/hooking-on-linux-with-ld_preload-pwn-adventure-3/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: dlsym
+        - or:
+            - and:
+                - arch: i386
+                - number: 4294967295
+            - and:
+                - arch: amd64
+                - number: 18446744073709551615

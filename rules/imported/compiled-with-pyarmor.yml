@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: compiled with pyarmor
+    namespace: compiler/pyarmor
+    scope: file
+    authors:
+      - "@stvemillertime, @itreallynick"
+    description: compiled with pyarmor
+    references:
+      - https://twitter.com/stvemillertime/status/1349032548580483073
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Command and Scripting Interpreter::Python [T1059.006]
+      - Defense Evasion::Obfuscated Files or Information::Software Packing [T1027.002]
+  features:
+    - or:
+        - string: pyarmor_runtimesh
+        - string: PYARMOR
+        - string: __pyarmor__
+        - string: PYARMOR_SIGNATURE

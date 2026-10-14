@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: check for windows sandbox via subdirectory
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: basic block
+    authors:
+      - echernofsky@google.com
+    description: check for windows sandbox via subdirectory
+    references:
+      - https://www.elastic.co/security-labs/qbot-malware-analysis
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::System Checks [T1497.001]
+  features:
+    - and:
+        - or:
+            - match: create or open file
+            - api: GetFileAttributes
+        - string: C:\\INTERNAL\\__empty

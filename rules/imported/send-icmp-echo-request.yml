@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: send ICMP echo request
+    namespace: communication/icmp
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: send ICMP echo request
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/icmpapi/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: IcmpSendEcho
+        - api: IcmpSendEcho2
+        - api: IcmpSendEcho2Ex
+        - api: Icmp6SendEcho2

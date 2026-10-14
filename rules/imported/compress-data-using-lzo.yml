@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: compress data using LZO
+    namespace: data-manipulation/compression
+    scope: function
+    authors:
+      - david@edeca.net
+      - david.cannings@pwc.com
+    description: detects the compression routine from LZO
+    references:
+      - https://github.com/zenzhang/msgclient/blob/f7c346287022dd41b21aedc8664a281b32e4a1f1/src/framework/string/Compress.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - number: 16384
+        - number: 16383
+        - or:
+            - number: 49150
+            - number: 49151
+        - number: 2048
+        - number: 2047
+        - number: 8223

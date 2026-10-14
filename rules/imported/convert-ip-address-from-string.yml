@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: convert IP address from string
+    namespace: communication/ip
+    scope: basic block
+    authors:
+      - "@mr-tz"
+    description: convert IP address from string
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: inet_pton

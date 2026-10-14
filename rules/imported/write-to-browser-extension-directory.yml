@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: write to browser extension directory
+    namespace: persistence/file-system
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: write to browser extension directory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Browser Extensions [T1176]
+  features:
+    - and:
+        - or:
+            - match: copy file
+            - match: move file
+            - match: write file on Windows
+        - or:
+            - string: /\\Microsoft\\Edge\\User Data\\Default\\Extensions\\/i
+            - string: /\\Google\\Chrome\\User Data\\Default\\Extensions\\/i
+            - string: /\\Mozilla\\Firefox\\Profiles\\.*default\\extensions\\/i

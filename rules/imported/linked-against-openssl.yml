@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: linked against OpenSSL
+    namespace: linking/static/openssl
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: linked against OpenSSL
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: RC4 for x86_64, CRYPTOGAMS by <appro@openssl.org>
+        - string: AES for x86_64, CRYPTOGAMS by <appro@openssl.org>
+        - string: DSA-SHA1-old
+        - string: OpenSSL DH Method
+        - string: Eric Young's PKCS#1 RSA

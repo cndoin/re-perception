@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: read clipboard data
+    namespace: host-interaction/clipboard
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: read clipboard data
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/dataxchg/using-the-clipboard
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Clipboard Data [T1115]
+  features:
+    - or:
+        - api: System.Windows.Forms.Clipboard::GetAudioStream
+        - api: System.Windows.Forms.Clipboard::GetData
+        - api: System.Windows.Forms.Clipboard::GetDataObject
+        - api: System.Windows.Forms.Clipboard::GetFileDropList
+        - api: System.Windows.Forms.Clipboard::GetImage
+        - api: System.Windows.Forms.Clipboard::GetText

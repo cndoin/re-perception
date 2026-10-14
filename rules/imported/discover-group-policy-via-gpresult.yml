@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: discover Group Policy via gpresult
+    namespace: collection/group-policy
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: discover Group Policy via gpresult
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Group Policy Discovery [T1615]
+  features:
+    - and:
+        - os: windows
+        - or:
+            - substring: gpresult
+            - substring: GPRESULT

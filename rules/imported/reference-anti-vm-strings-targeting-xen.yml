@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: reference anti-VM strings targeting Xen
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: file
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: reference anti-VM strings targeting Xen
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiVM/Xen.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::System Checks [T1497.001]
+  features:
+    - or:
+        - string: /^Xen/i
+        - string: /XenVMMXenVMM/i
+        - string: /xenservice\.exe/i
+        - string: /HVM domU/i

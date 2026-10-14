@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: set environment variable
+    namespace: host-interaction/environment-variable
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: set environment variable
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.SetEnvironmentStrings
+        - api: kernel32.SetEnvironmentVariable
+        - api: System.Environment::SetEnvironmentVariable

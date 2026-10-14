@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: get current PID on Linux
+    namespace: host-interaction/process
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get current PID on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - or:
+            - api: getpid
+            - api: getppid

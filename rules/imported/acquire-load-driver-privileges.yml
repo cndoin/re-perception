@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: acquire load driver privileges
+    namespace: host-interaction/process/modify
+    scope: basic block
+    authors:
+      - mehunhoff@google.com
+    description: acquire load driver privileges
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Privilege Escalation::Access Token Manipulation [T1134]
+  features:
+    - and:
+        - api: RtlAdjustPrivilege
+        - number: 10

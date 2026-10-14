@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: reference Google Public DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference Google Public DNS server
+    references:
+      - https://www.techradar.com/news/best-dns-server
+      - https://developers.google.com/speed/public-dns/docs/using
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: 8.8.8.8
+        - string: 8.8.4.4
+        - string: 2001:4860:4860::8888
+        - string: 2001:4860:4860::8844

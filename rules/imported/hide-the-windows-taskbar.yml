@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: hide the Windows taskbar
+    namespace: host-interaction/gui/taskbar/hide
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: hide the Windows taskbar
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Hide Artifacts [T1564]
+  features:
+    - and:
+        - match: find taskbar
+        - match: hide graphical window

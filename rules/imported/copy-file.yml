@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: copy file
+    namespace: host-interaction/file-system/copy
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: copy file
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.CopyFile
+        - api: kernel32.CopyFileEx
+        - api: CopyFile2
+        - api: CopyFileTransacted
+        - api: LZCopy
+        - api: System.IO.FileInfo::CopyTo
+        - api: System.IO.File::Copy

@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: create semaphore on Linux
+    namespace: host-interaction/mutex
+    scope: function
+    authors:
+      - "@ramen0x3f"
+    description: create semaphore on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - api: sem_init

@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: execute syscall
+    namespace: anti-analysis
+    scope: basic block
+    authors:
+      - "@kulinacs"
+      - "@mr-tz"
+      - mehunhoff@google.com
+      - still@teamt5.org
+    description: may be used to evade hooks or hinder analysis
+    references:
+      - https://github.com/j00ru/windows-syscalls
+      - https://codemachine.com/articles/system_call_instructions.html
+      - https://www.felixcloutier.com/x86/sysenter
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - or:
+                - os: linux
+                - os: android
+            - api: syscall
+        - and:
+            - or:
+                - mnemonic: sysenter
+                - mnemonic: syscall
+            - or:
+                - mnemonic: ret
+                - mnemonic: retn

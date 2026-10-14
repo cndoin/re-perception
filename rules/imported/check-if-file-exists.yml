@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: check if file exists
+    namespace: host-interaction/file-system/exists
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: check if file exists
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::File and Directory Discovery [T1083]
+  features:
+    - or:
+        - api: shlwapi.PathFileExists
+        - api: System.IO.File::Exists

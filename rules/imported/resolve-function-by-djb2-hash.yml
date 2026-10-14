@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: resolve function by djb2 hash
+    namespace: linking/runtime-linking
+    scope: function
+    authors:
+      - still@teamt5.org
+    description: known import name hashes calculated using the non-cryptographic djb2 hashing algorithm
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Indicator Removal from Tools [T1027.005]
+  features:
+    - or:
+        - number: 1606414587
+        - number: 946915847
+        - number: 942411671
+        - number: 2219831693
+        - number: 3476142879
+        - number: 3952526842
+        - number: 3952526864
+        - number: 1895930145
+        - number: 236578302

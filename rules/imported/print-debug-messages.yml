@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: print debug messages
+    namespace: host-interaction/log/debug/write-event
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: print debug messages
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: DbgPrint
+        - api: kernel32.OutputDebugString
+        - and:
+            - os: android
+            - api: __android_log_print

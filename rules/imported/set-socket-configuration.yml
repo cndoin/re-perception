@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: set socket configuration
+    namespace: communication/socket
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: set socket configuration
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: ws2_32.setsockopt
+        - api: ws2_32.#21 = setsockopt
+        - api: ws2_32.ioctlsocket
+        - api: ws2_32.#10 = ioctlsocket

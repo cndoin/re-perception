@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: start HTTP server
+    namespace: communication/http/server
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - jakub.jozwiak@mandiant.com
+    description: start HTTP server
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: httpapi.HttpInitialize
+        - api: System.Net.HttpListener::Start

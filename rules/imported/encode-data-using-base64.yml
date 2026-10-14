@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: encode data using Base64
+    namespace: data-manipulation/encoding/base64
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: encode data using Base64
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - or:
+        - and:
+            - mnemonic: shl
+            - mnemonic: shr
+            - number: 63
+            - or:
+                - number: 61
+                - number: 15677
+            - match: contain loop
+        - api: System.Convert::ToBase64String
+        - api: System.Convert::ToBase64CharArray
+        - api: System.Convert::TryToBase64Chars

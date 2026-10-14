@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: compiled with rust
+    namespace: compiler/rust
+    scope: file
+    authors:
+      - "@_re_fox"
+      - william.ballenthin@mandiant.com
+    description: compiled with rust
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - substring: run with `RUST_BACKTRACE=1` environment variable
+        - substring: called `Option::unwrap()` on a `None` value
+        - substring: called `Result::unwrap()` on an `Err` value

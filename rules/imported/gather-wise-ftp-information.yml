@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: gather wise-ftp information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather wise-ftp information
+    references:
+      - https://www.wise-ftp.de/en/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - or:
+        - and:
+            - string: wiseftpsrvs.ini
+            - string: wiseftp.ini
+            - string: wiseftpsrvs.bin
+        - and:
+            - string: wiseftpsrvs.bin
+            - or:
+                - substring: \\AceBIT
+                - substring: Software\\AceBIT

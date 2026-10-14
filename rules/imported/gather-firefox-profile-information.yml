@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: gather firefox profile information
+    namespace: collection/browser
+    scope: function
+    authors:
+      - "@_re_fox"
+      - still@teamt5.org
+    description: gather firefox profile information
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores::Credentials from Web Browsers [T1555.003]
+  features:
+    - 2 or more:
+        - string: /\\Mozilla\\Firefox\\profiles(\.ini)?/i
+        - string: /\\(signons|cookies)\.sqlite/i
+        - string: /SELECT\s+[a-z,\s]{5,}FROM moz_(logins|cookies)/i
+        - string: /FROM moz_(logins|cookies)/i
+        - substring: WHERE moz_cookies.host LIKE

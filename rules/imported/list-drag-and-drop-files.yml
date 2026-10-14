@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: list drag and drop files
+    namespace: host-interaction/clipboard
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: list drag and drop files
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Clipboard Data [T1115]
+  features:
+    - and:
+        - api: shell32.DragQueryFile
+        - and:
+            - api: user32.GetClipboardData
+            - number: 15

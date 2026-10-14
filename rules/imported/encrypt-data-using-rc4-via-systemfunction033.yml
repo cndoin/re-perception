@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: encrypt data using RC4 via SystemFunction033
+    namespace: data-manipulation/encryption/rc4
+    scope: function
+    authors:
+      - daniel.stepanic@elastic.co
+    description: encrypt data using RC4 via SystemFunction033
+    references:
+      - https://www.redteam.cafe/red-team/shellcode-injection/inmemory-shellcode-encryption-and-decryption-using-systemfunction033
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - api: SystemFunction033

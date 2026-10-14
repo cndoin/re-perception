@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: create process in .NET
+    namespace: host-interaction/process/create
+    scope: instruction
+    authors:
+      - moritz.raabe@mandiant.com
+      - social.tarang@gmail.com
+    description: create process in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: System.Diagnostics.Process::Start

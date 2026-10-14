@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: load .NET assembly via RuntimeAssembly.nLoadImage
+    namespace: load-code/dotnet
+    scope: file
+    authors:
+      - still@teamt5.org
+    description: load .NET assembly via RuntimeAssembly.nLoadImage
+    references:
+      - https://dr4k0nia.github.io/posts/NixImports-a-NET-loader-using-HInvoke/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Reflective Code Loading [T1620]
+  features:
+    - and:
+        - format: dotnet
+        - string: nLoadImage
+        - match: invoke .NET assembly method

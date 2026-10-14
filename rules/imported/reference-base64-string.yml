@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: reference Base64 string
+    namespace: data-manipulation/encoding/base64
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: reference Base64 string
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - or:
+        - string: /ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\+\//
+        - string: /ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_/

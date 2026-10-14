@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: persist via TimeProviders registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via TimeProviders registry key
+    references:
+      - https://stmxcsr.com/persistence/time-provider.html
+      - https://learn.microsoft.com/en-us/windows/win32/sysinfo/time-provider?redirectedfrom=MSDN
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Time Providers [T1547.003]
+  features:
+    - and:
+        - match: set registry value
+        - string: /System\\(ControlSet\d{3}|CurrentControlSet)\\Services\\W32Time\\TimeProviders\\/i
+        - string: /^DllName$/i

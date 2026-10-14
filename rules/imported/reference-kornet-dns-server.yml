@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: reference kornet DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference kornet DNS server
+    references:
+      - https://whatismyipaddress.com/ip/168.126.63.1
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - string: 168.126.63.1

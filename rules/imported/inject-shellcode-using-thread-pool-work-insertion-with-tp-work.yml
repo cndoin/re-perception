@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: inject shellcode using thread pool work insertion with TP_WORK
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - still@teamt5.org
+    description: Detect APIs related to injection techniques that injects malicious thread pool context into the target process (TP_WORK)
+    references:
+      - https://i.blackhat.com/EU-23/Presentations/EU-23-Leviev-The-Pool-Party-You-Will-Never-Forget.pdf
+      - https://github.com/SafeBreach-Labs/PoolParty
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Process Injection [T1055]
+  features:
+    - and:
+        - api: CreateThreadpoolWork
+        - or:
+            - api: VirtualAllocEx
+            - api: WriteProcessMemory
+        - or:
+            - and:
+                - arch: amd64
+                - offset: 144
+                - offset: 216
+                - offset: 224
+            - instruction:
+                and:
+                  - mnemonic: mov
+                  - number: 2

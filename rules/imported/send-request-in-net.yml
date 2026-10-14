@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: send request in .NET
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - anushka.virgaonakr@mandiant.com
+    description: send request in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Command and Control::Application Layer Protocol::Web Protocols [T1071.001]
+  features:
+    - and:
+        - or:
+            - api: System.Net.WebRequest::GetRequestStream
+            - api: System.Net.WebRequest::GetRequestStreamAsync
+            - and:
+                - api: System.Net.WebRequest::BeginGetRequestStream
+                - api: System.Net.WebRequest::EndGetRequestStream
+        - api: System.IO.Stream::Write
+        - api: System.IO.Stream::Close

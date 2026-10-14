@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: overwrite Master Boot Record (MBR)
+    namespace: impact/wipe-disk/wipe-mbr
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: overwrite Master Boot Record (MBR)
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Impact::Disk Wipe::Disk Structure Wipe [T1561.002]
+  features:
+    - and:
+        - string: \\\\.\\PHYSICALDRIVE0
+        - api: kernel32.WriteFile
+        - number: 512
+        - or:
+            - number: 85
+            - number: 170

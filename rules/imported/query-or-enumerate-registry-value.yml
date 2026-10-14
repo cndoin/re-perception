@@ -1,0 +1,44 @@
+rule:
+  meta:
+    name: query or enumerate registry value
+    namespace: host-interaction/registry
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: query or enumerate registry value
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Query Registry [T1012]
+  features:
+    - or:
+        - api: advapi32.RegGetValue
+        - api: advapi32.RegEnumValue
+        - api: advapi32.RegQueryValue
+        - api: advapi32.RegQueryValueEx
+        - api: advapi32.RegQueryMultipleValues
+        - api: ZwQueryValueKey
+        - api: ZwEnumerateValueKey
+        - api: NtQueryValueKey
+        - api: NtEnumerateValueKey
+        - api: RtlQueryRegistryValues
+        - api: SHGetValue
+        - api: SHEnumValue
+        - api: SHRegGetInt
+        - api: SHRegGetPath
+        - api: SHRegGetValue
+        - api: SHQueryValueEx
+        - api: SHRegGetUSValue
+        - api: SHOpenRegStream
+        - api: SHRegEnumUSValue
+        - api: SHOpenRegStream2
+        - api: SHRegQueryUSValue
+        - api: SHRegGetBoolUSValue
+        - api: SHRegGetValueFromHKCUHKLM
+        - api: SHRegGetBoolValueFromHKCUHKLM
+        - api: Microsoft.Win32.RegistryKey::GetValue
+        - api: Microsoft.Win32.RegistryKey::GetValueKind
+        - api: Microsoft.Win32.RegistryKey::GetValueNames
+        - api: Microsoft.Win32.Registry::GetValue

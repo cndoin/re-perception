@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: extract HTTP body
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+    description: extract HTTP body
+    references:
+      - https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa752574(v=vs.85)
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - bytes: 25 44 2C 33 CB 26 D0 11 B4 83 00 C0 4F D9 01 19
+        - offset: 36
+        - offset: 240

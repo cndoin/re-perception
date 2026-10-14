@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: packed with Huan
+    namespace: anti-analysis/packer/huan
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: packed with Huan
+    references:
+      - https://github.com/frkngksl/Huan
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Software Packing [T1027.002]
+  features:
+    - or:
+        - section: .huan
+        - string: "[+] IAT Fix starts..."
+        - string: "[+] Import by ordinal:"
+        - string: "[+] Import by name:"
+        - string: "[!] There is a problem in relocation directory"
+        - string: "[!] No Relocation Table and Cannot load to the preferable address"
+        - string: "[+] All headers are copied"
+        - string: "[+] All sections are copied"

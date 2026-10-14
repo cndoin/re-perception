@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: packaged as a WinZip self-extracting archive
+    namespace: executable/installer/winzip
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: packaged as a WinZip self-extracting archive
+    references:
+      - https://www.hexacorn.com/blog/2016/12/15/pe-section-names-re-visited/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - section: _winzip_

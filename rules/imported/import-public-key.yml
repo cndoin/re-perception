@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: import public key
+    namespace: data-manipulation/encryption
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: import public key
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: advapi32.CryptAcquireContext
+        - api: crypt32.CryptImportPublicKeyInfo

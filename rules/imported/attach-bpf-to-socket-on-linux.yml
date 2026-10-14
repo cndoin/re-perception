@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: attach BPF to socket on Linux
+    namespace: communication/socket
+    scope: basic block
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: attach BPF to socket on Linux
+    references:
+      - https://www.kernel.org/doc/Documentation/networking/filter.txt
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Traffic Signaling::Socket Filters [T1205.002]
+  features:
+    - and:
+        - os: linux
+        - api: setsockopt
+        - number: 1
+        - number: 26

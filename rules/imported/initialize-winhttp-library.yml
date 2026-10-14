@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: initialize WinHTTP library
+    namespace: communication/http
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: initialize WinHTTP library
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: winhttp.WinHttpOpen

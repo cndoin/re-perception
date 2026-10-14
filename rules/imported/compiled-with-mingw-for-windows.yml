@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: compiled with MinGW for Windows
+    namespace: compiler/mingw
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: compiled with MinGW for Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: "Mingw runtime failure:"
+        - string: _Jv_RegisterClasses

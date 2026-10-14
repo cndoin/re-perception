@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: get current user on Linux
+    namespace: host-interaction/session
+    scope: function
+    authors:
+      - joakim@intezer.com
+    description: get current user on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Owner/User Discovery [T1033]
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - or:
+            - api: geteuid
+            - api: getpwuid
+            - api: getlogin
+            - api: getlogin_r
+            - api: cuserid

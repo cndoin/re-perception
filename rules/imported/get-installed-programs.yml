@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: get installed programs
+    namespace: host-interaction/software
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - "@_re_fox"
+    description: get installed programs
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Software Discovery [T1518]
+  features:
+    - and:
+        - match: create or open registry key
+        - string: /SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall/i
+        - characteristic: loop

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: check file extension in .NET
+    namespace: host-interaction/file-system
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check file extension in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.IO.Path::GetExtension
+        - api: System.IO.Path::HasExtension

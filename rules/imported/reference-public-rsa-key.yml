@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: reference public RSA key
+    namespace: data-manipulation/encryption/rsa
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: reference public RSA key
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-publickeystruc
+      - https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-rsapubkey
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - bytes: 06 02 00 00 00 A4 00 00 52 53 41 31
+        - number: 4398872875858
+        - number: 8796919386962
+        - number: 17593012409170

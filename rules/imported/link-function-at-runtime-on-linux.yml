@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: link function at runtime on Linux
+    namespace: linking/runtime-linking
+    scope: function
+    authors:
+      - joakim@intezer.com
+    description: link function at runtime on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Shared Modules [T1129]
+  features:
+    - and:
+        - or:
+            - os: linux
+            - os: android
+        - or:
+            - api: dlsym
+            - api: dlvsym

@@ -1,0 +1,36 @@
+rule:
+  meta:
+    name: get OS version
+    namespace: lib
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: get OS version
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - or:
+        - api: RtlGetVersion
+        - api: ntoskrnl.PsGetVersion
+        - api: GetVersion
+        - api: GetVersionEx
+        - api: VerifyVersionInfo
+        - api: VerSetConditionMask
+        - api: RtlGetNtVersionNumbers
+        - api: GetProductInfo
+        - and:
+            - match: PEB access
+            - or:
+                - and:
+                    - arch: i386
+                    - or:
+                        - offset: 164
+                        - offset: 168
+                        - offset: 172
+                - and:
+                    - arch: amd64
+                    - or:
+                        - offset: 280
+                        - offset: 284
+                        - offset: 288

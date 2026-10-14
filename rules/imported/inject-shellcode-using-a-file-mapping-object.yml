@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: inject shellcode using a file mapping object
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: inject shellcode using a file mapping object
+    references:
+      - https://github.com/antonioCoco/Mapping-Injection/tree/1.1
+      - https://github.com/Kara-4search/MappingInjection_CSharp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Process Injection [T1055]
+  features:
+    - and:
+        - match: create thread
+        - api: CreateFileMapping
+        - api: MapViewOfFile
+        - api: MapViewOfFileNuma2

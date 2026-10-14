@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: add user account
+    namespace: host-interaction/accounts
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: add user account
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Create Account [T1136]
+  features:
+    - api: netapi32.NetUserAdd

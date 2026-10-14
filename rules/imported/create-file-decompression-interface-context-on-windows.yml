@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: create File Decompression Interface context on Windows
+    namespace: lib
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: create File Decompression Interface context on Windows
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/msi/cabinet-files
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - api: cabinet.FDICreate

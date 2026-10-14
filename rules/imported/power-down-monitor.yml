@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: power down monitor
+    namespace: host-interaction/hardware/monitor
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: power down monitor
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: user32.SendMessage
+        - number: 274
+        - number: 61808
+        - number: 2

@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: act as Share Provider DLL
+    namespace: persistence
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: act as Share Provider DLL
+    references:
+      - https://www.hexacorn.com/blog/2018/10/14/how-to-find-new-persistence-tricks/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Server Software Component [T1505]
+  features:
+    - or:
+        - export: ShareProviderInitialize
+        - export: ShareProviderUninitialize
+        - export: ShareProviderShareAdd
+        - export: ShareProviderShareSetInfo
+        - export: ShareProviderShareDel

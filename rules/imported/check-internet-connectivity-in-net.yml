@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: check Internet connectivity in .NET
+    namespace: host-interaction/network/connectivity
+    scope: instruction
+    authors:
+      - omurcankaya@protonmail.com
+    description: check Internet connectivity in .NET
+    references:
+      - https://learn.microsoft.com/en-us/dotnet/api/system.net.networkinformation.networkinterface.getisnetworkavailable?view=net-10.0
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery::Internet Connection Discovery [T1016.001]
+  features:
+    - and:
+        - api: System.Net.NetworkInformation.NetworkInterface::GetIsNetworkAvailable
+        - format: dotnet

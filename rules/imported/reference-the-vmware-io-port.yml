@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: reference the VMWare IO port
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+    description: reference the VMWare IO port
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion::System Checks [T1497.001]
+  features:
+    - and:
+        - mnemonic: in
+        - number: 1447909480
+        - number: 22104

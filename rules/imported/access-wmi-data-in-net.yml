@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: access WMI data in .NET
+    namespace: host-interaction/wmi
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: access WMI data in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Windows Management Instrumentation [T1047]
+  features:
+    - or:
+        - api: System.Management.ManagementClass::ctor
+        - api: System.Management.ManagementObjectSearcher::Get

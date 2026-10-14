@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: encrypt data using DES via WinAPI
+    namespace: data-manipulation/encryption/des
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: encrypt data using DES via WinAPI
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - or:
+            - number: 26113
+            - number: 26115
+            - number: 26121
+        - or:
+            - api: CryptGenKey
+            - api: CryptDeriveKey
+            - api: CryptImportKey

@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: connect socket
+    namespace: communication/socket
+    scope: basic block
+    authors:
+      - moritz.raabe@mandiant.com
+      - joakim@intezer.com
+      - mrhafizfarhad@gmail.com
+    description: Detects socket connection attempts using common APIs or ConnectEx setup.
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: connect
+        - api: ws2_32.connect
+        - api: ws2_32.#4 = connect
+        - api: ws2_32.WSAConnect
+        - api: ws2_32.#33 = WSAConnect
+        - api: ConnectEx

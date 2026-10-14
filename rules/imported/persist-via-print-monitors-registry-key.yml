@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: persist via Print Monitors registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Print Monitors registry key
+    references:
+      - https://stmxcsr.com/persistence/print-monitor.html
+      - https://learn.microsoft.com/en-us/windows/win32/printdocs/addmonitor
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Port Monitors [T1547.010]
+  features:
+    - and:
+        - match: set registry value
+        - string: /SYSTEM\\(ControlSet\d{3}|CurrentControlSet)\\Control\\Print\\Monitors\\/i
+        - string: /^Driver$/i

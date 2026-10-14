@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: persist via BootVerificationProgram registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via BootVerificationProgram registry key
+    references:
+      - https://www.cyberark.com/resources/threat-research-blog/persistence-techniques-that-persist
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution [T1547]
+  features:
+    - and:
+        - match: set registry value
+        - string: /System\\(ControlSet\d{3}|CurrentControlSet)\\Control\\BootVerificationProgram/i
+        - string: /ImagePath/i

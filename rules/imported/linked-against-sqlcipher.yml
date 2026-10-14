@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: linked against SQLCipher
+    namespace: linking/static/sqlite3
+    scope: file
+    authors:
+      - wballenthin@google.com
+    description: SQLCipher is a standalone fork of SQLite that adds 256 bit AES encryption of database files and other security features.
+    references:
+      - https://www.zetetic.net/sqlcipher/
+      - https://github.com/sqlcipher/sqlcipher
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - 3 or more:
+        - string: hexkey
+        - string: hexrekey
+        - string: cipher
+        - string: rekey_cipher
+        - string: kdf_iter
+        - string: rekey_kdf_iter

@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: encrypt data using RC4 via WinAPI
+    namespace: data-manipulation/encryption/rc4
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: encrypt data using RC4 via WinAPI
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - number: 26625
+        - or:
+            - api: CryptGenKey
+            - api: CryptDeriveKey
+            - api: CryptImportKey

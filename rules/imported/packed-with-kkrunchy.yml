@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: packed with kkrunchy
+    namespace: anti-analysis/packer/kkrunchy
+    scope: file
+    authors:
+      - "@_re_fox"
+    description: packed with kkrunchy
+    references:
+      - http://www.farbrausch.de/~fg/kkrunchy/
+      - https://www.hexacorn.com/blog/2016/12/15/pe-section-names-re-visited/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Software Packing [T1027.002]
+  features:
+    - section: kkrunchy

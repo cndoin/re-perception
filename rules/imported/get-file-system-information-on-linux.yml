@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: get file system information on Linux
+    namespace: host-interaction/file-system
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get file system information on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: linux
+        - or:
+            - api: statfs
+            - api: fstatfs

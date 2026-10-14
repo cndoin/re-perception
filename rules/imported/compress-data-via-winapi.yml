@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: compress data via WinAPI
+    namespace: data-manipulation/compression
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: compress data via WinAPI
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Archive Collected Data::Archive via Library [T1560.002]
+  features:
+    - or:
+        - api: RtlDecompressBuffer
+        - string: RtlDecompressBuffer
+        - api: RtlDecompressBufferEx
+        - string: RtlDecompressBufferEx
+        - api: RtlDecompressBufferEx2
+        - string: RtlDecompressBufferEx2
+        - api: RtlCompressBuffer
+        - string: RtlCompressBuffer
+        - api: RtlCompressBufferLZNT1
+        - string: RtlCompressBufferLZNT1

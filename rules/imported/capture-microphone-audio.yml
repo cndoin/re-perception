@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: capture microphone audio
+    namespace: collection/microphone
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: capture microphone audio
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Audio Capture [T1123]
+  features:
+    - or:
+        - and:
+            - api: mciSendString
+            - string: /^open/i
+            - string: /waveaudio/i
+            - string: /^record/i
+        - api: winmm.waveInOpen
+        - api: winmm.waveInAddBuffer
+        - api: winmm.waveInStart

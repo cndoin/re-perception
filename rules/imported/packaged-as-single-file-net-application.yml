@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: packaged as single-file .NET application
+    namespace: executable/dotnet-singlefile
+    scope: file
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: Single binary containing target .NET application and all application-dependent files
+    references:
+      - https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview?tabs=cli
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: Failure processing application bundle; possible file corruption.
+        - string: Failure processing application bundle.
+        - string: Bundle header version compatibility check failed
+        - string: A fatal error was encountered. Could not extract contents of the bundle

@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: set current directory
+    namespace: host-interaction/file-system
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: set current directory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.IO.Directory::SetCurrentDirectory
+        - api: kernel32.SetCurrentDirectory
+        - api: chdir
+        - api: fchdir

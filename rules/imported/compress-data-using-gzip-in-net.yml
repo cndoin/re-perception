@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: compress data using GZip in .NET
+    namespace: data-manipulation/compression
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: compress data using GZip in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Archive Collected Data::Archive via Library [T1560.002]
+  features:
+    - api: System.IO.Compression.GZipStream::ctor

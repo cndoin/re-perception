@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: disable PowerShell transcription
+    namespace: anti-analysis/anti-forensic
+    scope: function
+    authors:
+      - jakubjozwiak@google.com
+    description: Match on files capable of patching the FlushContentToDisk method in order to prevent PowerShell from writing transcripts to disk.
+    references:
+      - https://itm4n.github.io/reinventing-powershell/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - and:
+        - match: change memory protection
+        - string: System.Management.Automation.Host.TranscriptionOption
+        - string: FlushContentToDisk

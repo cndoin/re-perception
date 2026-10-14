@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: read virtual disk
+    namespace: host-interaction/file-system/read
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: read virtual disk
+    references:
+      - https://github.com/vxunderground/VXUG-Papers/blob/main/Weaponizing%20Windows%20Virtualization/src.cpp
+      - https://github.com/vxunderground/VXUG-Papers/blob/main/Weaponizing%20Windows%20Virtualization/WeaponizingWindowsVirtualization.pdf
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: OpenVirtualDisk
+        - api: AttachVirtualDisk
+        - api: GetVirtualDiskPhysicalPath

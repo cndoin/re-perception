@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: decode data using URL encoding
+    namespace: data-manipulation/encoding/url
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: decode data using URL encoding
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - or:
+        - api: System.Web.HttpUtility::UrlDecode
+        - api: System.Web.HttpUtility::UrlDecodeToBytes

@@ -1,0 +1,25 @@
+rule:
+  meta:
+    name: encode data using Base64 via WinAPI
+    namespace: data-manipulation/encoding/base64
+    scope: basic block
+    authors:
+      - moritz.raabe@mandiant.com
+    description: encode data using Base64 via WinAPI
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - or:
+            - number: 1
+            - number: 3
+            - number: 9
+            - number: 1073741825
+            - number: 1073741827
+            - number: 1073741833
+            - number: 2147483649
+            - number: 2147483651
+            - number: 2147483657
+        - api: CryptBinaryToString

@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: capture screenshot
+    namespace: collection/screenshot
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - "@_re_fox"
+      - michael.hunhoff@mandiant.com
+    description: capture screenshot
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Screen Capture [T1113]
+  features:
+    - or:
+        - and:
+            - or:
+                - api: user32.GetWindowDC
+                - api: user32.GetDC
+                - and:
+                    - api: gdi32.CreateDC
+                    - string: DISPLAY
+            - or:
+                - api: gdi32.BitBlt
+                - api: gdi32.GetDIBits
+            - api: gdi32.CreateCompatibleDC
+            - api: gdi32.CreateCompatibleBitmap
+        - api: System.Drawing.Graphics::CopyFromScreen

@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: add user account to group
+    namespace: host-interaction/accounts
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: add user account to group
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Account Manipulation [T1098]
+  features:
+    - or:
+        - api: netapi32.NetLocalGroupAddMembers
+        - api: netapi32.NetLocalGroupAddMember
+        - api: netapi32.NetGroupAddUser
+        - api: netapi32.NetGroupSetUsers

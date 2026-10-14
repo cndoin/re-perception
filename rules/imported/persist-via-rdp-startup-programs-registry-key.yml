@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: persist via RDP startup programs registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via RDP startup programs registry key
+    references:
+      - https://www.cyberark.com/resources/threat-research-blog/attacking-rdp-from-inside
+      - https://www.cyberark.com/resources/threat-research-blog/persistence-techniques-that-persist
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - string: /SYSTEM\\(ControlSet\d{3}|CurrentControlSet)\\Control\\Terminal Server\\Wds\\rdpwd/i
+        - string: /^StartupPrograms$/i

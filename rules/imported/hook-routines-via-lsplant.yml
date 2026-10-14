@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: hook routines via LSPlant
+    namespace: linking/hooking
+    scope: basic block
+    authors:
+      - mehunhoff@google.com
+    description: LSPlant is an Android ART hook library, providing Java method hook/unhook and inline deoptimization
+    references:
+      - https://github.com/LSPosed/LSPlant
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: LSPHooker_
+        - string: hooker
+        - string: "{target}"

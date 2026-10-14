@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: query or enumerate registry key
+    namespace: host-interaction/registry
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: query or enumerate registry key
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Query Registry [T1012]
+  features:
+    - or:
+        - api: advapi32.RegEnumKey
+        - api: advapi32.RegEnumKeyEx
+        - api: advapi32.RegQueryInfoKeyA
+        - api: ZwQueryKey
+        - api: ZwEnumerateKey
+        - api: NtQueryKey
+        - api: NtEnumerateKey
+        - api: RtlCheckRegistryKey
+        - api: SHEnumKeyEx
+        - api: SHQueryInfoKey
+        - api: SHRegEnumUSKey
+        - api: SHRegQueryInfoUSKey
+        - api: Microsoft.Win32.RegistryKey::GetSubKeyNames
+        - api: Microsoft.Win32.RegistryKey::OpenBaseKey
+        - api: Microsoft.Win32.RegistryKey::OpenRemoteBaseKey
+        - api: Microsoft.Win32.RegistryKey::OpenSubKey

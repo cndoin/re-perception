@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: lock the desktop
+    namespace: host-interaction/gui/session/lock
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: lock the desktop
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Impact::Endpoint Denial of Service [T1499]
+  features:
+    - api: user32.LockWorkStation

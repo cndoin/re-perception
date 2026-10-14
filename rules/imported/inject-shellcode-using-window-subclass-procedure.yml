@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: inject shellcode using window subclass procedure
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: inject shellcode using window subclass procedure
+    references:
+      - https://www.hexacorn.com/blog/2017/10/26/propagate-a-new-code-injection-trick/
+      - https://modexp.wordpress.com/2018/08/23/process-injection-propagate/
+      - https://github.com/Fahersto/code_injection/blob/master/shellcode_injection/propagate_injection.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Process Injection [T1055]
+  features:
+    - and:
+        - match: find graphical window
+        - match: open process
+        - match: write process memory
+        - api: user32.SetProp
+        - or:
+            - api: PostMessage
+            - api: SendNotifyMessage
+        - string: UxSubclassInfo
+        - or:
+            - string: ToolbarWindow32
+            - string: SHELLDLL_DefView

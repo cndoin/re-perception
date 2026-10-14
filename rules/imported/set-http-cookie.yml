@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: set HTTP cookie
+    namespace: communication/http
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: set HTTP cookie
+    references:
+      - https://docs.microsoft.com/en-us/dotnet/api/system.net.cookiecontainer.setcookies
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Command and Control::Application Layer Protocol::Web Protocols [T1071.001]
+  features:
+    - api: System.Net.CookieContainer::SetCookies

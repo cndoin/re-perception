@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: resize volume shadow copy storage
+    namespace: impact/inhibit-system-recovery
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: resize volume shadow copy storage
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: interact with driver via IOCTL
+        - number: 5488680

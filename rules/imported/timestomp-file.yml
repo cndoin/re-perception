@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: timestomp file
+    namespace: anti-analysis/anti-forensic/timestomp
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: timestomp file
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Indicator Removal::Timestomp [T1070.006]
+  features:
+    - and:
+        - or:
+            - api: kernel32.GetSystemTime
+            - api: kernel32.FileTimeToLocalFileTime
+            - api: kernel32.GetSystemTimeAsFileTime
+            - api: kernel32.SystemTimeToFileTime
+            - api: kernel32.GetFileTime
+        - api: kernel32.SetFileTime

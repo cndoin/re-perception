@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: run as NodeJS native module
+    namespace: runtime/node
+    scope: file
+    authors:
+      - mehunhoff@google.com
+    description: NodeJS native modules enable native code to interact with the NodeJS runtime.
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - export: napi_register_module_v1

@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: log keystrokes via polling
+    namespace: collection/keylog
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: log keystrokes via polling
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Input Capture::Keylogging [T1056.001]
+  features:
+    - or:
+        - api: user32.GetAsyncKeyState
+        - api: user32.GetKeyState
+        - api: user32.GetKeyboardState
+        - api: user32.VkKeyScan
+        - api: user32.VkKeyScanEx
+        - api: user32.GetKeyNameText

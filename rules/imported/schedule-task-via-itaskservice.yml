@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: schedule task via ITaskService
+    namespace: persistence/scheduled-tasks
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: schedule task via ITaskService
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/taskschd/taskservice
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Scheduled Task/Job::Scheduled Task [T1053.005]
+  features:
+    - and:
+        - or:
+            - string: /Microsoft\.Win32\.TaskScheduler\.TaskService/i
+            - string: /TaskScheduler\.TaskService/i
+            - string: /\bSchedule\.Service\b/i
+        - or:
+            - string: /\bRegisterTaskDefinition\b/i
+            - string: /\bNewTask\b/i

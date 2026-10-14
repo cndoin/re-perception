@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: receive data
+    namespace: communication
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: all known techniques for receiving data from a potential C2 server
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - match: receive data on socket
+        - match: read data from Internet
+        - match: download URL

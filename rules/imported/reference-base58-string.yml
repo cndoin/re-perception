@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: reference Base58 string
+    namespace: data-manipulation/encoding/base58
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: Similar to Base64, but modified to avoid both non-alphanumeric characters (+ and /) and letters that might look ambiguous when printed (0, I, O, and l). Base58 is used to represent bitcoin addresses.
+    references:
+      - https://en.wikipedia.org/wiki/Binary-to-text_encoding#Base58
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - string: /123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz/

@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: get storage device properties
+    namespace: host-interaction/hardware/storage
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get storage device properties
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-ioctl_storage_query_property
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: interact with driver via IOCTL
+        - number: 2954240

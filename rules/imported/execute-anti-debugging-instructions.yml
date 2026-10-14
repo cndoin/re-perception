@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: execute anti-debugging instructions
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: execute anti-debugging instructions
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - mnemonic: icebp

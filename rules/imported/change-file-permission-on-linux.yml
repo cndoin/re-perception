@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: change file permission on Linux
+    namespace: host-interaction/file-system
+    scope: basic block
+    authors:
+      - joakim@intezer.com
+      - mehunhoff@google.com
+    description: change file permission on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - os: android
+            - os: linux
+        - or:
+            - api: chown
+            - api: fchown
+            - api: lchown
+            - api: fchownat
+            - api: chmod
+            - api: fchmod
+            - api: fchmodat

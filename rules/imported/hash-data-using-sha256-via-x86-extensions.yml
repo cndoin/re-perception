@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: hash data using sha256 via x86 extensions
+    namespace: data-manipulation/hashing/sha256
+    scope: basic block
+    authors:
+      - "@_re_fox"
+    description: hash data using sha256 via x86 extensions
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - mnemonic: sha256rnds2 = Perform Two Rounds of SHA256 Operation
+        - mnemonic: sha256msg1 = Perform an Intermediate Calculation for the Next Four SHA256 Message Dwords
+        - mnemonic: sha256msg2 = Perform a Final Calculation for the Next Four SHA256 Message Dwords

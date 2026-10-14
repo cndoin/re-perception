@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: get system property on Android
+    namespace: host-interaction/process
+    scope: basic block
+    authors:
+      - mehunhoff@google.com
+    description: get system property on Android
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: android
+        - api: __system_property_get

@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: interact with iptables
+    namespace: host-interaction/firewall
+    scope: basic block
+    authors:
+      - joakim@intezer.com
+    description: interact with iptables
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Software Discovery::Security Software Discovery [T1518.001]
+      - Defense Evasion::Impair Defenses::Disable or Modify System Firewall [T1562.004]
+  features:
+    - and:
+        - os: linux
+        - api: system
+        - substring: iptables

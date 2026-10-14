@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: generate random numbers via RtlGenRandom
+    namespace: data-manipulation/prng
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+      - richard.weiss@mandiant.com
+    description: generate random numbers via RtlGenRandom
+    references:
+      - https://doxygen.reactos.org/df/d13/sysfunc_8c_source.html
+      - https://blog.gentilkiwi.com/tag/systemfunction036
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: SystemFunction036

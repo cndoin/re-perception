@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: get session integrity level
+    namespace: host-interaction/session
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: get session integrity level
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Owner/User Discovery [T1033]
+  features:
+    - or:
+        - api: shell32.IsUserAnAdmin
+        - and:
+            - api: System.Security.Principal.WindowsIdentity::GetCurrent
+            - number: 544
+            - api: System.Security.Principal.WindowsPrincipal::IsInRole

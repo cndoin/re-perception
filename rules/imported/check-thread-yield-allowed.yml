@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: check thread yield allowed
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check thread yield allowed
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/NtYieldExecution.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: NtYieldExecution
+        - match: contain loop
+        - instruction:
+            and:
+              - mnemonic: cmp
+              - number: 1073741860

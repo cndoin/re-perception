@@ -1,0 +1,27 @@
+rule:
+  meta:
+    name: delete registry key
+    namespace: host-interaction/registry/delete
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+      - johnk3r
+    description: delete registry key
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Modify Registry [T1112]
+  features:
+    - or:
+        - api: advapi32.RegDeleteKey
+        - api: advapi32.RegDeleteTree
+        - api: advapi32.RegDeleteKeyEx
+        - api: advapi32.RegDeleteKeyTransacted
+        - api: ZwDeleteKey
+        - api: NtDeleteKey
+        - api: SHDeleteKey
+        - api: SHDeleteEmptyKey
+        - api: SHRegDeleteEmptyUSKey
+        - api: Microsoft.Win32.RegistryKey::DeleteSubKey
+        - api: Microsoft.Win32.RegistryKey::DeleteSubKeyTree

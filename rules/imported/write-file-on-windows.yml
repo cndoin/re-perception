@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: write file on Windows
+    namespace: host-interaction/file-system/write
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: write file on Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: kernel32.WriteFile
+            - api: kernel32.WriteFileEx
+            - api: NtWriteFile
+            - api: ZwWriteFile
+            - api: _fwrite
+            - api: fwrite

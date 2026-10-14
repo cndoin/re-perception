@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: get CPU information
+    namespace: host-interaction/hardware/cpu
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - joakim@intezer.com
+    description: get CPU information
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - or:
+        - and:
+            - os: windows
+            - match: query or enumerate registry value
+            - string: /Hardware\\Description\\System\\CentralProcessor/i
+        - and:
+            - os: linux
+            - api: system
+            - substring: /proc/cpuinfo

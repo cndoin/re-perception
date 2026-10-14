@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: initialize hashing via WinCrypt
+    namespace: data-manipulation/hashing
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: initialize hashing via WinCrypt
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: advapi32.CryptCreateHash

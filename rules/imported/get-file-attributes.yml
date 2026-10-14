@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: get file attributes
+    namespace: host-interaction/file-system/meta
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: get file attributes
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.GetFileAttributes
+        - api: ZwQueryDirectoryFile
+        - api: ZwQueryInformationFile
+        - api: NtQueryDirectoryFile
+        - api: NtQueryInformationFile
+        - api: System.IO.File::GetAttributes
+        - api: System.IO.File::GetCreationTime
+        - api: System.IO.File::GetCreationTimeUtc
+        - api: System.IO.File::GetLastAccessTime
+        - api: System.IO.File::GetLastAccessTimeUtc
+        - api: System.IO.File::GetLastWriteTime
+        - api: System.IO.File::GetLastWriteTimeUtc
+        - api: stat
+        - api: fstat
+        - api: lstat
+        - api: fstatat

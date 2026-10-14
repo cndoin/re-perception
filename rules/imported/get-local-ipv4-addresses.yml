@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: get local IPv4 addresses
+    namespace: host-interaction/network/address
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - joakim@intezer.com
+      - mehunhoff@google.com
+    description: get local IPv4 addresses
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery [T1016]
+  features:
+    - or:
+        - api: getsockname
+        - and:
+            - api: GetAdaptersInfo
+            - offset: 432
+        - api: GetAdaptersAddresses

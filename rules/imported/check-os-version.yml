@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: check OS version
+    namespace: host-interaction/os/version
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - johnk3r
+    description: check OS version
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - and:
+        - match: get OS version
+        - or:
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 5
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 6
+            - instruction:
+                and:
+                  - mnemonic: cmp
+                  - number: 10

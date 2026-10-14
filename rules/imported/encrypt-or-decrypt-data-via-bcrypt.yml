@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: encrypt or decrypt data via BCrypt
+    namespace: data-manipulation/encryption
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: encrypt or decrypt data via BCrypt
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - or:
+        - api: BCryptDecrypt
+        - api: BCryptEncrypt

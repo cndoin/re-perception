@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: compiled with nuitka
+    namespace: compiler/nuitka
+    scope: file
+    authors:
+      - "@williballenthin"
+      - "@mr-tz"
+    description: compiled with nuitka
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - string: nuitka_types_patch
+            - string: O:is_package
+            - string: Error, corrupted constants object
+        - and:
+            - string: NUITKA_ONEFILE_PARENT
+            - string: Error, couldn't runtime expand temporary files.

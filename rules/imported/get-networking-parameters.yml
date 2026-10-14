@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: get networking parameters
+    namespace: host-interaction/network
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get networking parameters
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery [T1016]
+  features:
+    - api: iphlpapi.GetNetworkParams

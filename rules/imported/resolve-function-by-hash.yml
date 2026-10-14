@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: resolve function by hash
+    namespace: linking/runtime-linking
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: resolve function by hash
+    references:
+      - https://www.mandiant.com/resources/precalculated-string-hashes-reverse-engineering-shellcode
+      - https://pastebin.com/ci5XYW4P
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Indicator Removal from Tools [T1027.005]
+  features:
+    - or:
+        - number: 1783282779
+        - number: 1023043677
+        - number: 3960360590
+        - number: 2081291434
+        - number: 2444216916
+        - number: 1397492408
+        - number: 4286514714
+        - number: 1625345775

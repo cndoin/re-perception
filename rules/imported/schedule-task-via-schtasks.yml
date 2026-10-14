@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: schedule task via schtasks
+    namespace: persistence/scheduled-tasks
+    scope: function
+    authors:
+      - 0x534a@mailbox.org
+      - j.j.vannielen@utwente.nl
+    description: schedule task via schtasks
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-start-page
+      - https://stmxcsr.com/persistence/scheduled-tasks.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Scheduled Task/Job::Scheduled Task [T1053.005]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\/i
+        - string: /^Actions$/i

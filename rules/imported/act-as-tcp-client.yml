@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: act as TCP client
+    namespace: communication/tcp/client
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: act as TCP client
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - match: connect TCP socket
+        - api: System.Net.Sockets.TcpClient::ctor

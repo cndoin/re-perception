@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: map section object
+    namespace: host-interaction/process
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: map section object
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: NtMapViewOfSection
+            - api: ZwMapViewOfSection

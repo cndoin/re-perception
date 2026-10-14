@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: linked against CPP HTTP library
+    namespace: linking/static/httplib
+    scope: file
+    authors:
+      - "@mr-tz"
+    description: linked against CPP HTTP library
+    references:
+      - https://github.com/yhirose/cpp-httplib
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - substring: cpp-httplib/
+        - string: /\(HTTP\/1\\\.\[01\]\) \(\\d/

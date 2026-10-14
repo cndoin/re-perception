@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: hash data via BCrypt
+    namespace: data-manipulation/hashing
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: hash data via BCrypt
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - or:
+        - api: BCryptHash
+        - api: BCryptHashData

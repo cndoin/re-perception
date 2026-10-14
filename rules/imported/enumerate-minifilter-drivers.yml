@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: enumerate minifilter drivers
+    namespace: host-interaction/filter
+    scope: function
+    authors:
+      - aseel.kayal@mandiant.com
+      - jakubjozwiak@google.com
+    description: enumerate minifilter drivers
+    references:
+      - https://posts.specterops.io/mimidrv-in-depth-4d273d19e148
+      - https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/filter-manager-concepts
+      - https://github.com/gentilkiwi/mimikatz/blob/2.2.0-20220919/mimikatz/modules/kuhl_m_misc.c#L944
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - and:
+            - api: fltmgr.FltEnumerateFilters
+            - api: fltmgr.FltGetFilterInformation
+        - and:
+            - api: fltlib.FilterFindFirst
+            - api: fltlib.FilterFindNext

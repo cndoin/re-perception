@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: debug build
+    namespace: executable/pe/debug
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: debug build
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: Assertion failed!
+        - string: "Assertion failed:"

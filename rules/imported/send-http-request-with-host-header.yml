@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: send HTTP request with Host header
+    namespace: communication/http
+    scope: function
+    authors:
+      - anamaria.martinezgom@mandiant.com
+    description: send HTTP request with Host header
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: send HTTP request
+        - string: /Host:/i

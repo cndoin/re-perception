@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: send keystrokes
+    namespace: host-interaction/hardware/keyboard
+    scope: function
+    authors:
+      - anushka.virgaonkar@mandiant.com
+    description: send keystrokes
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: System.Windows.Forms.SendKeys::Send
+        - api: System.Windows.Forms.SendKeys::SendWait

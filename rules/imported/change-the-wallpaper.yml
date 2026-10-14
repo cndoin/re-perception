@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: change the wallpaper
+    namespace: host-interaction/gui/session
+    scope: basic block
+    authors:
+      - "@_re_fox"
+    description: change the wallpaper
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: SystemParametersInfo
+        - number: 20
+        - number: 3

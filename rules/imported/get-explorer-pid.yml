@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: get Explorer PID
+    namespace: host-interaction/process/list
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get Explorer PID
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/ParentProcess.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Process Discovery [T1057]
+  features:
+    - and:
+        - api: GetShellWindow
+        - api: GetWindowThreadProcessId

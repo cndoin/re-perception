@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: send HTTP response
+    namespace: communication/http/server
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: send HTTP response
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: httpapi.HttpSendHttpResponse
+        - api: httpapi.HttpSendResponseEntityBody

@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: hash data using djb2
+    namespace: data-manipulation/hashing/djb2
+    scope: function
+    authors:
+      - awillia2@cisco.com
+      - still@teamt5.org
+    description: hash data using djb2
+    references:
+      - https://twitter.com/r3c0nst/status/1392405576131436546
+      - http://www.cse.yorku.ca/~oz/hash.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - instruction:
+            and:
+              - mnemonic: mov
+              - number: 5381
+        - or:
+            - instruction:
+                and:
+                  - mnemonic: shl
+                  - number: 5
+            - instruction:
+                and:
+                  - or:
+                      - mnemonic: mul
+                      - mnemonic: imul
+                  - number: 33

@@ -1,0 +1,37 @@
+rule:
+  meta:
+    name: capture public ip
+    namespace: collection/network
+    scope: function
+    authors:
+      - "@_re_fox"
+      - still@teamt5.org
+    description: capture public ip
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery [T1016]
+  features:
+    - and:
+        - api: InternetOpen
+        - api: InternetOpenUrl
+        - api: InternetReadFile
+        - or:
+            - substring: bot.whatismyipaddress.com
+            - substring: ipinfo.io/ip
+            - substring: checkip.dyndns.org
+            - substring: ifconfig.me
+            - substring: ipecho.net/plain
+            - substring: api.ipify.org
+            - substring: checkip.amazonaws.com
+            - substring: icanhazip.com
+            - substring: wtfismyip.com/text
+            - substring: api.myip.com
+            - substring: ip-api.com/line
+            - substring: ip.tool.chinaz.com
+            - substring: 1234i.com
+            - substring: ip138.com
+            - substring: myip.com.tw
+            - substring: taobao.com/help/getip.php
+            - substring: chaipip.com
+            - substring: sojson.com/ip

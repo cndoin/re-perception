@@ -1,0 +1,34 @@
+rule:
+  meta:
+    name: reference NCR ATM library routines
+    namespace: targeting/automated-teller-machine/ncr
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference NCR ATM library routines
+    references:
+      - https://www.pcworld.com/article/2824572/leaked-programming-manual-may-help-criminals-develop-more-atm-malware.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: msxfs.dll
+        - api: msxfs.WFSCleanUp
+        - string: WFSCleanUp
+        - api: msxfs.WFSClose
+        - string: WFSClose
+        - api: msxfs.WFSExecute
+        - string: WFSExecute
+        - api: msxfs.WFSFreeResult
+        - string: WFSFreeResult
+        - api: msxfs.WFSGetInfo
+        - string: WFSGetInfo
+        - api: msxfs.WFSLock
+        - string: WFSLock
+        - api: msxfs.WFSOpen
+        - string: WFSOpen
+        - api: msxfs.WFSRegister
+        - string: WFSRegister
+        - api: msxfs.WFSStartUp
+        - string: WFSStartUp
+        - api: msxfs.WFSUnlock
+        - string: WFSUnlock

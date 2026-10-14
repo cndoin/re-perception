@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: bypass UAC via ICMLuaUtil
+    namespace: host-interaction/uac/bypass
+    scope: function
+    authors:
+      - anamaria.martinezgom@mandiant.com
+    description: bypass UAC via ICMLuaUtil
+    references:
+      - https://gist.github.com/hfiref0x/196af729106b780db1c73428b5a5d68d
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Abuse Elevation Control Mechanism::Bypass User Account Control [T1548.002]
+  features:
+    - or:
+        - string: "{3E5FC7F9-9A51-4367-9063-A120244FBEC7}"
+        - bytes: F9 C7 5F 3E 51 9A 67 43 90 63 A1 20 24 4F BE C7

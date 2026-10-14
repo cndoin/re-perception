@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: unmount volume via IOCTL
+    namespace: host-interaction/hardware/storage
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: unmount volume via IOCTL
+    references:
+      - https://www.crowdstrike.com/blog/the-anatomy-of-wiper-malware-part-3/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: interact with driver via IOCTL
+        - and:
+            - number: 589848
+            - number: 589856

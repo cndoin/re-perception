@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: get system information on Linux
+    namespace: host-interaction/os/info
+    scope: function
+    authors:
+      - joakim@intezer.com
+      - michael.hunhoff@mandiant.com
+    description: get system information on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - and:
+        - os: linux
+        - or:
+            - api: sysconf
+            - and:
+                - api: system
+                - string: lshw
+            - api: sysinfo

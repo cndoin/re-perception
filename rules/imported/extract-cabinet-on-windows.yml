@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: extract Cabinet on Windows
+    namespace: data-manipulation/compression
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: extract Cabinet on Windows
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/devnotes/extracting-files-from-a-cabinet
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Deobfuscate/Decode Files or Information [T1140]
+  features:
+    - and:
+        - match: create File Decompression Interface context on Windows
+        - or:
+            - api: cabinet.FDICopy
+            - api: cabinet.FDIDestroy

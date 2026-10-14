@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: act as WinDbg extension
+    namespace: persistence
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: act as WinDbg extension
+    references:
+      - https://www.codeproject.com/Articles/6522/Debug-Tutorial-Part-4-Writing-WINDBG-Extensions
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Server Software Component [T1505]
+  features:
+    - or:
+        - export: ExtensionApiVersion
+        - export: WinDbgExtensionDllInit

@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: contains PDB path
+    namespace: executable/pe/pdb
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: contains PDB path
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - string: /:\\.*\.pdb/

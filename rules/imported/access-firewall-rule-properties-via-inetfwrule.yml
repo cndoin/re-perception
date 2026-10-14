@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: access firewall rule properties via INetFwRule
+    namespace: host-interaction/firewall/modify
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: access firewall rule properties via INetFwRule
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/api/netfw/nn-netfw-inetfwrule
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Software Discovery::Security Software Discovery [T1518.001]
+  features:
+    - and:
+        - api: ole32.CoCreateInstance
+        - bytes: 3e c4 5b 2c 69 33 33 4c ab 0c be 94 69 67 7a f4
+        - bytes: 27 0d 23 af ba ba 42 4e ac ed f5 24 f2 2c fc e2

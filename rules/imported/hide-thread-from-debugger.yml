@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: hide thread from debugger
+    namespace: anti-analysis/anti-debugging/debugger-evasion
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - jakub.jozwiak@mandiant.com
+    description: hide thread from debugger
+    references:
+      - https://anti-debug.checkpoint.com/techniques/interactive.html#ntsetinformationthread
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/NtSetInformationThread_ThreadHideFromDebugger.cpp
+      - https://github.com/jaeyung1001/Anti-Debugging/blob/master/Code/NtSetInformationThread.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Debugger Evasion [T1622]
+  features:
+    - and:
+        - or:
+            - api: NtSetInformationThread
+            - api: ZwSetInformationThread
+        - number: 17

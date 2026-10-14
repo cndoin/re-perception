@@ -1,0 +1,42 @@
+rule:
+  meta:
+    name: decompress data using LZO
+    namespace: data-manipulation/compression
+    scope: function
+    authors:
+      - david@edeca.net
+      - david.cannings@pwc.com
+    description: detects the decompression routine from LZO
+    references:
+      - https://github.com/zenzhang/msgclient/blob/f7c346287022dd41b21aedc8664a281b32e4a1f1/src/framework/string/Compress.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - instruction:
+            and:
+              - mnemonic: add
+              - number: 255
+        - or:
+            - instruction:
+                and:
+                  - or:
+                      - mnemonic: and
+                      - mnemonic: add
+                  - number: 4294967292
+            - instruction:
+                and:
+                  - mnemonic: sub
+                  - number: 4
+        - instruction:
+            and:
+              - mnemonic: and
+              - number: 31
+        - instruction:
+            and:
+              - mnemonic: sub
+              - number: 16384
+        - instruction:
+            and:
+              - mnemonic: shr
+              - number: 2
+        - characteristic: loop

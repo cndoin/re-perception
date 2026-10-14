@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: linked against sqlite3
+    namespace: linking/static/sqlite3
+    scope: file
+    authors:
+      - still@teamt5.org
+    description: linked against sqlite3
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - 3 or more:
+        - string: database corruption
+        - string: SQLITE_OK
+        - string: SQLite format 3
+        - string: sqlite3_extension_init
+        - substring: cannot INSERT into generated column
+        - substring: UPSERT not implemented for virtual table
+        - substring: sqlite3_get_table()
+        - substring: qualified table names are not allowed on

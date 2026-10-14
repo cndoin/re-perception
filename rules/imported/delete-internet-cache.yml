@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: delete internet cache
+    namespace: host-interaction/internet/cache
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: delete internet cache
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: enumerate internet cache
+        - api: wininet.DeleteUrlCacheEntry

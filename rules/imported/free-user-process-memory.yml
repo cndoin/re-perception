@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: free user process memory
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: free user process memory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Process Injection [T1055]
+  features:
+    - and:
+        - match: attach user process memory
+        - number: 4294967295
+        - api: ZwFreeVirtualMemory

@@ -1,0 +1,40 @@
+rule:
+  meta:
+    name: delay execution
+    namespace: lib
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+      - "@ramen0x3f"
+    description: delay execution
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/sync/wait-functions
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/TimingAttacks/timing.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - or:
+        - and:
+            - os: windows
+            - or:
+                - api: kernel32.Sleep
+                - api: kernel32.SleepEx
+                - api: kernel32.WaitForSingleObject
+                - api: kernel32.SignalObjectAndWait
+                - api: kernel32.WaitForSingleObjectEx
+                - api: kernel32.WaitForMultipleObjects
+                - api: kernel32.WaitForMultipleObjectsEx
+                - api: kernel32.RegisterWaitForSingleObject
+                - api: WaitOnAddress
+                - api: user32.MsgWaitForMultipleObjects
+                - api: user32.MsgWaitForMultipleObjectsEx
+                - api: NtDelayExecution
+                - api: KeWaitForSingleObject
+                - api: KeDelayExecutionThread
+        - and:
+            - or:
+                - os: linux
+                - os: android
+            - or:
+                - api: sleep
+                - api: usleep

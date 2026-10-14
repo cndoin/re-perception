@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: allocate unmanaged memory in .NET
+    namespace: host-interaction/memory
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: allocate unmanaged memory in .NET
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: System.Runtime.InteropServices.Marshal::AllocHGlobal

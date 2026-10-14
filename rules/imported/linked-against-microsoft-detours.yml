@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: linked against Microsoft Detours
+    namespace: linking/static/msdetours
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: linked against Microsoft Detours
+    references:
+      - https://github.com/microsoft/Detours
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Hijack Execution Flow [T1574]
+  features:
+    - or:
+        - section: .detourc
+        - section: .detourd

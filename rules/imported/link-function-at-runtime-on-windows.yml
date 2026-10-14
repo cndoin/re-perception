@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: link function at runtime on Windows
+    namespace: linking/runtime-linking
+    scope: instruction
+    authors:
+      - moritz.raabe@mandiant.com
+      - mehunhoff@google.com
+    description: link function at runtime on Windows
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Execution::Shared Modules [T1129]
+  features:
+    - and:
+        - os: windows
+        - or:
+            - api: kernel32.GetProcAddress
+            - api: ntdll.LdrGetProcedureAddress
+            - api: ntdll.LdrGetProcedureAddressEx
+            - api: ntdll.LdrGetProcedureAddressForCaller
+            - api: MmGetSystemRoutineAddress

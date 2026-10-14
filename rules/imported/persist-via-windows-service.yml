@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: persist via Windows service
+    namespace: persistence/service
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: persist via Windows service
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Create or Modify System Process::Windows Service [T1543.003]
+      - Execution::System Services::Service Execution [T1569.002]
+  features:
+    - and:
+        - match: set registry value
+        - string: /System\\(ControlSet\d{3}|CurrentControlSet)\\Services/i

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: initialize Winsock library
+    namespace: communication/socket
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: initialize Winsock library
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: ws2_32.WSAStartup
+        - api: ws2_32.#115 = WSAStartup

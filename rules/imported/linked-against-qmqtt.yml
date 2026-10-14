@@ -1,0 +1,25 @@
+rule:
+  meta:
+    name: linked against QMQTT
+    namespace: linking/static/qmqtt
+    scope: file
+    authors:
+      - jakubjozwiak@google.com
+    description: linked against QMQTT
+    references:
+      - https://github.com/emqx/qmqtt
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: "qmqtt: Binary data size bigger than %u bytes, truncate it!"
+        - string: "qmqtt: String size bigger than %u bytes, truncate it!"
+        - string: "qmqtt: Control packet bigger than 256 MB, dropped!"
+        - string: "qmqtt: Control packet write error!"
+        - string: QMQTT::Client
+        - string: QMQTT::ClientPrivate
+        - string: QMQTT::Network
+        - string: QMQTT::Socket
+        - string: QMQTT::SslSocket
+        - string: QMQTT::Timer
+        - string: QMQTT::WebSocket
+        - string: QMQTT::WebSocketIODevice

@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: persist via screensaver registry key
+    namespace: persistence/screensaver
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: SCRNSAVE.EXE registry value specifies the name of the screen saver executable file
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution::Screensaver [T1546.002]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Control Panel\\Desktop/i
+        - string: /^SCRNSAVE.EXE$/i

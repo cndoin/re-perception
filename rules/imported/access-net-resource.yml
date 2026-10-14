@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: access .NET resource
+    namespace: executable/resource
+    scope: function
+    authors:
+      - "@mr-tz"
+    description: access .NET resource
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - format: dotnet
+        - or:
+            - api: System.Resources.ResourceManager::ctor
+            - api: System.Reflection.Assembly::GetManifestResourceStream

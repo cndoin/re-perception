@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: check SystemKernelDebuggerInformation
+    namespace: anti-analysis/anti-debugging/debugger-detection
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: check SystemKernelDebuggerInformation
+    references:
+      - https://github.com/LordNoteworthy/al-khaser/blob/master/al-khaser/AntiDebug/NtQuerySystemInformation_SystemKernelDebuggerInformation.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - or:
+            - api: NtQuerySystemInformation
+            - api: NtQuerySystemInformationEx
+            - api: ZwQuerySystemInformation
+            - api: ZwQuerySystemInformationEx
+        - number: 35

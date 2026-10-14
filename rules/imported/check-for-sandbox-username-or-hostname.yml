@@ -1,0 +1,60 @@
+rule:
+  meta:
+    name: check for sandbox username or hostname
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: function
+    authors:
+      - "@_re_fox"
+      - echernofsky@google.com
+      - mehunhoff@google.com
+    description: check for sandbox username or hostname
+    references:
+      - https://github.com/LloydLabs/wsb-detect
+      - https://www.esentire.com/blog/unraveling-not-azorult-but-koi-loader-a-precursor-to-koi-stealer
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion [T1497]
+  features:
+    - and:
+        - or:
+            - match: get session user name
+            - match: get hostname
+        - or:
+            - string: /WILLCARTER-PC/i
+            - string: /FORTI-PC/i
+            - string: /SFTOR-PC/i
+            - string: /Joe\s?Cage/i
+            - string: /STRAZNJICA\.GRUBUTT/i
+            - string: /Paul\s?Jones/i
+            - string: /PJones/i
+            - string: /Harry\s?Johnson/i
+            - string: /sal\.rosenburg/i
+            - string: /d5\.vc\/g/i
+            - string: /MALTEST/i
+            - string: /TEQUILABOOMBOOM/i
+            - string: /SANDBOX/i
+            - string: /^VIRUS/i
+            - string: /MALWARE/i
+            - string: /SAND\s?BOX/i
+            - string: /Test\sUser/i
+            - string: /CurrentUser/i
+            - string: /7SILVIA/i
+            - string: /FORTINET/i
+            - string: /John\s?Doe/i
+            - string: /Emily/i
+            - string: /HANSPETER(-PC)?/i
+            - string: /HAPUBWS/i
+            - string: /Hong\sLee/i
+            - string: /IT-ADMIN/i
+            - string: /JOHN(-PC)?/i
+            - string: /Johnson/i
+            - string: /Miller/i
+            - string: /MUELLER(-PC)?/i
+            - string: /Peter\sWilson/i
+            - string: /SystemIT/i
+            - string: /Timmy/i
+            - string: /WIN7-TRAPS/i
+            - string: /WDAGUtilityAccount/i
+            - string: /HAL9TH/i
+            - string: /nepenthes/i
+            - string: /heuerzl/i

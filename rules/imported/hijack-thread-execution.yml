@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: hijack thread execution
+    namespace: host-interaction/process/inject
+    scope: function
+    authors:
+      - 0x534a@mailbox.org
+      - michael.hunhoff@mandiant.com
+    description: hijack thread execution
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Process Injection::Thread Execution Hijacking [T1055.003]
+      - Defense Evasion::Reflective Code Loading [T1620]
+  features:
+    - and:
+        - match: suspend thread
+        - api: kernel32.GetThreadContext
+        - api: kernel32.SetThreadContext
+        - match: resume thread

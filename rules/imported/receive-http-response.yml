@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: receive HTTP response
+    namespace: communication/http/client
+    scope: function
+    authors:
+      - mehunhoff@google.com
+    description: receive HTTP response
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: winhttp.WinHttpReceiveResponse
+        - api: winhttp.WinHttpReadData
+        - and:
+            - format: dotnet
+            - api: System.Net.WebRequest::GetResponse

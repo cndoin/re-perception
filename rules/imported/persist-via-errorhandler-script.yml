@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: persist via ErrorHandler script
+    namespace: persistence/file-system
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via ErrorHandler script
+    references:
+      - https://www.hexacorn.com/blog/2022/01/16/beyond-good-ol-run-key-part-135/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - or:
+            - match: copy file
+            - match: move file
+            - match: write file on Windows
+        - string: /\\Windows\\Setup\\Scripts\\ErrorHandler\.cmd/i

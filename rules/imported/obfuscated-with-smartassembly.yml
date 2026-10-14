@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: obfuscated with SmartAssembly
+    namespace: anti-analysis/obfuscation
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: obfuscated with SmartAssembly
+    references:
+      - https://www.red-gate.com/products/dotnet-development/smartassembly/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - match: compiled to the .NET platform
+        - or:
+            - string: Powered by SmartAssembly
+            - string: Powered by {smartassembly}
+            - string: SmartAssembly.Attributes
+            - string: SmartAssembly.Attributes.PoweredByAttribute

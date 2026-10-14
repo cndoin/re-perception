@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: query remote server for available data
+    namespace: communication
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: query remote server for available data
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: wininet.InternetQueryDataAvailable

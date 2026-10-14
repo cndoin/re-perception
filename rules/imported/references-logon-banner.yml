@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: references logon banner
+    namespace: host-interaction/gui/logon
+    scope: basic block
+    authors:
+      - "@_re_fox"
+    description: references logon banner
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - substring: \\Microsoft\\Windows\\CurrentVersion\\Policies\\System
+        - or:
+            - substring: LegalNoticeCaption
+            - substring: LegalNoticeText

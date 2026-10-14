@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: generate random numbers using a Mersenne Twister
+    namespace: data-manipulation/prng/mersenne
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: generate random numbers using a Mersenne Twister
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - number: 1812433253
+        - number: 2567483615
+        - number: 2636928640
+        - number: 4022730752
+        - number: 4282013869
+        - number: 13043109905998158313
+        - number: 8202884508482404352

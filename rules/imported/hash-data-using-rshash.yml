@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: hash data using rshash
+    namespace: data-manipulation/hashing/rshash
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: hash data using rshash
+    references:
+      - https://www.partow.net/programming/hashfunctions/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - number: 378551
+        - number: 63689
+        - characteristic: loop

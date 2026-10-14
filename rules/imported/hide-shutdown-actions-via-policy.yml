@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: hide shutdown actions via policy
+    namespace: host-interaction/os
+    scope: function
+    authors:
+      - still@teamt5.org
+    description: hide shutdown actions via policy
+    references:
+      - https://securelist.com/mallox-ransomware/113529/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Modify Registry [T1112]
+  features:
+    - or:
+        - and:
+            - string: /Policies/i
+            - or:
+                - string: /ShutdownWithoutLogon/i
+                - string: /HidePowerOptions/i
+        - and:
+            - string: /PolicyManager/i
+            - or:
+                - string: /HideRestart/i
+                - string: /HideShutDown/i
+                - string: /HideSignOut/i

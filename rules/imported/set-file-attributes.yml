@@ -1,0 +1,28 @@
+rule:
+  meta:
+    name: set file attributes
+    namespace: host-interaction/file-system/meta
+    scope: basic block
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: set file attributes
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::File and Directory Permissions Modification [T1222]
+  features:
+    - or:
+        - api: kernel32.SetFileAttributes
+        - api: ZwSetInformationFile
+        - api: NtSetInformationFile
+        - api: System.IO.File::SetAttributes
+        - api: System.IO.File::SetCreationTime
+        - api: System.IO.File::SetCreationTimeUtc
+        - api: System.IO.File::SetLastAccessTime
+        - api: System.IO.File::SetLastAccessTimeUtc
+        - api: System.IO.File::SetLastWriteTime
+        - api: System.IO.File::SetLastWriteTimeUtc
+        - api: utime
+        - api: utimes

@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: connect pipe
+    namespace: communication/named-pipe/connect
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: connect pipe
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: kernel32.ConnectNamedPipe
+        - api: kernel32.CallNamedPipe
+        - api: System.IO.Pipes.NamedPipeClientStream::Connect
+        - api: System.IO.Pipes.NamedPipeClientStream::ConnectAsync

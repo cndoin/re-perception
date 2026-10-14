@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: packaged as an InstallShield installer
+    namespace: executable/installer/installshield
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: packaged as an InstallShield installer
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - string: InstallShield

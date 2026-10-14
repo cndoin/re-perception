@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: use .NET library EncryptDecryptUtils
+    namespace: data-manipulation/encryption/aes
+    scope: file
+    authors:
+      - "@johnk3r"
+    description: use .NET library EncryptDecryptUtils
+    references:
+      - https://www.welivesecurity.com/2021/04/06/janeleiro-time-traveler-new-old-banking-trojan-brazil/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - match: compiled to the .NET platform
+        - string: RijndaelEncryptDecrypt

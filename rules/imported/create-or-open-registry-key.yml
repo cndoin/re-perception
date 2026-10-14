@@ -1,0 +1,37 @@
+rule:
+  meta:
+    name: create or open registry key
+    namespace: lib
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: create or open registry key
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - or:
+        - api: advapi32.RegOpenKey
+        - api: advapi32.RegOpenKeyEx
+        - api: advapi32.RegCreateKey
+        - api: advapi32.RegCreateKeyEx
+        - api: advapi32.RegOpenCurrentUser
+        - api: advapi32.RegOpenKeyTransacted
+        - api: advapi32.RegOpenUserClassesRoot
+        - api: advapi32.RegCreateKeyTransacted
+        - api: ZwOpenKey
+        - api: ZwOpenKeyEx
+        - api: ZwCreateKey
+        - api: ZwOpenKeyTransacted
+        - api: ZwOpenKeyTransactedEx
+        - api: ZwCreateKeyTransacted
+        - api: NtOpenKey
+        - api: NtCreateKey
+        - api: SHRegOpenUSKey
+        - api: SHRegCreateUSKey
+        - api: RtlCreateRegistryKey
+        - api: Microsoft.Win32.RegistryKey::OpenSubKey
+        - api: Microsoft.Win32.RegistryKey::OpenBaseKey
+        - api: Microsoft.Win32.RegistryKey::OpenRemoteBaseKey
+        - api: Microsoft.Win32.RegistryKey::CreateSubKey

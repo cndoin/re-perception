@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: calculate modulo 256 via x86 assembly
+    namespace: lib
+    scope: instruction
+    authors:
+      - moritz.raabe@mandiant.com
+    description: calculate modulo 256 via x86 assembly
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - and:
+        - or:
+            - arch: i386
+            - arch: amd64
+        - mnemonic: and
+        - or:
+            - number: 2147483903
+            - number: 255

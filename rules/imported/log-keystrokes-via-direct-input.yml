@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: log keystrokes via direct input
+    namespace: collection/keylog
+    scope: function
+    authors:
+      - zeze-zeze
+    description: log keystrokes via direct input
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Input Capture::Keylogging [T1056.001]
+  features:
+    - or:
+        - api: dinput8.DirectInput8Create
+        - api: dinput.DirectInputCreateEx
+        - api: dinput.DirectInputCreateW
+        - api: dinput.DirectInputCreateA

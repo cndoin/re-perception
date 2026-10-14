@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: act as Word WLL add-in
+    namespace: persistence/office
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: act as Word WLL add-in
+    references:
+      - https://www.ired.team/offensive-security/persistence/word-library-add-ins
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Office Application Startup::Add-ins [T1137.006]
+  features:
+    - export: wdAutoOpen

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: compiled from Visual Basic
+    namespace: compiler/vb
+    scope: file
+    authors:
+      - "@williballenthin"
+    description: compiled from Visual Basic
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - string: /VB5!.*/
+        - import: msvbvm60.ThunRTMain

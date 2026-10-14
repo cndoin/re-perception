@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: compiled with Dart
+    namespace: compiler/dart
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: compiled with Dart
+    references:
+      - https://dart.dev/
+      - https://github.com/dart-lang/sdk
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - 2 or more:
+        - string: dart:typed_data
+        - string: dart:_internal
+        - string: _kDartVmSnapshotData
+        - string: dart:core/bool.dart
+        - string: dart:io/common.dart
+        - string: dart:ffi-patch/ffi_patch.dart
+        - string: Object_haveSameRuntimeType

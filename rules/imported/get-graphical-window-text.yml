@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: get graphical window text
+    namespace: host-interaction/gui/window/get-text
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: get graphical window text
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: user32.GetWindowText

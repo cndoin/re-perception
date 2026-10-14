@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: swap mouse buttons
+    namespace: host-interaction/hardware/mouse
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+    description: swap mouse buttons
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: user32.SwapMouseButton

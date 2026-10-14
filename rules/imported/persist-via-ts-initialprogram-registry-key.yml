@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: persist via TS InitialProgram registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via TS InitialProgram registry key
+    references:
+      - https://persistence-info.github.io/Data/tsinitialprogram.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - or:
+            - string: /\\Policies\\Microsoft\\Windows NT\\Terminal Services/i
+            - string: /System\\(ControlSet\d{3}|CurrentControlSet)\\Control\\Terminal Server\\WinStations\\RDP-Tcp/i
+        - string: /^InitialProgram$/i

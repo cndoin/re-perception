@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: packed with UPX
+    namespace: anti-analysis/packer/upx
+    scope: file
+    authors:
+      - william.ballenthin@mandiant.com
+    description: packed with UPX
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information::Software Packing [T1027.002]
+  features:
+    - or:
+        - and:
+            - format: pe
+            - or:
+                - section: UPX0
+                - section: UPX1
+        - and:
+            - format: elf
+            - string: UPX!

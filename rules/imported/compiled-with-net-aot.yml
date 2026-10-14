@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: compiled with .NET AoT
+    namespace: runtime/dotnet
+    scope: file
+    authors:
+      - still@teamt5.org
+    description: compiled using .NET Ahead-of-Time (AoT) compilation
+    references:
+      - https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/
+      - https://github.com/dotnet/runtime/blob/main/src/coreclr/nativeaot/Bootstrap/main.cpp
+      - https://github.com/dotnet/runtime/blob/main/src/coreclr/nativeaot/Runtime/DebugHeader.cpp
+      - https://github.com/dotnet/runtime/blob/main/src/coreclr/nativeaot/Runtime/EHHelpers.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - export: DotNetRuntimeDebugHeader
+        - 2 or more:
+            - section: .managed
+            - section: hydrated
+            - substring: .managedcode$A
+            - substring: .modules$A
+            - substring: .unbox$A
+            - substring: __managedcode
+            - string: "Fatal error. Invalid Program: attempted to call a UnmanagedCallersOnly method from managed code."
+            - string: Process is terminating due to StackOverflowException.
+        - 2 or more:
+            - substring: System.Private.TypeLoader
+            - substring: System.Private.Reflection.Execution
+            - substring: System.Private.StackTraceMetadata

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: connect UDP socket
+    namespace: communication/socket/udp
+    scope: function
+    authors:
+      - mrhafizfarhad@gmail.com
+    description: Detects UDP socket connections by combining UDP socket creation with connection attempts.
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: create UDP socket
+        - match: connect socket

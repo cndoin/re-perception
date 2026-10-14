@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: create Cabinet on Windows
+    namespace: data-manipulation/compression
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - jakub.jozwiak@mandiant.com
+    description: create Cabinet on Windows
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/devnotes/creating-a-cabinet
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Archive Collected Data::Archive via Library [T1560.002]
+  features:
+    - and:
+        - match: create File Compression Interface context on Windows
+        - or:
+            - api: cabinet.FCIAddFile = add file to Cabinet
+            - api: cabinet.FCIFlushFolder = flush current folder under construction
+            - api: cabinet.FCIFlushCabinet = complete current cabinet
+            - api: cabinet.FCIDestroy = delete an open FCI context

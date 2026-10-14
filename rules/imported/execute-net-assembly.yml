@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: execute .NET assembly
+    namespace: load-code/dotnet
+    scope: function
+    authors:
+      - anushka.virgaonkar@mandiant.com
+    description: execute .NET assembly
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Reflective Code Loading [T1620]
+  features:
+    - or:
+        - api: System.AppDomain::ExecuteAssembly
+        - api: System.AppDomain::ExecuteAssemblyByName

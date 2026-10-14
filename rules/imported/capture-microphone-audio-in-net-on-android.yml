@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: capture microphone audio in .NET on Android
+    namespace: collection/microphone
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: capture microphone audio in .NET on Android
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: Android.Media.AudioRecord::StartRecording

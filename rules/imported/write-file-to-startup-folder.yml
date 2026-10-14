@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: write file to startup folder
+    namespace: persistence/startup-folder
+    scope: function
+    authors:
+      - matthew.williams@mandiant.com
+      - j.j.vannielen@utwente.nl
+    description: write file to startup folder
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Registry Run Keys / Startup Folder [T1547.001]
+  features:
+    - and:
+        - match: get startup folder
+        - or:
+            - match: copy file
+            - match: move file
+            - match: write file on Windows

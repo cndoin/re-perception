@@ -1,0 +1,26 @@
+rule:
+  meta:
+    name: set registry value
+    namespace: host-interaction/registry/create
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: set registry value
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: advapi32.RegSetValue
+        - api: advapi32.RegSetValueEx
+        - api: advapi32.RegSetKeyValue
+        - api: ZwSetValueKey
+        - api: NtSetValueKey
+        - api: RtlWriteRegistryValue
+        - api: SHSetValue
+        - api: SHRegSetPath
+        - api: SHRegSetValue
+        - api: SHRegSetUSValue
+        - api: SHRegWriteUSValue
+        - api: Microsoft.Win32.RegistryKey::SetValue
+        - api: Microsoft.Win32.Registry::SetValue

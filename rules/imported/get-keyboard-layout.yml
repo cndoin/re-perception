@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: get keyboard layout
+    namespace: host-interaction/hardware/keyboard
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get keyboard layout
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Location Discovery::System Language Discovery [T1614.001]
+  features:
+    - or:
+        - api: user32.GetKeyboardLayoutList
+        - api: user32.GetKeyboardLayout
+        - api: user32.GetKeyboardLayoutName

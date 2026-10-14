@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: persist via Winlogon Helper DLL registry key
+    namespace: persistence/registry/winlogon-helper
+    scope: function
+    authors:
+      - 0x534a@mailbox.org
+      - j.j.vannielen@utwente.nl
+    description: persist via Winlogon Helper DLL registry key
+    references:
+      - https://learn.microsoft.com/en-us/previous-versions/windows/desktop/policy/creating-a-policy-callback-function
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Boot or Logon Autostart Execution::Winlogon Helper DLL [T1547.004]
+  features:
+    - and:
+        - or:
+            - match: set registry value
+            - number: 2147483649
+            - number: 2147483650
+        - string: /Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon/i
+        - or:
+            - string: /Notify/i
+            - string: /Userinit/i
+            - string: /Shell/i
+            - string: /mpnotify/i
+            - and:
+                - string: /GPExtensions/i
+                - string: /DllName/i

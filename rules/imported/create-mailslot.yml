@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: create mailslot
+    namespace: communication/mailslot
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: create mailslot
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/ipc/mailslots
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: kernel32.CreateMailslot

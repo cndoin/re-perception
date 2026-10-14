@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: load .NET assembly
+    namespace: load-code/dotnet
+    scope: function
+    authors:
+      - anushka.virgaonkar@mandiant.com
+    description: load .NET assembly
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Reflective Code Loading [T1620]
+  features:
+    - or:
+        - api: System.Reflection.Assembly::Load
+        - api: System.AppDomain::Load
+        - api: System.Reflection.Assembly::LoadFile
+        - api: System.Reflection.Assembly::LoadFrom
+        - api: System.Reflection.Assembly::LoadWithPartialName
+        - api: System.Reflection.Assembly::ReflectionOnlyLoad
+        - api: System.Reflection.Assembly::ReflectionOnlyLoadFrom
+        - api: System.Reflection.Assembly::UnsafeLoadFrom

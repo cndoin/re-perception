@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: gather 3d-ftp information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather 3d-ftp information
+    references:
+      - https://www.3dftp.com/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - and:
+        - string: 3D-FTP
+        - string: sites.ini

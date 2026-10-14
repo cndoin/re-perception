@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: connect to URL
+    namespace: communication/http/client
+    scope: instruction
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: connect to URL
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: wininet.InternetOpenUrl

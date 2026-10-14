@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: persist via .NET DbgManagedDebugger registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via .NET DbgManagedDebugger registry key
+    references:
+      - https://learn.microsoft.com/en-us/visualstudio/debugger/debug-using-the-just-in-time-debugger?view=vs-2022
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - string: /Microsoft\\\.NETFramework/i
+        - string: /DbgManagedDebugger/i

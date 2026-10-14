@@ -1,0 +1,12 @@
+rule:
+  meta:
+    name: manipulate user privileges
+    namespace: host-interaction/user
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: manipulate user privileges
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - api: advapi32.LsaAddAccountRights

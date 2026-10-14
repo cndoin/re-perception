@@ -1,0 +1,30 @@
+rule:
+  meta:
+    name: obtain TransmitPackets callback function via WSAIoctl
+    namespace: communication/socket/tcp/send
+    scope: function
+    authors:
+      - jonathan.lepore@mandiant.com
+    description: The TransmitPackets function transmits in-memory data or file data over a connected socket. The TransmitPackets function uses the operating system cache manager to retrieve file data, locking memory for the minimum time required to transmit and resulting in efficient, high-performance transmission.
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/api/mswsock/nc-mswsock-lpfn_transmitpackets
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - mnemonic: call
+        - number: 16
+        - number: 3355443206
+        - or:
+            - bytes: A0 9D 68 D9 90 1F D3 11 99 71 00 C0 4F 68 C8 76
+            - and:
+                - number: 1992845391
+                - number: 3221254553
+                - number: 299048848
+                - number: 3647511968
+        - or:
+            - and:
+                - arch: i386
+                - number: 4
+            - and:
+                - arch: amd64
+                - number: 8

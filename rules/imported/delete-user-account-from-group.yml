@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: delete user account from group
+    namespace: host-interaction/accounts
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: delete user account from group
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Account Manipulation [T1098]
+  features:
+    - or:
+        - api: netapi32.NetLocalGroupDelMembers
+        - api: netapi32.NetLocalGroupDelMember
+        - api: netapi32.NetGroupDelUser

@@ -1,0 +1,16 @@
+rule:
+  meta:
+    name: enumerate network filters via WFP API
+    namespace: host-interaction/network/traffic/filter
+    scope: function
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: enumerate network filters via WFP API
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmfilterenum0
+      - https://github.com/netero1010/EDRSilencer/blob/main/EDRSilencer.c
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: fwpkclnt.FwpmFilterCreateEnumHandle0
+        - api: fwpkclnt.FwpmFilterEnum0

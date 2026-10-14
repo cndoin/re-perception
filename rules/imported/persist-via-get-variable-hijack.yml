@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: persist via Get-Variable hijack
+    namespace: persistence/file-system
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via Get-Variable hijack
+    references:
+      - https://www.threatdown.com/blog/colibri-loader-combines-task-scheduler-and-powershell-in-clever-persistence-technique/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Hijack Execution Flow [T1574]
+  features:
+    - and:
+        - or:
+            - match: copy file
+            - match: move file
+            - match: write file on Windows
+        - string: /Microsoft\\WindowsApps\\Get-Variable\.exe/i

@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: get Chrome CookieMonster
+    namespace: collection/browser
+    scope: file
+    authors:
+      - still@teamt5.org
+    description: finds sections related to Chrome's CookieMonster component, typically used in conjunction with code that dumps cookies from Chromium-based browsers
+    references:
+      - https://github.com/Meckazin/ChromeKatz/blob/main/CookieKatz-BOF/CookieKatzBOF.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores::Credentials from Web Browsers [T1555.003]
+  features:
+    - and:
+        - substring: network.mojom.NetworkService
+        - or:
+            - substring: chrome.dll
+            - substring: chrome.exe
+            - substring: msedge.exe
+            - substring: msedgewebview2.exe
+            - substring: msedge.dll

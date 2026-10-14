@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: mark thread detached on Linux
+    namespace: host-interaction/thread
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: mark thread detached on Linux
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: linux
+        - api: pthread_detach

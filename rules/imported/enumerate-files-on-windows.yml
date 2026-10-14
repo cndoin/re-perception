@@ -1,0 +1,25 @@
+rule:
+  meta:
+    name: enumerate files on Windows
+    namespace: host-interaction/file-system/files/list
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: enumerate files on Windows
+    references:
+      - https://github.com/hfiref0x/TDL/blob/cc4b46ae1c939b14a22a734a727b163f873a41b5/Source/Furutaka/sup.c#L315
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::File and Directory Discovery [T1083]
+  features:
+    - and:
+        - or:
+            - api: kernel32.FindFirstFile
+            - api: kernel32.FindFirstFileEx
+            - api: kernel32.FindFirstFileTransacted
+            - api: kernel32.FindFirstFileName
+            - api: kernel32.FindFirstFileNameTransacted
+        - or:
+            - api: kernel32.FindNextFile
+            - api: kernel32.FindNextFileName

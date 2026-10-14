@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: compiled with V
+    namespace: compiler/v
+    scope: file
+    authors:
+      - jakub.jozwiak@mandiant.com
+    description: compiled with V
+    references:
+      - https://vlang.io
+      - https://github.com/vlang/v
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: ================ V panic ================
+        - string: V_RESOURCE_PATH
+        - 5 or more:
+            - substring: "v_error:"
+            - substring: "v_exit:"
+            - substring: "v_free:"
+            - substring: "v_malloc:"
+            - substring: v_panic
+            - substring: v_realloc

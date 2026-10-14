@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: get volume information via IOCTL
+    namespace: host-interaction/hardware/storage
+    scope: basic block
+    authors:
+      - william.ballenthin@mandiant.com
+    description: get volume information via IOCTL
+    references:
+      - https://www.crowdstrike.com/blog/the-anatomy-of-wiper-malware-part-3/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - and:
+        - match: interact with driver via IOCTL
+        - number: 589924

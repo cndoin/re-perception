@@ -1,0 +1,23 @@
+rule:
+  meta:
+    name: encrypt data using RC6
+    namespace: data-manipulation/encryption/rc6
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: encrypt data using RC6
+    references:
+      - https://github.com/stamparm/cryptospecs/blob/master/symmetrical/sources/rc6.c#L66
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - or:
+            - number: 3084996963
+            - number: 13249961062380153451
+        - or:
+            - or:
+                - number: 2654435769
+                - number: 1640531527
+            - number: 11400714819323198485

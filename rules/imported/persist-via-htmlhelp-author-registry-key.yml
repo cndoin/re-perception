@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: persist via HtmlHelp Author registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via HtmlHelp Author registry key
+    references:
+      - https://www.hexacorn.com/blog/2018/04/22/beyond-good-ol-run-key-part-76/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Hijack Execution Flow [T1574]
+  features:
+    - and:
+        - match: set registry value
+        - and:
+            - string: /Software\\Microsoft\\HtmlHelp Author/i
+            - string: /location/i

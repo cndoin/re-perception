@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: get session user name
+    namespace: host-interaction/session
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - anushka.virgaonkar@mandiant.com
+    description: get session user name
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Owner/User Discovery [T1033]
+      - Discovery::Account Discovery [T1087]
+  features:
+    - or:
+        - api: advapi32.GetUserName
+        - api: secur32.GetUserNameEx
+        - api: System.Security.Principal.WindowsIdentity::GetCurrent

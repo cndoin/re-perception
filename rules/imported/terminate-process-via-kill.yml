@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: terminate process via kill
+    namespace: host-interaction/process/terminate
+    scope: basic block
+    authors:
+      - joakim@intezer.com
+    description: terminate process via kill
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - os: linux
+        - api: kill
+        - or:
+            - number: 1
+            - number: 2
+            - number: 3
+            - number: 6
+            - number: 9
+            - number: 15
+            - number: 19

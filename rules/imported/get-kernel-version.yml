@@ -1,0 +1,20 @@
+rule:
+  meta:
+    name: get kernel version
+    namespace: host-interaction/os/version
+    scope: function
+    authors:
+      - joakim@intezer.com
+    description: get kernel version
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Information Discovery [T1082]
+  features:
+    - and:
+        - os: linux
+        - or:
+            - api: uname
+            - and:
+                - api: system
+                - string: uname

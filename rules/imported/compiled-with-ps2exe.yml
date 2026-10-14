@@ -1,0 +1,29 @@
+rule:
+  meta:
+    name: compiled with ps2exe
+    namespace: compiler/ps2exe
+    scope: file
+    authors:
+      - "@_re_fox"
+      - jakub.jozwiak@mandiant.com
+      - "@shreethaar"
+    description: compiled with ps2exe
+    references:
+      - https://github.com/ikarstein/ps2exe
+      - https://github.com/MScholtes/PS2EXE
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - match: compiled to the .NET platform
+        - or:
+            - and:
+                - string: PS2EXEApp
+                - string: PS2EXE
+                - string: PS2EXE_Host
+            - and:
+                - string: If you spzzcify thzz -zzxtract option you nzzed to add a filzz for zzxtraction in this way
+                - string: "-zzxtract:\'<filzznamzz>\'"
+            - and:
+                - string: ModuleNameSpace
+                - string: MainAppInterface
+                - string: ConsoleColorProxy

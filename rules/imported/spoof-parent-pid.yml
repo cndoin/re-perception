@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: spoof parent PID
+    namespace: anti-analysis/anti-forensic
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: spoof parent PID
+    references:
+      - https://blog.f-secure.com/detecting-parent-pid-spoofing/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Access Token Manipulation::Parent PID Spoofing [T1134.004]
+  features:
+    - and:
+        - api: kernel32.UpdateProcThreadAttribute
+        - number: 131072

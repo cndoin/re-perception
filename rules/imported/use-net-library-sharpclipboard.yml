@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: use .NET library SharpClipboard
+    namespace: collection
+    scope: file
+    authors:
+      - "@johnk3r"
+    description: use .NET library SharpClipboard
+    references:
+      - https://www.welivesecurity.com/2021/04/06/janeleiro-time-traveler-new-old-banking-trojan-brazil/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Collection::Clipboard Data [T1115]
+  features:
+    - and:
+        - match: compiled to the .NET platform
+        - string: SharpClipboard

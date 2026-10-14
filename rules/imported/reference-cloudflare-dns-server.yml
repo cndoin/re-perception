@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: reference Cloudflare DNS server
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: reference Cloudflare DNS server
+    references:
+      - https://www.techradar.com/news/best-dns-server
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - string: 1.1.1.1
+        - string: 1.0.0.1

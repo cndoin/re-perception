@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: list containers
+    namespace: host-interaction/container/docker
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: list containers
+    references:
+      - https://docs.docker.com/engine/api/v1.24/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Container and Resource Discovery [T1613]
+  features:
+    - or:
+        - string: /^docker(\.exe)? ps/
+        - and:
+            - match: send HTTP request
+            - string: /\/v1\.[0-9]{1,2}\/containers\/json/

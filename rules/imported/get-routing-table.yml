@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: get routing table
+    namespace: host-interaction/network/routing-table
+    scope: instruction
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: get routing table
+    references:
+      - https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getipforwardtable
+      - https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getipforwardtable2
+      - https://github.com/T04R/collection/blob/main/evasion/03.Local-admin/EPP-comms/netblk-printroute/implant.cpp
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery [T1016]
+  features:
+    - or:
+        - api: iphlpapi.GetIpForwardTable
+        - api: iphlpapi.GetIpForwardTable2

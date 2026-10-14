@@ -1,0 +1,31 @@
+rule:
+  meta:
+    name: resolve DNS
+    namespace: communication/dns
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+      - johnk3r
+      - joakim@intezer.com
+      - michael.hunhoff@mandiant.com
+    description: resolve DNS
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - api: gethostbyname
+        - api: ws2_32.gethostbyname
+        - api: ws2_32.#52 = gethostbyname
+        - api: DnsQuery_A
+        - api: DnsQuery_W
+        - api: DnsQuery_UTF8
+        - api: DnsQueryEx
+        - api: GetAddrInfo
+        - api: ws2_32.#24 = GetAddrInfoW
+        - api: GetAddrInfoEx
+        - api: getaddrinfo
+        - api: ws2_32.#98 = getaddrinfo
+        - api: getnameinfo
+        - api: ws2_32.#99 = getnameinfo
+        - api: gethostent
+        - api: System.Net.Dns::GetHostAddresses

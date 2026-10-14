@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: self delete
+    namespace: anti-analysis/anti-forensic/self-deletion
+    scope: function
+    authors:
+      - michael.hunhoff@mandiant.com
+      - "@mr-tz"
+    description: self delete
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Indicator Removal::File Deletion [T1070.004]
+  features:
+    - and:
+        - or:
+            - match: get COMSPEC environment variable
+            - string: cmd.exe
+        - or:
+            - string: /\/c\s*\bdel\b\s*/
+            - string: /(^|[\&;\|]\s*)\bdel\b(\s.*)?/i

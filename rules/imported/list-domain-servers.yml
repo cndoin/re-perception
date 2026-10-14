@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: list domain servers
+    namespace: host-interaction/domain
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: list domain servers
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Network Configuration Discovery::Internet Connection Discovery [T1016.001]
+  features:
+    - api: netapi32.NetServerEnum

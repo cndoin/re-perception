@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: decode data using Base64 via WinAPI
+    namespace: data-manipulation/encoding/base64
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: decode data using Base64 via WinAPI
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Deobfuscate/Decode Files or Information [T1140]
+  features:
+    - and:
+        - or:
+            - number: 1
+            - number: 6
+            - number: 7
+        - api: CryptStringToBinary

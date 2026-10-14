@@ -1,0 +1,19 @@
+rule:
+  meta:
+    name: disable driver code integrity
+    namespace: host-interaction/driver
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: disable driver code integrity
+    references:
+      - https://www.fuzzysecurity.com/tutorials/28.html
+      - https://j00ru.vexillium.org/2010/06/insight-into-the-driver-signature-enforcement/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Impair Defenses::Disable or Modify Tools [T1562.001]
+  features:
+    - or:
+        - string: CiInitialize
+        - substring: g_CiEnabled
+        - substring: g_CiOptions

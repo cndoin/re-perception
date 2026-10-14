@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: get remote cert context via SChannel
+    namespace: data-manipulation/encryption
+    scope: basic block
+    authors:
+      - matthew.williams@mandiant.com
+    description: get remote cert context via SChannel
+    references:
+      - https://docs.microsoft.com/en-us/windows/win32/secauthn/querycontextattributes--schannel
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Obfuscated Files or Information [T1027]
+  features:
+    - and:
+        - api: secur32.QueryContextAttributes
+        - number: 83

@@ -1,0 +1,22 @@
+rule:
+  meta:
+    name: persist via AppX registry key
+    namespace: persistence/registry
+    scope: function
+    authors:
+      - j.j.vannielen@utwente.nl
+    description: persist via AppX registry key
+    references:
+      - https://oddvar.moe/2018/09/06/persistence-using-universal-windows-platform-apps-appx/
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Persistence::Event Triggered Execution [T1546]
+  features:
+    - and:
+        - match: set registry value
+        - or:
+            - string: /Microsoft\\Windows\\CurrentVersion\\PackagedAppXDebug\\/i
+            - and:
+                - string: /ActivatableClasses\\Package\\/i
+                - string: /DebugInformation/i
+                - string: /DebugPath/i

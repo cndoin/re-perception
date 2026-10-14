@@ -1,0 +1,17 @@
+rule:
+  meta:
+    name: check for VM using instruction VPCEXT
+    namespace: anti-analysis/anti-vm/vm-detection
+    scope: function
+    authors:
+      - richard.weiss@mandiant.com
+    description: Detects virtualization using VPCEXT (visual property container extender) instruction. Execution of this instruction will cause an illegal instruction exception outside of a virtual environment otherwise return 0
+    references:
+      - https://unprotect.it/technique/vpcext/
+      - https://research.nccgroup.com/2017/12/13/hidden-cobra-volgmer-a-technical-analysis/
+      - https://shasaurabh.blogspot.com/2017/07/virtual-machine-detection-techniques.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Defense Evasion::Virtualization/Sandbox Evasion [T1497]
+  features:
+    - mnemonic: vpcext

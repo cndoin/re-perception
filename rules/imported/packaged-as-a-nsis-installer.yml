@@ -1,0 +1,13 @@
+rule:
+  meta:
+    name: packaged as a NSIS installer
+    namespace: executable/installer/nsis
+    scope: file
+    authors:
+      - moritz.raabe@mandiant.com
+    description: packaged as a NSIS installer
+    references:
+      - https://nsis.sourceforge.io/Main_Page
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - substring: http://nsis.sf.net

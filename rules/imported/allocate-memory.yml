@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: allocate memory
+    namespace: lib
+    scope: basic block
+    authors:
+      - 0x534a@mailbox.org
+      - "@mr-tz"
+    description: allocate memory
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    lib: true
+  features:
+    - or:
+        - api: kernel32.VirtualAlloc
+        - api: kernel32.VirtualAllocEx
+        - api: kernel32.VirtualAllocExNuma
+        - api: NtAllocateVirtualMemory
+        - api: ZwAllocateVirtualMemory
+        - api: NtMapViewOfSection
+        - api: ZwMapViewOfSection

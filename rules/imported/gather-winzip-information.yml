@@ -1,0 +1,24 @@
+rule:
+  meta:
+    name: gather winzip information
+    namespace: collection/file-managers
+    scope: function
+    authors:
+      - "@_re_fox"
+    description: gather winzip information
+    references:
+      - https://www.winzip.com/win/en/pages/old-brands/nico-mak-computing/index.html
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Credential Access::Credentials from Password Stores [T1555]
+  features:
+    - or:
+        - and:
+            - substring: Software\\Nico Mak Computing\\WinZip\\FTP
+            - substring: Software\\Nico Mak Computing\\WinZip\\mru\\jobs
+        - and:
+            - string: Site
+            - string: UserID
+            - string: xflags
+            - string: Port
+            - string: Folder

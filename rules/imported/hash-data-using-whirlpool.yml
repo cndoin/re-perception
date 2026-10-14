@@ -1,0 +1,21 @@
+rule:
+  meta:
+    name: hash data using Whirlpool
+    namespace: data-manipulation/hashing/whirlpool
+    scope: function
+    authors:
+      - william.ballenthin@mandiant.com
+    description: hash data using Whirlpool
+    references:
+      - https://github.com/jzelinskie/whirlpool/blob/master/const.go
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - or:
+        - bytes: D8 30 78 C0 18 60 18 18 26 46 AF 05 23 8C 23 23
+        - bytes: 13 A1 4C 87 26 87 87 CB 6D 62 A9 B8 DA B8 B8 11
+        - bytes: 78 C0 18 60 18 18 D8 30 AF 05 23 8C 23 23 26 46
+        - bytes: C0 18 60 18 18 D8 30 78 05 23 8C 23 23 26 46 AF
+        - bytes: 18 60 18 18 D8 30 78 C0 23 8C 23 23 26 46 AF 05
+        - bytes: 60 18 18 D8 30 78 C0 18 8C 23 23 26 46 AF 05 23
+        - bytes: 18 18 D8 30 78 C0 18 60 23 23 26 46 AF 05 23 8C
+        - bytes: 18 D8 30 78 C0 18 60 18 23 26 46 AF 05 23 8C 23

@@ -1,0 +1,14 @@
+rule:
+  meta:
+    name: list user accounts
+    namespace: host-interaction/accounts
+    scope: basic block
+    authors:
+      - michael.hunhoff@mandiant.com
+    description: list user accounts
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::Account Discovery [T1087]
+  features:
+    - api: netapi32.NetUserEnum

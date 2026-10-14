@@ -1,0 +1,18 @@
+rule:
+  meta:
+    name: enumerate services
+    namespace: host-interaction/service/list
+    scope: function
+    authors:
+      - moritz.raabe@mandiant.com
+      - michael.hunhoff@mandiant.com
+    description: enumerate services
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+    att_ck:
+      - Discovery::System Service Discovery [T1007]
+  features:
+    - or:
+        - api: advapi32.EnumServicesStatus
+        - api: advapi32.EnumServicesStatusEx
+        - api: advapi32.EnumDependentServices

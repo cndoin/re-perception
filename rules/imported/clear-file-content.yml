@@ -1,0 +1,15 @@
+rule:
+  meta:
+    name: clear file content
+    namespace: host-interaction/file-system/write
+    scope: function
+    authors:
+      - jakeperalta7
+    description: clear file content
+    references:
+      - https://github.com/mandiant/capa-rules（规则来源，Apache-2.0）
+  features:
+    - and:
+        - api: kernel32.SetEndOfFile
+        - not:
+            api: kernel32.SetFilePointer
