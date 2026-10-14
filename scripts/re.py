@@ -27,6 +27,7 @@ re.py —— 逆向工程工具箱 CLI（Reverse Engineering Toolkit）
   cfg       单个函数的控制流图
   struct    控制流结构化（if / loop / switch 识别 + 伪代码骨架）
   ir        指令级轻量 IR 提升（assign/load/store/branch 语义操作）
+  fundeep   函数深度挖掘（单函数档案 + 调用链展开 + 相似函数 + 下一步建议）
   xref      交叉引用（谁调用了谁）
   sim       两份二进制的函数级差分比对
   semantics 函数级语义摘要（调了什么 API / 什么行为）
@@ -102,7 +103,7 @@ import lib_netio as NET          # noqa: E402
 import lib_fsx as FX             # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.9.0"
+VERSION = "1.10.0"
 
 
 # ---------------------------------------------------------------- 输出
@@ -529,6 +530,26 @@ def cmd_ir(args):
     return _struct_run(args, True)
 
 
+def cmd_fundeep(args):
+    """函数深度挖掘：单函数全维度档案 + 调用链展开 + 相似函数 + 下一步建议。"""
+    need_path(args.target, args.json)
+    from lib_fundeep import deep_function
+    d = deep_function(args.target, args.addr, depth=args.depth,
+                      with_ir=args.ir, no_strings=args.no_strings,
+                      no_libscan=args.no_libscan, max_insns=args.max_insns,
+                      max_functions=args.max_functions, region=args.section)
+    if not args.json:
+        if not d.get("ok"):
+            print("失败：" + str(d.get("error")))
+            if d.get("hint"):
+                print(str(d["hint"]))
+            return EXIT_RUNTIME
+        print(_fmt_fundeep(d, args.ir))
+        return EXIT_OK
+    emit(d, True)
+    return EXIT_OK if d.get("ok") else EXIT_RUNTIME
+
+
 def cmd_xref(args):
     """交叉引用：谁调用了谁。"""
     need_path(args.target, args.json)
@@ -666,6 +687,77 @@ def _fmt_struct(d: dict, with_ir: bool) -> str:
                 L.append(f"    {s.get('vma')}  {s.get('op'):<8}{dst}{srcs}{imm}{approx}")
         for n in f.get("notes", []):
             L.append(f"  note: {n}")
+    return "\n".join(L)
+
+
+def _fmt_fundeep(d: dict, with_ir: bool) -> str:
+    t = d.get("target") or {}
+    st = d.get("structure") or {}
+    calls = d.get("calls") or {}
+    refs = d.get("data_refs") or {}
+    L = []
+    L.append(f"目标    : {d.get('path')}  [{d.get('arch')}]  代码区 {d.get('region')}")
+    L.append(f"函数    : {t.get('name')}  {t.get('addr')} - {t.get('end')}"
+             f"  size={t.get('size')} insn={t.get('insn_count')}"
+             f" bb={t.get('bb_count')}")
+    if d.get("partial"):
+        L.append("!! 结果不完整：" + str(d.get("truncated_note") or "达到预算上限"))
+    elif d.get("truncated_note"):
+        L.append("note: " + str(d["truncated_note"]))
+    L.append(f"结构    : 循环 {len(st.get('loops') or [])}"
+             f" / 条件 {len(st.get('conditionals') or [])}"
+             f" / switch {len(st.get('switches') or [])}"
+             f" / 圈复杂度 {st.get('cyclomatic')}")
+    for line in (st.get("structure") or [])[1:]:
+        L.append(line)
+    if with_ir:
+        for s in d.get("ir", []):
+            dst = f" {s.get('dst')} <-" if s.get("dst") else ""
+            srcs = " " + ", ".join(s.get("srcs") or []) if s.get("srcs") else ""
+            imm = f"  imm={s.get('imm')}" if s.get("imm") is not None else ""
+            approx = "  (约)" if s.get("approx") else ""
+            L.append(f"    {s.get('vma')}  {s.get('op'):<8}{dst}{srcs}{imm}{approx}")
+    L.append(f"调用面  : 出向 {len(calls.get('callees') or [])}"
+             f" / 入向 {len(calls.get('callers') or [])}"
+             f" / 链展开 {len(calls.get('chain') or [])} 节点"
+             f"（深度 {calls.get('chain_depth')}）")
+    for c in (calls.get("callees") or [])[:12]:
+        L.append(f"    -> {c.get('addr')}  {c.get('name') or '?'}"
+                 f"  [{c.get('kind')}]")
+    for c in (calls.get("callers") or [])[:8]:
+        L.append(f"    <- {c.get('addr')}  {c.get('name') or '?'}")
+    if calls.get("chain"):
+        L.append("调用链  :")
+        for n in calls["chain"][:30]:
+            indent = "  " * max(0, int(n.get("depth") or 1) - 1)
+            L.append(f"    {indent}{n.get('addr')}  {n.get('name') or '?'}"
+                     f"  [{n.get('kind')}]")
+    L.append(f"数据引用: 字符串 {len(refs.get('strings') or [])}"
+             f" / 导入 {len(refs.get('imports') or [])}"
+             f" / 大常量 {len(refs.get('constants') or [])}")
+    for s in (refs.get("strings") or [])[:6]:
+        L.append(f"    str  {s.get('vma')}  {s.get('text')!r}")
+    for s in (refs.get("imports") or [])[:6]:
+        L.append(f"    api  {s.get('vma')}  {s.get('api')}")
+    sem = d.get("semantics") or {}
+    if sem:
+        tags = sem.get("tags") or sem.get("inherited_tags") or []
+        L.append(f"语义    : 标签 {','.join(tags) if tags else '(无)'}")
+        for a in (sem.get("api_calls") or [])[:8]:
+            L.append(f"    api  {a.get('api')}  x{a.get('count')}")
+        for s in (sem.get("strings") or [])[:4]:
+            L.append(f"    str  {s if isinstance(s, str) else s.get('value')}")
+    if d.get("lib_hint"):
+        L.append(f"库识别  : {d['lib_hint']}")
+    if d.get("similar"):
+        L.append("相似函数:")
+        for s in d["similar"]:
+            L.append(f"    {s.get('addr')}  {s.get('name')}"
+                     f"  score={s.get('score')} ({s.get('verdict')})")
+    L.append("下一步  :")
+    for h in d.get("hints", []):
+        L.append(f"    · {h.get('why')}")
+        L.append(f"      $ {h.get('cmd')}")
     return "\n".join(L)
 
 
@@ -2650,6 +2742,18 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--section")
     s.add_argument("--max-insns", type=int, default=300000)
     s.add_argument("--max-functions", type=int, default=8)
+
+    s = add("fundeep", "函数深度挖掘（单函数档案 + 调用链展开 + 相似函数）",
+            cmd_fundeep)
+    s.add_argument("target")
+    s.add_argument("addr", help="函数入口地址（十六进制，如 140001094）")
+    s.add_argument("--depth", type=int, default=2, help="调用链展开层数（默认 2）")
+    s.add_argument("--ir", action="store_true", help="附带每条指令的轻量 IR 明细")
+    s.add_argument("--no-strings", action="store_true", help="跳过字符串映射")
+    s.add_argument("--no-libscan", action="store_true", help="跳过库函数识别")
+    s.add_argument("--section")
+    s.add_argument("--max-insns", type=int, default=300000)
+    s.add_argument("--max-functions", type=int, default=2000)
 
     s = add("xref", "交叉引用（谁调用了谁）", cmd_xref)
     s.add_argument("target")
