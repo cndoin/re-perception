@@ -3,6 +3,42 @@
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.8.0] — 2026-10-14
+
+Android/DEX 深水区第一铲：**`dexmap` 子命令**（DEX 方法级接口地图）——
+全表解析 + Dalvik 字节码线性扫描，回答「这个 APK 到底调用了什么接口、
+是哪段代码调的」。CLI 46 → 47 个子命令。
+
+### 新增
+
+- **`re.py dexmap`**（`scripts/lib_dexmap.py`，纯标准库）：目标可为
+  .apk（合并 classes*.dex 多 DEX）或裸 .dex，输出四张面：
+  - **api_surface 调用面**：逐方法扫 invoke-*，调用按「应用内（DEX 自定义
+    类）/ 外部（框架与三方库）」分类，外部调用按 owner 类聚合
+    （方法 + 调用者 + 次数）—— 内部调用绝不混入（混入即调用面虚高）。
+  - **JNI 三向差集**：ACC_NATIVE 方法声明 ↔ lib/*.so 的 Java_* 符号，
+    报 matched / unmatched_native / orphan_symbols；so 符号是符号串扫描
+    （如实标注 scan_method），不冒充 dynsym 语义解析。
+  - **组件入口面**：manifest 组件类 → DEX 定义观测 + 生命周期方法清单。
+  - **URL 归属**：const-string → 归属方法；URL 判定复用 lib_netio 的
+    同一套正则（唯一裁决点，不做第二套实现）。
+- **Dalvik opcode 宽度表**：10x/11x/11n=1、21c/22c/23x/22t/21t/22s/22b=2、
+  31i/31c/31t/35c/3rc/30t/32x=3、45cc/4rcc=4、51l=5；payload 伪指令
+ （packed/sparse-switch、fill-array-data）变长特判。未知 opcode /
+  越界 code_off 即停并标 partial，扫描预算（max_insns）耗尽如实截断。
+- **MUTF-8 解码**：0xC0 0x80 内嵌 NUL 与补充平面代理对按规范逐码元解，
+  坏序列给 U+FFFD 不抛（截断输入必须优雅）。
+
+### 测试
+
+- 自检 137 → **140 个用例**：dexmap 三条守卫（调用面分类/URL 归属/JNI
+  差集/预算诚实、APK 入口面与 so 三向差集、CLI ok 契约与参数透传），
+  含反向用例（内部调用混入 api_surface 必须变红、垃圾文件拒收、
+  预算截断必须标 partial）。两处修复（class_data_off 偏移 +24、
+  引用表存入 res）均做**撤回验证**：撤回后守卫变红，确认非摆设。
+- e2e 75 → **76 项**：dexmap 在全表 DEX 真实样本上跑通
+  （api_surface 必须含外部调用引用）。
+
 ## [1.7.0] — 2026-10-14
 
 规则库扩容 + 规则引擎作用域保真：**检测规则 20 → 930 条**（capa-rules

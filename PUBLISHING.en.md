@@ -13,11 +13,11 @@ Confirm all of the following before publishing:
 ```bash
 cd scripts
 
-python re.py --version          # should print 1.6.0
-python selftest.py              # 128/128 green
+python re.py --version          # should print 1.8.0
+python selftest.py              # 140/140 green
 python _dev/_lint.py            # zero findings in production files
 python _dev/_undefined.py       # zero problems
-python _dev/_e2e.py             # 75/75
+python _dev/_e2e.py             # 76/76
 python _dev/_ossaudit.py        # zero items
 ```
 
@@ -152,15 +152,15 @@ A repository with releases reads as "deliverable", and it gives users a stable
 anchor point.
 
 ```bash
-git tag -a v1.6.0 -m "1.6.0 — app/disc/network/firmware domains: APK & IPA reverse engineering, ISO9660, endpoints/ports/net addresses, firmware scan & system replication"
-git push origin v1.6.0
+git tag -a v1.8.0 -m "1.8.0 — DEX method-level interface map + 930-rule library: dexmap (api_surface/JNI/entry points/URLs), capa rule translation with instruction-scope evaluation"
+git push origin v1.8.0
 ```
 
 Then on GitHub use **Draft a new release**:
 
-- **Tag**: `v1.6.0`
-- **Title**: `1.6.0 — app/disc/network/firmware domains: APK & IPA reverse engineering, ISO9660, endpoints/ports/net addresses, firmware scan & system replication`
-- **Describe**: paste the whole `[1.6.0]` block from `CHANGELOG.md`
+- **Tag**: `v1.8.0`
+- **Title**: `1.8.0 — DEX method-level interface map + 930-rule library: dexmap (api_surface/JNI/entry points/URLs), capa rule translation with instruction-scope evaluation`
+- **Describe**: paste the whole `[1.8.0]` block from `CHANGELOG.md`
 
 > The changelog follows Keep a Changelog, so it doubles as release notes
 > verbatim. That level of detail is one reason it is written the way it is.
@@ -174,7 +174,7 @@ Then on GitHub use **Draft a new release**:
 | Job | Platform | Purpose |
 |---|---|---|
 | `selftest` | ubuntu / windows / macos × py3.10 / py3.13 | Full self-test + lint + undefined names |
-| `e2e` | **windows-latest** | All 46 subcommands against real system binaries |
+| `e2e` | **windows-latest** | All 47 subcommands against real system binaries |
 | `no-third-party` | ubuntu | A separate gate so a pip package cannot sneak in |
 
 **Check the Actions tab after the first push.** Green locally does not imply green
@@ -200,7 +200,7 @@ permanently red; the workflow file says so in a comment).
 
    - MSVC demangling measured at 99.89% agreement across **61,248 real exported
      symbols from system DLLs**;
-   - **137 self-test cases + 75 end-to-end checks**, where every regression case
+   - **140 self-test cases + 76 end-to-end checks**, where every regression case
      was reverse-validated (withdrawing the fix must make it fail).
 
 ---

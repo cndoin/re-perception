@@ -17,7 +17,7 @@ model & verify → document.
   100 MB file takes roughly one second.
 - **Read-only analysis** — never writes to the target, never patches it, never
   generates registration codes.
-- **Ships with its own test harness** — 137 self-test cases + 75 end-to-end
+- **Ships with its own test harness** — 140 self-test cases + 76 end-to-end
   integration checks; all must pass before a commit is allowed.
 
 > ⚠️ **Authorized use only.** Only reverse-engineer targets you own or have
@@ -119,7 +119,7 @@ runs through the whole codebase: a failure must never be reported as a success.
 
 ## Commands
 
-There are **46 subcommands** in three layers: **38 analysis commands** (the
+There are **47 subcommands** in three layers: **39 analysis commands** (the
 table below, schedulable by the orchestration layer), **3 platform/contract
 commands** (`provider` `unknowns` `bundle` — cross-cutting evidence-contract
 capabilities) and **5 orchestration/state commands** (`require` `flow` `case`
@@ -136,6 +136,7 @@ capabilities) and **5 orchestration/state commands** (`require` `flow` `case`
 | `triage` | **One-shot first pass** (identify + entropy + strings + IOCs + packer detection) |
 | `carve` | Carve embedded files by magic number (firmware / overlay analysis) |
 | `apk` | Android APK reverse engineering (AXML manifest semantics: package/version/permissions/components/exported surface/signing, DEX summary, native libs) |
+| `dexmap` | DEX method-level interface map (api_surface call graph, JNI symbol mapping, component entry points, code-embedded URLs) |
 | `ipa` | iOS IPA reverse engineering (Info.plist / bundle / frameworks / provisioning) |
 | `iso` | ISO9660 disc image inventory & extraction (incl. Joliet, UDF probe) |
 | `fsx` | Firmware / embedded-filesystem signature scan & extraction (binwalk-style) |
@@ -203,10 +204,10 @@ a runnable check. Recommendations are not accepted because they sound right.
 ## Self-testing and gates
 
 ```bash
-python selftest.py                     # full self-test (137 cases, ~3 min)
+python selftest.py                     # full self-test (140 cases, ~3 min)
 python selftest.py --only 性能          # run one category only
 python _dev/_lint.py                   # static audit (syntax / swallowed exceptions / hardcoded paths)
-python _dev/_e2e.py                    # end-to-end: all 46 subcommands against real PE files
+python _dev/_e2e.py                    # end-to-end: all 47 subcommands against real PE files
 python _dev/_ossaudit.py               # open-source compliance self-audit
 ```
 
@@ -321,7 +322,7 @@ reverse-engineering/
 │   ├── frida-templates.js       # Frida hook templates (native / Android / iOS / plaintext capture / unpacking)
 │   └── notes-template.md        # analysis notes template
 └── scripts/
-    ├── re.py                    # CLI entry point (46 subcommands)
+    ├── re.py                    # CLI entry point (47 subcommands)
     ├── lib_formats.py           # magic-number library + per-format parsers
     ├── lib_analyze.py           # strings / entropy / IOCs / diffing / carving
     ├── lib_disasm.py            # disassembly dispatcher
@@ -340,12 +341,13 @@ reverse-engineering/
     ├── lib_bundle.py            # evidence bundle export/import/compare + snapshot reuse
     ├── lib_inspect.py           # extra inspectors: layout / PE resources / Mach-O / plist / .NET / Go / EVM
     ├── lib_apk.py               # APK / IPA reverse engineering (AXML manifest semantics, DEX summary, Info.plist)
+    ├── lib_dexmap.py            # DEX method-level interface map (api_surface / JNI mapping / entry points / URLs)
     ├── lib_iso.py               # ISO9660 disc image parsing / inventory / safe extraction
     ├── lib_paths.py           # 路径安全裁决点（提取类命令共用的穿越防护 + 最终路径断言）
     ├── lib_fsx.py               # firmware signature scan, embedded extraction, deterministic replication
     ├── lib_tools.py             # toolchain probing + analysis plans
     ├── _quirk.py                # known dbghelp defects (reference doc, not a runtime module)
-    ├── selftest.py              # self-test suite (137 cases, incl. 5 installation cases)
+    ├── selftest.py              # self-test suite (140 cases, incl. 5 installation cases)
     └── _dev/                    # development scaffolding (not shipped in releases)
         └── _install.py          # cross-runtime installer (--auto detect / --verify re-check)
 ```

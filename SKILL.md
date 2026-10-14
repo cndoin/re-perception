@@ -4,7 +4,7 @@ description: 全平台逆向工程工具箱——AI 驱动的通用逆向工作�
 license: MIT
 compatibility: 只依赖 Python 3.10+ 标准库，无需 pip install。Windows / Linux / macOS 均可运行；部分实机验证用例需要本机存在 PE/ELF 样本，缺失时自动跳过。
 metadata:
-  version: "1.6.0"
+  version: "1.8.0"
   author: 寇豆码
   category: security
   tags: [reverse-engineering, binary-analysis, disassembly, pe, elf, malware-analysis]
@@ -417,6 +417,7 @@ capa 风格的规则库折算成"这样本能做什么"，并直接给出 ATT&CK
 | `scripts/lib_bundle.py` | **可复用/可重放**：证据 bundle 导出/导入/对比（防篡改）+ 内容寻址快照 |
 | `scripts/lib_inspect.py` | **补充检查器**：布局缓解 / PE 资源树 / Mach-O 架构 / plist / .NET 元数据 / Go buildinfo / EVM selector / demangle |
 | `scripts/lib_apk.py` | **应用逆向**：APK/IPA——AXML Manifest 语义解析（包名/权限/组件/导出面/签名块）、DEX 摘要、Info.plist |
+| `scripts/lib_dexmap.py` | **DEX 方法级接口地图**：全表解析 + Dalvik 字节码扫描 → api_surface 调用面（内外分类）/ JNI 符号三向差集 / 组件入口面 / URL 归属 |
 | `scripts/lib_iso.py` | **镜像逆向**：ISO9660 卷/目录解析（PVD/Joliet/UDF 侦察）+ 路径清洗安全提取 |
 | `scripts/lib_netio.py` | **网络面**：应用内接口 / 端口接口 / 连接网络地址三入口提取（置信分级 + 假阳性防护） |
 | `scripts/lib_paths.py` | **路径安全裁决点（唯一）**：提取类命令的成员名→宿主路径清洗 + 「最终路径必须落在输出目录内」断言（iso/fsx 共用同一实现） |

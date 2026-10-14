@@ -12,7 +12,7 @@
   .NET / Java / Python pyc / Web-WASM-Electron / 固件 / 私有格式 / SQLite
 - **内存有界、速度优先**：流式扫描，100MB 文件字符串扫描约 1 秒
 - **只读分析**：不写目标文件、不打补丁、不生成注册码
-- **自带自检**：137 个自检用例 + 75 项端到端集成，提交前必须全绿
+- **自带自检**：140 个自检用例 + 76 项端到端集成，提交前必须全绿
 
 > ⚠️ **仅限授权使用**。只对你自己拥有或已获书面授权的目标做逆向。
 > 授权提示见 [USE-POLICY.md](USE-POLICY.md)；法律条款见 [LICENSE](LICENSE)（MIT）。
@@ -82,7 +82,7 @@ AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法�
 
 ## 命令一览
 
-共 **46 个子命令**，分三层：**38 个分析命令**（下表的分析层，可被编排层调度）、
+共 **47 个子命令**，分三层：**38 个分析命令**（下表的分析层，可被编排层调度）、
 **3 个平台/契约命令**（`provider` `unknowns` `bundle`，证据契约层横切能力）
 与 **5 个编排/状态命令**（`require` `flow` `case` `result` `toolgraph`，供 AI 选路与缓存）。
 
@@ -97,6 +97,7 @@ AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法�
 | `triage` | **一站式初筛**（识别+熵+字符串+IOC+加壳判断） |
 | `carve` | 按魔数雕刻嵌入文件（固件/覆盖层分析） |
 | `apk` | Android APK 逆向（AXML Manifest 语义：包名/版本/权限/组件/导出面/签名，DEX 摘要，原生库） |
+| `dexmap` | DEX 方法级接口地图（api_surface 调用面、JNI 符号双向映射、组件入口面、代码内 URL 归属） |
 | `ipa` | iOS IPA 逆向（Info.plist / Bundle / 框架 / provisioning） |
 | `iso` | ISO9660 光盘镜像清单与提取（含 Joliet、UDF 侦察） |
 | `fsx` | 固件/嵌入文件系统签名扫描与提取（binwalk 式） |
@@ -138,10 +139,10 @@ AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法�
 ## 自检
 
 ```bash
-python selftest.py                     # 全量自检（137 个用例，约 3 分钟）
+python selftest.py                     # 全量自检（140 个用例，约 3 分钟）
 python selftest.py --only 性能          # 只跑某一类
 python _dev/_lint.py                   # 静态体检（语法/静默吞异常/硬编码路径）
-python _dev/_e2e.py                    # 端到端：46 个子命令在真实 PE 上全跑一遍
+python _dev/_e2e.py                    # 端到端：47 个子命令在真实 PE 上全跑一遍
 ```
 
 覆盖三条线：正确性（合成样本 + 实机文件）、稳定性（空文件/截断/位翻转变异/垃圾输入）、
@@ -245,7 +246,7 @@ reverse-engineering/
 │   ├── frida-templates.js       # Frida Hook 模板（Native/Android/iOS/抓明文/脱壳）
 │   └── notes-template.md        # 分析笔记模板
 └── scripts/
-    ├── re.py                    # CLI 入口（46 个子命令）
+    ├── re.py                    # CLI 入口（47 个子命令）
     ├── lib_formats.py           # 魔数库 + 各格式解析器
     ├── lib_analyze.py           # 字符串 / 熵 / IOC / 差分 / 雕刻
     ├── lib_disasm.py            # 反汇编调度
@@ -264,12 +265,13 @@ reverse-engineering/
     ├── lib_bundle.py            # 证据 bundle 导出/导入/对比 + 快照复用（防篡改、可重放）
     ├── lib_inspect.py           # 补充检查器：布局缓解 / PE 资源 / Mach-O / plist / .NET / Go / EVM
     ├── lib_apk.py               # APK / IPA 逆向（AXML Manifest 语义、DEX 摘要、Info.plist）
+    ├── lib_dexmap.py            # DEX 方法级接口地图（api_surface / JNI 映射 / 组件入口 / URL 归属）
     ├── lib_iso.py               # ISO9660 镜像解析 / 清单 / 安全提取
     ├── lib_netio.py             # 接口 / 端口 / 网络地址提取
     ├── lib_fsx.py               # 固件签名扫描、嵌入提取、确定性复刻
     ├── lib_tools.py             # 工具链探测 + 分析计划
     ├── _quirk.py                # dbghelp 已知缺陷清单（参考文档，非运行时模块）
-    ├── selftest.py              # 自检套件（137 个用例，含 5 个安装用例）
+    ├── selftest.py              # 自检套件（140 个用例，含 5 个安装用例）
     └── _dev/                    # 开发脚手架（不随发布分发）
         └── _install.py          # 跨运行时安装器（--auto 探测 / --verify 回验）
 ```
