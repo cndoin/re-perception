@@ -17,7 +17,7 @@ model & verify → document.
   100 MB file takes roughly one second.
 - **Read-only analysis** — never writes to the target, never patches it, never
   generates registration codes.
-- **Ships with its own test harness** — 132 self-test cases + 75 end-to-end
+- **Ships with its own test harness** — 137 self-test cases + 75 end-to-end
   integration checks; all must pass before a commit is allowed.
 
 > ⚠️ **Authorized use only.** Only reverse-engineer targets you own or have
@@ -203,7 +203,7 @@ a runnable check. Recommendations are not accepted because they sound right.
 ## Self-testing and gates
 
 ```bash
-python selftest.py                     # full self-test (132 cases, ~112 s)
+python selftest.py                     # full self-test (137 cases, ~3 min)
 python selftest.py --only 性能          # run one category only
 python _dev/_lint.py                   # static audit (syntax / swallowed exceptions / hardcoded paths)
 python _dev/_e2e.py                    # end-to-end: all 46 subcommands against real PE files
@@ -312,6 +312,7 @@ reverse-engineering/
 │   ├── open-source-survey.md    # open-source survey (2120 repos) + capability matrix behind the new commands
 │   └── legal.md                 # compliance red lines (CN / US / EU + self-check list)
 ├── rules/                       # capability rule library (capa-style, loaded by `capability`)
+│   └── imported/                # 910 rules translated from capa-rules (Apache-2.0, see NOTICE.md)
 │   ├── anti-analysis.yml        # anti-debugging / anti-analysis
 │   ├── crypto.yml               # AES and similar crypto constants and APIs
 │   ├── network.yml              # HTTP / network communication
@@ -344,7 +345,7 @@ reverse-engineering/
     ├── lib_fsx.py               # firmware signature scan, embedded extraction, deterministic replication
     ├── lib_tools.py             # toolchain probing + analysis plans
     ├── _quirk.py                # known dbghelp defects (reference doc, not a runtime module)
-    ├── selftest.py              # self-test suite (132 cases, incl. 5 installation cases)
+    ├── selftest.py              # self-test suite (137 cases, incl. 5 installation cases)
     └── _dev/                    # development scaffolding (not shipped in releases)
         └── _install.py          # cross-runtime installer (--auto detect / --verify re-check)
 ```

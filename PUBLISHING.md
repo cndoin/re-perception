@@ -14,7 +14,7 @@
 cd scripts
 
 python re.py --version          # 应输出 1.6.0
-python selftest.py              # 132/132 全绿
+python selftest.py              # 137/137 全绿
 python _dev/_lint.py            # 生产 0 处告警
 python _dev/_undefined.py       # 0 处问题
 python _dev/_e2e.py             # 75/75
@@ -194,7 +194,7 @@ git push origin v1.6.0
    建议放在 README 显眼处：
 
    - MSVC demangle 在 **61,248 条真实系统 DLL 导出符号**上实测 99.89% 一致；
-   - **132 个自检用例 + 75 项端到端**，且每个回归用例都做了「撤回修复必须
+   - **137 个自检用例 + 75 项端到端**，且每个回归用例都做了「撤回修复必须
      变红」的反向验证。
 
 ---

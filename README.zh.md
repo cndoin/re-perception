@@ -12,7 +12,7 @@
   .NET / Java / Python pyc / Web-WASM-Electron / 固件 / 私有格式 / SQLite
 - **内存有界、速度优先**：流式扫描，100MB 文件字符串扫描约 1 秒
 - **只读分析**：不写目标文件、不打补丁、不生成注册码
-- **自带自检**：132 个自检用例 + 75 项端到端集成，提交前必须全绿
+- **自带自检**：137 个自检用例 + 75 项端到端集成，提交前必须全绿
 
 > ⚠️ **仅限授权使用**。只对你自己拥有或已获书面授权的目标做逆向。
 > 授权提示见 [USE-POLICY.md](USE-POLICY.md)；法律条款见 [LICENSE](LICENSE)（MIT）。
@@ -138,7 +138,7 @@ AI 调用时一律加 `--json`；退出码 `0/2/3/4` 分别代表成功/用法�
 ## 自检
 
 ```bash
-python selftest.py                     # 全量自检（132 个用例，约 112 秒）
+python selftest.py                     # 全量自检（137 个用例，约 3 分钟）
 python selftest.py --only 性能          # 只跑某一类
 python _dev/_lint.py                   # 静态体检（语法/静默吞异常/硬编码路径）
 python _dev/_e2e.py                    # 端到端：46 个子命令在真实 PE 上全跑一遍
@@ -236,6 +236,7 @@ reverse-engineering/
 │   ├── open-source-survey.md    # 开源普查（2120 仓库）与能力矩阵（新命令的选型依据）
 │   └── legal.md                 # 合规红线（中/美/欧盟 + 自查清单）
 ├── rules/                       # 能力规则库（capa 风格，`capability` 子命令加载）
+│   └── imported/                # capa-rules 翻译规则 910 条（Apache-2.0，见 NOTICE.md）
 │   ├── anti-analysis.yml        # 反调试 / 反分析
 │   ├── crypto.yml               # AES 等加密常量与 API
 │   ├── network.yml              # HTTP / 网络通信
@@ -268,7 +269,7 @@ reverse-engineering/
     ├── lib_fsx.py               # 固件签名扫描、嵌入提取、确定性复刻
     ├── lib_tools.py             # 工具链探测 + 分析计划
     ├── _quirk.py                # dbghelp 已知缺陷清单（参考文档，非运行时模块）
-    ├── selftest.py              # 自检套件（132 个用例，含 5 个安装用例）
+    ├── selftest.py              # 自检套件（137 个用例，含 5 个安装用例）
     └── _dev/                    # 开发脚手架（不随发布分发）
         └── _install.py          # 跨运行时安装器（--auto 探测 / --verify 回验）
 ```

@@ -35,7 +35,7 @@ python re.py plan   "/path/to/unknown.bin" --json
 - 退出码： `0` 成功 / `2` 用法错误 / `3` 目标不可读 / `4` 分析出错
 - `--json` 下所有子命令都输出顶层 `ok` 字段，优先用它判断成败
 - 路径用正斜杠，含空格必须加引号
-- 自检：`python selftest.py`（132 个用例，期望全绿）
+- 自检：`python selftest.py`（137 个用例，期望全绿）
 - 静态体检：`python _dev/_lint.py`（期望 `生产 0 处`，退出码 0）
 - 安装到本机 AI：`python _dev/_install.py --auto --verify`（先看装到哪，再 `--auto` 实装）
 - 稳定性压测：`python _dev/_fuzz.py` 与 `python _dev/_fuzzlib.py`（期望 0 缺陷）
@@ -422,7 +422,7 @@ capa 风格的规则库折算成"这样本能做什么"，并直接给出 ATT&CK
 | `scripts/lib_paths.py` | **路径安全裁决点（唯一）**：提取类命令的成员名→宿主路径清洗 + 「最终路径必须落在输出目录内」断言（iso/fsx 共用同一实现） |
 | `scripts/lib_fsx.py` | **固件与复刻**：嵌入文件系统签名扫描（binwalk 式）+ 流式解压提取 + 确定性系统复刻（清单/打包/回验） |
 | `scripts/_quirk.py` | dbghelp 已知缺陷清单（**参考文档**，须随发布分发，勿挪进 `_dev/`） |
-| `rules/*.yml` | **能力规则库**（capa 格式）：4 个文件共 20 条，跨 7 个 capa 命名空间（进程/加密/网络/反分析/加载/发现/持久化），带 ATT&CK 映射 |
+| `rules/*.yml` | **能力规则库**（capa 格式）：自研 4 个文件 20 条（进程/加密/网络/反分析/加载/发现/持久化 7 个命名空间）+ `rules/imported/` 从 capa-rules 翻译 910 条（Apache-2.0，署名见 NOTICE.md），共 930 条，带 ATT&CK 映射 |
 | `scripts/selftest.py` | 自检套件（正确性 + 稳定性 + 性能，共 107 个用例，含 74 条 x86 + 18 条 ARM64 黄金指令向量） |
 | `scripts/_dev/_lint.py` | **静态体检器**：语法/告警、静默吞异常、可变默认参数、重复定义、**未定义名**、open 未 with、硬编码本机路径、以及 3 条工程护栏（见下） |
 | `scripts/_dev/_undefined.py` | 手写 AST 作用域分析：找"函数体里写错的变量名"（零依赖下替代 pyflakes） |
