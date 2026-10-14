@@ -986,8 +986,17 @@ def parse_pe(r: Reader) -> dict:
             "delay_imports": delay_imports,
             "delay_import_function_count": sum(m["count"] for m in delay_imports),
             "has_delay_import": bool(delay_imports),
+            # 【诚实截断】原为 exports[:512] 与 export_syms[:4096] 裸截断，
+            # 下游（imports / symbols 命令）无法知道真实有多少，只能把截断后
+            # 的数字当完整结论 —— 实测 kernel32.dll 导出 1698 个，这里只给 512，
+            # AI 会据此断言"这个 DLL 导出不多"。
+            # Mach-O 路径（同文件后段）本来就带 export_count，PE 路径补齐
+            # 同一套字段，两个格式的契约就一致了。
             "exports": exports[:512],
+            "export_count": len(exports),
+            "exports_truncated": len(exports) > 512,
             "export_syms": export_syms[:4096],
+            "export_sym_count": len(export_syms),
             "pdb_path": pdb,
             "resource_count": len(resources),
             "resources_sample": resources[:40],

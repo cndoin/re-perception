@@ -17,7 +17,7 @@ model & verify → document.
   100 MB file takes roughly one second.
 - **Read-only analysis** — never writes to the target, never patches it, never
   generates registration codes.
-- **Ships with its own test harness** — 130 self-test cases + 75 end-to-end
+- **Ships with its own test harness** — 131 self-test cases + 75 end-to-end
   integration checks; all must pass before a commit is allowed.
 
 > ⚠️ **Authorized use only.** Only reverse-engineer targets you own or have
@@ -203,7 +203,7 @@ a runnable check. Recommendations are not accepted because they sound right.
 ## Self-testing and gates
 
 ```bash
-python selftest.py                     # full self-test (130 cases, ~112 s)
+python selftest.py                     # full self-test (131 cases, ~112 s)
 python selftest.py --only 性能          # run one category only
 python _dev/_lint.py                   # static audit (syntax / swallowed exceptions / hardcoded paths)
 python _dev/_e2e.py                    # end-to-end: all 46 subcommands against real PE files
@@ -344,7 +344,7 @@ reverse-engineering/
     ├── lib_fsx.py               # firmware signature scan, embedded extraction, deterministic replication
     ├── lib_tools.py             # toolchain probing + analysis plans
     ├── _quirk.py                # known dbghelp defects (reference doc, not a runtime module)
-    ├── selftest.py              # self-test suite (130 cases, incl. 5 installation cases)
+    ├── selftest.py              # self-test suite (131 cases, incl. 5 installation cases)
     └── _dev/                    # development scaffolding (not shipped in releases)
         └── _install.py          # cross-runtime installer (--auto detect / --verify re-check)
 ```

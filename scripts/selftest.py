@@ -5338,6 +5338,46 @@ def _mk_rule_objs_for_budget():
     return out
 
 
+def t_export_truncation_is_honest():
+    """导出表截断必须诚实：给出真实总数 + truncated 标记。
+
+    背景（真实缺陷）：解析层 lib_formats 把 exports 砍到 512、CLI 层再砍到
+    200，两处都是**裸截断**，既没有总数也没有 truncated 标记。实测
+    kernel32.dll 实际导出 1698 个、user32.dll 1050 个，而 AI 通过 CLI 只能
+    看到 200 条 —— 会据此得出"这个 DLL 就导出 200 个函数"的错误结论。
+    这属于「把不完整当完整」，比慢危险得多。
+    附带修正：Mach-O 路径本来就有 export_count，PE 路径没有，两个格式
+    的契约不一致 —— 现在统一。
+    """
+    import lib_formats as F
+    real = None
+    for cand in (r"C:\Windows\System32\kernel32.dll",
+                 r"C:\Windows\System32\user32.dll"):
+        if os.path.isfile(cand):
+            real = cand
+            break
+    if real is None:
+        return True, "跳过：本机无系统 PE 样本"
+    with F.Reader(real) as r:
+        det = F.parse_pe(r)
+    total = det.get("export_count")
+    if not isinstance(total, int):
+        return False, "PE 解析层缺 export_count（下游无法知道真实总数）"
+    if total > len(det.get("exports") or []) and not det.get("exports_truncated"):
+        return False, "真实总数 %d > 返回 %d 却没有 truncated 标记" % (
+            total, len(det.get("exports") or []))
+    # CLI 层同样必须诚实
+    code, dj, _raw = jrun([CLI, "imports", real, "--json"])
+    if not isinstance(dj, dict):
+        return False, "imports CLI 无 JSON 输出"
+    if "export_count" not in dj:
+        return False, "imports CLI 未透出 export_count"
+    if dj.get("exports_truncated") and "exports_shown" not in dj:
+        return False, "标了 truncated 却没说实际给了多少"
+    return True, ("导出表诚实截断：真实 %d 个，返回 %d 个，标记齐全"
+                  % (total, len(dj.get("exports") or [])))
+
+
 def main():
     ap = argparse.ArgumentParser(description="逆向工具箱自检")
     ap.add_argument("--json", action="store_true")
@@ -5480,6 +5520,7 @@ def main():
         ("replica 复刻回环与篡改检出", t_replica_roundtrip_and_tamper),
         ("提取路径安全裁决点（穿越反向用例）", t_path_traversal_gate),
         ("规则预算按规则隔离（不误报成环）", t_rule_budget_isolation),
+        ("导出表截断诚实（真实总数+truncated）", t_export_truncation_is_honest),
     ]
 
     t0 = time.time()

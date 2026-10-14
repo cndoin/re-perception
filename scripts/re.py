@@ -380,7 +380,15 @@ def cmd_imports(args):
         out["module_count"] = det.get("import_module_count")
         out["function_count"] = det.get("import_function_count")
         if det.get("exports"):
-            out["exports"] = det["exports"][:200]
+            # 【诚实截断】原为硬编码[:200] 且**不给任何提示**，AI 拿到
+            # 200 条会以为"这个 DLL 就导出 200 个函数"。这里报**解析层的
+            # 真实总数**（不是本层切片长度），并标 truncated。
+            _exp = det["exports"]
+            out["exports"] = _exp[:200]
+            out["export_count"] = det.get("export_count", len(_exp))
+            if len(_exp) > 200 or det.get("exports_truncated"):
+                out["exports_truncated"] = True
+                out["exports_shown"] = len(_exp[:200])
     elif det.get("parser") == "elf":
         out["kind"] = "ELF 动态依赖"
         out["needed"] = det.get("needed")
