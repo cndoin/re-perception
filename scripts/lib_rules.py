@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections import namedtuple
 
 # ================================================================ 极简 YAML
 
@@ -145,6 +146,11 @@ def _is_keyed(rest: str) -> bool:
     if i + 1 < len(rest) and rest[i + 1] == ":":
         return False
     key = rest[:i].strip()
+    # capa 计数算子 `2 or more:` —— 键以数字开头但是真键。
+    # 不能放宽整体正则（十六进制哈希 `7204e3ef...:0x4073c0` 这类标量
+    # 会被误判成映射），所以单独精确放行。
+    if re.fullmatch(r"\d+ or more", key):
+        return True
     return bool(re.fullmatch(r"[A-Za-z_][\w./\- ]*", key))
 
 
@@ -289,7 +295,9 @@ def yaml_load(text: str):
             if _is_keyed(rest):
                 key, _, val = rest.partition(":")
                 k = key.strip()
-                if re.fullmatch(r"[A-Za-z_][\w./\- ]*", k):
+                # 与 _is_keyed 同一口径：普通键 + capa 计数算子 `N or more`
+                if re.fullmatch(r"[A-Za-z_][\w./\- ]*", k) or \
+                        re.fullmatch(r"\d+ or more", k):
                     kk = _scalar(k)
                     m = {}
                     if val.strip():
@@ -412,7 +420,8 @@ SCOPES = ("instruction", "basic block", "function", "file")
 #   import         导入表里的符号
 #   export         导出表里的符号
 #   function-name  已知函数名（符号还原后）
-#   bytes          字节序列（支持 `..` 通配）
+#   bytes          字节序列（支持 `??` / `..` 通配，按指令字节或文件字节判定）
+#   offset         内存操作数位移（指令级：ins.disp）
 #   tag            语义标签（来自 lib_semantics 的标签体系）
 #   os             目标操作系统
 #   arch           架构
@@ -420,11 +429,17 @@ SCOPES = ("instruction", "basic block", "function", "file")
 #   match          引用另一条规则（规则依赖）
 LEAF_TYPES = {
     "api", "number", "string", "substring", "mnemonic", "characteristic",
-    "section", "import", "export", "function-name", "bytes", "tag",
-    "os", "arch", "format", "match",
+    "section", "import", "export", "function-name", "bytes", "offset",
+    "tag", "os", "arch", "format", "match",
 }
 
 LOGIC_KEYS = {"and", "or", "not", "optional"}
+
+# 指令级包装节点（capa 语法）：`instruction: <子树>` 表示子树的全部约束
+# 必须在**同一条指令**上共现。与 and/or 不同，它不是纯逻辑算子而是
+# 作用域收缩算子 —— 少了它，「同一条指令 xor + 立即数 4」会被放松成
+# 「函数里既有 xor 又有 4」，正是 193 条降级规则误报的根源。
+SCOPE_NODE_KEYS = {"instruction"}
 
 # 引擎**实际可能产出**的 characteristic 取值全集。
 #
@@ -461,9 +476,29 @@ class RuleError(ValueError):
     pass
 
 
+# 正则字符串编译缓存：同一 pattern 会被成千上万次求值复用，
+# 编译一次即可（re 模块自带缓存是有限的，这里显式持有避免抖动）。
+_RX_CACHE: dict = {}
+
+
+def _rx_compile(pattern: str, flags: str):
+    """编译 capa 风格正则（flags: i=忽略大小写）。失败返回 None。"""
+    key = (pattern, flags)
+    rx = _RX_CACHE.get(key)
+    if rx is not None:
+        return rx
+    try:
+        f = re.IGNORECASE if "i" in flags else 0
+        rx = re.compile(pattern, f)
+    except re.error:
+        return None
+    _RX_CACHE[key] = rx
+    return rx
+
+
 class Rule:
     __slots__ = ("name", "namespace", "scope", "authors", "description",
-                 "att_ck", "references", "features", "source", "raw")
+                 "att_ck", "references", "features", "source", "raw", "lib")
 
     def __init__(self, d: dict, source: str = ""):
         if not isinstance(d, dict) or "rule" not in d:
@@ -498,6 +533,12 @@ class Rule:
         if isinstance(rf, str):
             rf = [rf]
         self.references = [str(x) for x in rf]
+        # 辅助规则（capa 的 lib/ 构件库）：只应被 `match:` 引用，
+        # 不构成能力结论。判定口径：meta.lib 显式标记，或 namespace 为 lib。
+        # （capa 的 lib/ 目录规则没有 namespace，翻译器会如实标成 lib。）
+        lib_mark = meta.get("lib")
+        self.lib = bool(lib_mark) if lib_mark is not None else (
+            self.namespace == "lib" or self.namespace.startswith("lib/"))
         self.features = feats
         self.source = source
         self.raw = r
@@ -524,6 +565,18 @@ class Rule:
                     if not isinstance(v, list):
                         raise RuleError("`%s:` 的值必须是列表" % k)
                     self._validate(v, depth + 1)
+            elif k in SCOPE_NODE_KEYS:
+                # instruction: 是作用域收缩节点，值是任意特征子树
+                if not isinstance(v, (dict, list)) or not v:
+                    raise RuleError("`%s:` 的值必须是特征子树" % k)
+                self._validate(v, depth + 1)
+            elif re.fullmatch(r"\d+ or more", str(k)):
+                # capa 计数算子：至少 N 个子项命中
+                if not isinstance(v, list):
+                    raise RuleError("`%s:` 的值必须是列表" % k)
+                if not v:
+                    raise RuleError("`%s:` 不能是空列表" % k)
+                self._validate(v, depth + 1)
             elif k in LEAF_TYPES:
                 if isinstance(v, (dict, list)) and k != "bytes":
                     raise RuleError("叶子特征 `%s:` 的值必须是标量" % k)
@@ -536,6 +589,13 @@ class Rule:
                             raise RuleError(
                                 "未知 characteristic %r（引擎可产出的有：%s）"
                                 % (one, ", ".join(sorted(ENGINE_CHARACTERISTICS))))
+                # 正则字符串必须**加载期**就编译验证：写坏的正则如果拖到
+                # 求值期，表现是「永远不命中且不报错」—— 静默失效最难查。
+                if k in ("string", "substring"):
+                    for one in (v if isinstance(v, list) else [v]):
+                        m = re.match(r"^/(.*)/([ia]*)$", str(one))
+                        if m and _rx_compile(m.group(1), m.group(2)) is None:
+                            raise RuleError("非法正则字符串：%r" % one)
             else:
                 raise RuleError(
                     "未知特征类型 `%s`（支持：%s）"
@@ -546,6 +606,7 @@ class Rule:
             "name": self.name, "namespace": self.namespace, "scope": self.scope,
             "authors": self.authors, "description": self.description,
             "att_ck": self.att_ck, "references": self.references,
+            "lib": self.lib,
             "source": os.path.basename(self.source) if self.source else "",
         }
 
@@ -648,17 +709,29 @@ def _norm_api(s: str) -> tuple[str, str]:
 
 def build_features(path: str, ident: dict, idx, funcs: list[dict],
                    iat_map: dict[int, str] | None = None,
-                   sem: dict | None = None) -> dict:
+                   sem: dict | None = None,
+                   thunk_map: dict[int, str] | None = None,
+                   str_map: dict[int, str] | None = None) -> dict:
     """
-    从已解析的目标里抽取「文件级 + 函数级」两套特征。
+    从已解析的目标里抽取「文件级 + 函数级 + 逐指令级」三层特征。
 
-    返回 {file: {...}, functions: {vma: {特征类别: set(...)}}, errors: [...]}。
-    函数级特征按 capa 的粒度组织，instruction / basic block 两级在
-    匹配阶段按需下钻（避免把所有指令都展开成集合，内存会爆）。
+    返回 {file: {...}, functions: {vma: {特征类别: set(...), insns: [...],
+    blocks: [...]}}, errors: [...]}。
+
+    逐指令记录（InsnFeat）供 instruction / basic block 作用域求值：
+    capa 的「同一条指令共现」语义必须在单指令粒度判定，用函数级集合
+    近似会把它放松成「函数里两样都有」（实测误报根源）。记录用
+    namedtuple 紧凑存储，20 万条指令量级下内存可控。
+
+    api / 字符串特征**全函数覆盖**（不走语义层的 limit 上限）：
+    旧实现只有前 limit 个函数有 api 特征，其余函数的 api 规则
+    永不命中且无任何提示 —— 静默漏报。
+
     errors 里是特征抽取期间的非致命失败（如字符串扫描挂了）——
     调用方必须把它报给用户：抽不到特征和规则没命中，结果看起来是一样的。
     """
     iat_map = iat_map or {}
+    thunk_map = thunk_map or {}
     det = ident.get("detail") or {}
     # 特征抽取期间的非致命错误。必须一路带出去给调用方看 ——
     # 抽不到特征和"没命中规则"在结果上长得一模一样，不区分就无法排障。
@@ -780,7 +853,7 @@ def build_features(path: str, ident: dict, idx, funcs: list[dict],
             "api": set(), "number": set(), "string": set(), "mnemonic": set(),
             "characteristic": set(), "tag": set(), "section": set(),
             "function-name": set(), "bytes": set(), "export": set(),
-            "import": set(),
+            "import": set(), "offset": set(),
         }
         nm = f.get("name") or ""
         if nm:
@@ -830,9 +903,10 @@ def build_features(path: str, ident: dict, idx, funcs: list[dict],
             for r in (s.get("strings") or []):
                 feats["string"].add(str(r))
 
-    # 指令级：助记符 / 立即数 / 特征（下钻时现算，这里只做轻量聚合）
+    # 指令级：一次遍历同时产出聚合特征与逐指令记录（供细粒度作用域下钻）
     if idx is not None:
         insn_map = getattr(idx, "insn", None) or {}
+        dec_at = getattr(idx, "decode_at", None)
         # 【已修 bug】原实现在这里为每个函数**线性扫描整个 funcs 列表**找 _offs，
         # 整体是 O(函数数²)。notepad.exe（308 个函数）还看不出来，但换成
         # 静态链接的二进制（几万个函数）就是几亿次比较，直接卡死。
@@ -847,10 +921,22 @@ def build_features(path: str, ident: dict, idx, funcs: list[dict],
             o = f.get("_offs")
             if o:
                 offs_by_vma[fv] = o
+        from lib_semantics import _candidate_addrs as _addrs_of
         for v, feats in per_func.items():
             offs = offs_by_vma.get(v) or []
-            for o in offs[:20000]:
+            recs: list = []
+            tgts: set = set()
+            back_edges: set = set()
+            for o in offs[:_INSN_CAP]:
                 ins = insn_map.get(o)
+                if ins is None and callable(dec_at):
+                    # CodeIndex.insn 是懒加载的：未预热时 .get() 静默返回
+                    # None。这里退回 decode_at（lib_semantics.ins_at 的口径），
+                    # 不让「没解码」伪装成「没指令」。
+                    try:
+                        ins = dec_at(o)
+                    except Exception:      # lint:ok 单条解码失败跳过，下同
+                        ins = None
                 if ins is None:
                     continue
                 # 【已修 bug】指令对象的助记符字段叫 "mnem"（见 lib_x86.Insn.__slots__），
@@ -860,16 +946,149 @@ def build_features(path: str, ident: dict, idx, funcs: list[dict],
                       or getattr(ins, "mnemonic", None))
                 if not mn and isinstance(ins, dict):
                     mn = ins.get("mnem") or ins.get("mnemonic")
+                mn = str(mn).lower() if mn else ""
                 if mn:
-                    feats["mnemonic"].add(str(mn).lower())
-                for imm in _imms_of(ins):
-                    feats["number"].add(imm & 0xFFFFFFFFFFFFFFFF)
+                    feats["mnemonic"].add(mn)
+                imms = tuple(i & 0xFFFFFFFFFFFFFFFF for i in _imms_of(ins))
+                for i in imms:
+                    feats["number"].add(i)
+                # offset 特征（内存操作数位移）：与 number 分开 —— capa 里
+                # `offset:` 判的是位移量，不是任意立即数。掩码成 64 位无符号
+                # 存储，负位移（disp=-4）与规则里的 0xFF..FC 写法才对得上。
+                disp = getattr(ins, "disp", None)
+                if disp is None and isinstance(ins, dict):
+                    disp = ins.get("disp")
+                if isinstance(disp, int):
+                    feats["offset"].add(disp & 0xFFFFFFFFFFFFFFFF)
                 # PEB / TEB 手工遍历：反分析里很典型（不调 API，直接读
                 # fs:[0x30] / gs:[0x60] 拿 PEB，再读 BeingDebugged）。
                 # 这是**强特征**，单凭它配合固定偏移就能定性，见 anti-analysis.yml。
+                flags = 0
                 if _is_peb_access(ins):
                     feats["characteristic"].add("peb-access")
+                    flags |= 1
+                # 单指令 nzxor（flags 位 2）：xor 且两操作数文本不同（即
+                # 非 `xor eax, eax` 式零化）。指令级 `characteristic: nzxor`
+                # 靠这个下钻；函数级密度判定的 nzxor 是另一个粒度的同名特征，
+                # 在 features["characteristic"] 里，互不混淆。
+                if mn == "xor":
+                    ops_txt = str(getattr(ins, "ops", None) or
+                                  (ins.get("ops") if isinstance(ins, dict) else "") or "")
+                    parts = [p.strip() for p in ops_txt.split(",")]
+                    if len(parts) == 2 and parts[0] != parts[1]:
+                        flags |= 2
+                # 调用点 API 还原（IAT 直调 / thunk 跳板）：这里是 api 特征的
+                # **全函数覆盖**来源，语义层的 api_calls（有 limit 上限）只作补充。
+                kind = str(getattr(ins, "kind", None) or
+                           (ins.get("kind") if isinstance(ins, dict) else "") or "")
+                api = ""
+                # kind 取值见 lib_x86 的 K_* 常量（字符串常量，这里用字面量
+                # 保持本模块零额外依赖，_CTRL_KINDS 同源）
+                ins_vma = getattr(ins, "vma", 0)
+                if kind in ("call", "jmp"):
+                    tgt = getattr(ins, "target", None)
+                    if tgt is not None:
+                        tgts.add(tgt)
+                        # 回边（目标在跳转指令之前）= 循环存在的直接证据。
+                        # 块级 `characteristic: loop` 靠这个判定，比函数级
+                        # 密度启发精确（capa 的 loop 就是块级特征）。
+                        if tgt < ins_vma:
+                            back_edges.add(tgt)
+                    for a in (tgt, getattr(ins, "mem_ref", None)):
+                        if a is None:
+                            continue
+                        nm2 = iat_map.get(a) or thunk_map.get(a)
+                        if nm2:
+                            api = "%s|%s" % _norm_api(nm2)
+                            feats["api"].add(api)
+                            break
+                elif kind == "cjmp":
+                    tgt = getattr(ins, "target", None)
+                    if tgt is not None:
+                        tgts.add(tgt)
+                        if tgt < ins_vma:
+                            back_edges.add(tgt)
+                # 字符串交叉引用（同样全函数覆盖，替代语义层的 refs 上限）
+                strs = ()
+                if str_map:
+                    got = []
+                    for a in _addrs_of(ins):
+                        s = str_map.get(a)
+                        if s:
+                            got.append(str(s))
+                            feats["string"].add(str(s))
+                    if got:
+                        strs = tuple(got)
+                raw = getattr(ins, "bytes", None)
+                if raw is None and isinstance(ins, dict):
+                    raw = ins.get("bytes")
+                recs.append(InsnFeat(getattr(ins, "vma", 0), mn, imms, api,
+                                     strs, getattr(ins, "disp", None),
+                                     raw or b"", kind, flags))
+            if len(offs) > _INSN_CAP:
+                errs_out.append(
+                    "函数 0x%x 指令数超过 %d，逐指令特征只覆盖前 %d 条"
+                    % (v, _INSN_CAP, _INSN_CAP))
+            feats["insns"] = recs
+            feats["blocks"] = blocks = _blocks_of(recs, tgts)
+            # 块级 loop：回边目标落在哪个块，哪个块就是循环体（capa 语义）。
+            # 函数级 loop 特征同源于此 —— 有回边即有循环，比只依赖语义层
+            # summarize_functions 的 features.loop 覆盖更全（后者有函数上限）。
+            loop_blocks: set = set()
+            if back_edges:
+                feats["characteristic"].add("loop")
+                v2i = {r.vma: i for i, r in enumerate(recs)}
+                for t in back_edges:
+                    j = v2i.get(t)
+                    if j is None:
+                        continue
+                    for bi, (s, e) in enumerate(blocks):
+                        if s <= j < e:
+                            loop_blocks.add(bi)
+                            break
+            feats["loop_blocks"] = loop_blocks
     return {"file": f_file, "functions": per_func, "errors": errs_out}
+
+
+# 逐指令特征记录（细粒度作用域求值用）。
+# 用 namedtuple 而不是 dict：kernel32 级样本 20 万条指令，dict 每条 200B+
+# 会把内存打爆；tuple 字段访问靠属性名，兼顾可读与体积。
+InsnFeat = namedtuple("InsnFeat",
+                      "vma mnem imms api strs disp raw kind flags")
+
+_INSN_CAP = 20000   # 单函数逐指令记录上限（超限会登记到 errors，不静默）
+
+# 会终结一个基本块的控制流指令（call 也断块：与 vivisect/capa 的块粒度一致）
+_CTRL_KINDS = frozenset(("call", "jmp", "cjmp", "ret", "hlt", "int"))
+
+
+def _blocks_of(recs: list, tgts: set) -> list[tuple[int, int]]:
+    """
+    线性扫描式基本块划分（左闭右开的下标区间）。
+
+    块首 = 函数入口 / 直接跳转目标 / 控制流指令的下一条；
+    块尾 = 控制流指令（含 call）。直接跳转目标可用指令里的 target
+    直接拿，间接跳转无法静态定目标 —— 按「控制流后必是块首」处理，
+    宁可多切（过切只会让共现约束更严，不会放过不该放过的）。
+    """
+    if not recs:
+        return []
+    vma_to_i = {r.vma: i for i, r in enumerate(recs)}
+    leaders = {0}
+    for i, r in enumerate(recs):
+        if r.kind in _CTRL_KINDS and i + 1 < len(recs):
+            leaders.add(i + 1)
+    for t in tgts:
+        j = vma_to_i.get(t)
+        if j is not None:
+            leaders.add(j)
+    starts = sorted(leaders)
+    blocks = []
+    for n, s in enumerate(starts):
+        e = starts[n + 1] if n + 1 < len(starts) else len(recs)
+        if e > s:
+            blocks.append((s, e))
+    return blocks
 
 
 # PEB 里与**反调试**真正相关的字段偏移。
@@ -947,6 +1166,90 @@ def _imms_of(ins) -> list[int]:
 
 # ================================================================ 匹配引擎
 
+# 指令级产出的 characteristic（只在产出它的指令上成立，不随函数整体继承）
+#   peb-access  手工读 PEB（flags 位 1）
+#   nzxor       非零化异或单指令（flags 位 2）
+# loop 是块级（回边目标所在块），见 build_features 的 loop_blocks。
+_INSN_CHARS = frozenset(("peb-access", "nzxor"))
+
+# 文件级**事实类** characteristic：常量表签名 / 加壳信号等。
+# 这些是「文件里存在该证据」的事实，在任何作用域求值都应可见 ——
+# 函数级规则写 `characteristic: aes_sbox` 判的就是文件里有 AES 表，
+# 不该因为作用域下钻就丢失。
+# （对比：debug/loop/nzxor/peb-access 是函数/块/指令粒度的事实，
+#   只在自己的粒度上成立，不下放。）
+_FILE_FACT_CHARS = frozenset((
+    "packed", "aes_sbox", "aes_inv_sbox", "rc4_ksa", "crc32_table",
+    "md5_sha1_init", "sha256_init", "sha512_init", "base64", "base32",
+))
+
+
+def _num_cands(n: int) -> set:
+    """
+    数值/位移的判等候选集：同一物理值在规则里的不同写法都要对得上。
+    - 规则写 0xFFFFFFFC（32 位字面）↔ 实际 disp=-4（64 位符号扩展）
+    - 规则写 -4 ↔ 存储值是掩码后的 0xFF..FC
+    双向归一到 64 位无符号 + 32 位符号扩展两个候选，命中任一即算。
+    """
+    out = {n & 0xFFFFFFFFFFFFFFFF}
+    n32 = n & 0xFFFFFFFF
+    if n32 >= 0x80000000:
+        out.add((n32 | 0xFFFFFFFF00000000) & 0xFFFFFFFFFFFFFFFF)
+    if n >= 0:
+        out.add((n | 0xFFFFFFFF00000000) & 0xFFFFFFFFFFFFFFFF)
+    return out
+
+
+def _parse_num(one):
+    """capa 数值面值可能带 `= 注释` 后缀（如 `0xCC = INT3`），取等号左边。"""
+    s = re.split(r"\s*=\s*", str(one), maxsplit=1)[0].strip()
+    try:
+        return int(s, 0)
+    except (TypeError, ValueError):
+        return None
+
+
+_BYTES_RX_CACHE: dict = {}
+
+
+def _bytes_rx(pattern):
+    """`01 02 ?? 03` 风格字节模式 → bytes 正则（?? / .. / ? 是通配字节）。
+    capa 的 bytes 值带 `= CLSID_xxx` 注释后缀，先剥掉（纵深兜底，
+    翻译器侧已剥一层，手写规则也可能带）。"""
+    key = re.split(r"\s*=\s*", str(pattern), maxsplit=1)[0].strip()
+    if key in _BYTES_RX_CACHE:
+        return _BYTES_RX_CACHE[key]
+    out = bytearray()
+    for p in key.split():
+        if p in ("??", "..", "?"):
+            out += b"."
+        else:
+            try:
+                out += re.escape(bytes([int(p, 16)]))
+            except ValueError:
+                _BYTES_RX_CACHE[key] = None
+                return None
+    try:
+        rx = re.compile(bytes(out), re.DOTALL)
+    except re.error:
+        rx = None
+    _BYTES_RX_CACHE[key] = rx
+    return rx
+
+
+def _rules_use_bytes(rules) -> bool:
+    """规则集里是否有 bytes 叶子（决定要不要物化逐指令字节，省内存）。"""
+    def walk(node):
+        if isinstance(node, list):
+            return any(walk(x) for x in node)
+        if isinstance(node, dict):
+            if "bytes" in node:
+                return True
+            return any(walk(v) for v in node.values())
+        return False
+    return any(walk(getattr(r, "features", None)) for r in rules)
+
+
 class _Ctx:
     """一次匹配的上下文：缓存已判定的规则（支持规则依赖）。"""
     __slots__ = ("rules_by_name", "memo", "stack")
@@ -961,10 +1264,24 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
                 ) -> dict:
     """
     执行全部规则。返回：
-      {"hits": [...], "by_namespace": {...}, "att_ck": [...], "errors": [...]}
+      {"hits": [...], "aux_hits": [...], "by_namespace": {...},
+       "att_ck": [...], "errors": [...]}
 
     每个 hit：
-      {rule, namespace, scope, description, att_ck, evidence:[...], location}
+      {rule, namespace, scope, description, att_ck, location, ...}
+
+    【结论与构件分离】lib 辅助规则（capa 的 lib/ 构件库）只经 `match:`
+    引用求值，**不进 hits**：「contain loop」这种构件不是能力结论，
+    混进结论就是把积木当成品卖（实测 89/116 的命中是这种噪声）。
+    辅助规则被引用且命中时记入 aux_hits，供证据链复核，不静默丢弃。
+
+    【作用域语义】scope 决定特征共现的粒度（与 capa 一致）：
+      instruction   —— 全部特征在**同一条指令**上成立
+      basic block   —— 同一个基本块内成立
+      function      —— 同一函数内成立
+      file          —— 全文件
+    `match:` 引用另一条规则时按**被引规则自己的 scope** 在当前作用域项的
+    外包/内含项上求值（函数上下文引用块规则 = 存在量化某个块）。
 
     【参数校验】这是公开 API，调用方可能直接传 None（比如规则加载失败后
     把失败值一路传下来）。原实现会在 `_Ctx.__init__` 里抛
@@ -972,18 +1289,20 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
     排查时看不出是"没加载到规则"还是"引擎坏了"。现在显式校验并说明。
     """
     if rules is None:
-        return {"hits": [], "by_namespace": {}, "att_ck": [], "errors": [],
-                "empty": True, "reason": "rules 为 None（规则未加载）"}
+        return {"hits": [], "aux_hits": [], "by_namespace": {}, "att_ck": [],
+                "errors": [], "empty": True,
+                "reason": "rules 为 None（规则未加载）"}
     if not isinstance(rules, (list, tuple)):
-        return {"hits": [], "by_namespace": {}, "att_ck": [], "errors": [],
-                "empty": True,
+        return {"hits": [], "aux_hits": [], "by_namespace": {}, "att_ck": [],
+                "errors": [], "empty": True,
                 "reason": "rules 类型应为 list，实际是 %s" % type(rules).__name__}
     if not rules:
-        return {"hits": [], "by_namespace": {}, "att_ck": [], "errors": [],
-                "empty": True, "reason": "rules 为空（没有可执行的规则）"}
+        return {"hits": [], "aux_hits": [], "by_namespace": {}, "att_ck": [],
+                "errors": [], "empty": True,
+                "reason": "rules 为空（没有可执行的规则）"}
     if not isinstance(feats, dict):
-        return {"hits": [], "by_namespace": {}, "att_ck": [], "errors": [],
-                "empty": True,
+        return {"hits": [], "aux_hits": [], "by_namespace": {}, "att_ck": [],
+                "errors": [], "empty": True,
                 "reason": "feats 类型应为 dict，实际是 %s" % type(feats).__name__}
 
     hits: list[dict] = []
@@ -991,15 +1310,203 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
     att: set[str] = set()
     errors: list[str] = []
     ctx = _Ctx(rules)
+    fns: dict = feats.get("functions") or {}
+    ff = feats.get("file") or {}
+    aux_seen: set = set()
 
-    # 规则依赖可能成环 —— 用栈检测
-    def eval_rule(rule: Rule, scope_key):
-        if rule.name in ctx.stack:
-            raise RuleError("规则依赖成环：%s -> %s"
-                            % (" -> ".join(ctx.stack), rule.name))
+    # ---------- 字符串叶子：命中集预计算 ----------
+    # 【性能】kernel32（2392 函数）上 match_rules 实测 657 秒，热点是
+    # 字符串叶子：每次求值都对整个字符串池（文件级可达 2 万条）逐条跑
+    # re.Pattern.search，cProfile 实测 8.15 亿次调用、290 秒纯开销。
+    # 同一判据在一次匹配里的字符串池是**固定的**，命中集算一次即可；
+    # 之后叶子求值退化成集合交。字面子串同理。
+    pool_all: set = set(ff.get("string") or ())
+    for _fb in fns.values():
+        pool_all |= ((_fb or {}).get("string") or set())
+        for _rec in ((_fb or {}).get("insns") or ()):
+            pool_all.update(_rec.strs)
+    _str_cache: dict = {}
+
+    def _str_match_set(want: str):
+        got = _str_cache.get(want)
+        if got is not None:
+            return got
+        m = re.match(r"^/(.*)/([ia]*)$", want)
+        if m:
+            rx = _rx_compile(m.group(1), m.group(2))
+            got = (frozenset() if rx is None else
+                   frozenset(s for s in pool_all if rx.search(str(s))))
+        else:
+            got = frozenset(s for s in pool_all if want in str(s))
+        _str_cache[want] = got
+        return got
+
+    # ---------- 逐函数指令索引（候选预过滤用，按需构建） ----------
+    _fn_idx_cache: dict = {}
+
+    def _fn_index(vma):
+        ix = _fn_idx_cache.get(vma)
+        if ix is not None:
+            return ix
+        fb = fns.get(vma) or {}
+        recs = fb.get("insns") or ()
+        blocks = fb.get("blocks") or ()
+        blk_of = [-1] * len(recs)
+        for bi, (s, e) in enumerate(blocks):
+            for i in range(max(0, s), min(len(recs), e)):
+                blk_of[i] = bi
+        ix = {"api": {}, "mnemonic": {}, "characteristic": {}, "blk_of": blk_of}
+        for i, r in enumerate(recs):
+            if r.api:
+                ix["api"].setdefault(r.api, set()).add(i)
+                ix["api"].setdefault(r.api.split("|", 1)[1], set()).add(i)
+            if r.mnem:
+                ix["mnemonic"].setdefault(r.mnem, set()).add(i)
+            if r.flags & 1:
+                ix["characteristic"].setdefault("peb-access", set()).add(i)
+            if r.flags & 2:
+                ix["characteristic"].setdefault("nzxor", set()).add(i)
+        _fn_idx_cache[vma] = ix
+        return ix
+
+    def _leaf_sites(vma, kind, one):
+        """叶子在该函数的候选指令下标集；None = 无法收窄。"""
+        if kind == "api":
+            dll, fn = _norm_api(one)
+            ix = _fn_index(vma)
+            key = "%s|%s" % (dll, fn) if dll else fn
+            s = ix["api"].get(key)
+            return set(s) if s else set()
+        if kind == "mnemonic":
+            s = _fn_index(vma)["mnemonic"].get(str(one).lower())
+            return set(s) if s else set()
+        if kind == "characteristic":
+            # 只有指令级产出的特征（peb-access/nzxor）可按指令收窄；
+            # loop（块级）/packed/aes_sbox（文件级）等收不了窄（返回 None）。
+            key = str(one).lower()
+            if key not in _INSN_CHARS:
+                return None
+            s = _fn_index(vma)["characteristic"].get(key)
+            return set(s) if s else set()
+        if kind == "bytes":
+            # bytes 模式命中块的全部指令下标（超集）。
+            # 【为什么必须收窄】DES/AES 的 S-box 模式规则是「or of 30+ bytes」，
+            # 作用域是 basic block —— 不收窄就是全文件 1 万块 × 30 叶子
+            # 逐块求值，实测直接打爆 20 万步预算（结论残缺）。
+            # 模式对块字节流命中一次后缓存，跨规则复用。
+            rx = _bytes_rx(one)
+            if rx is None:
+                return set()
+            ix = _fn_index(vma)
+            cache = ix.setdefault("bytes_hits", {})
+            got = cache.get(one)
+            if got is None:
+                fb = fns.get(vma) or {}
+                blocks = fb.get("blocks") or ()
+                recs = fb.get("insns") or ()
+                got = set()
+                for bi, (s, e) in enumerate(blocks):
+                    stream = b"".join(r.raw for r in
+                                      recs[max(0, s):min(len(recs), e)] if r.raw)
+                    if stream and rx.search(stream):
+                        got.update(range(max(0, s), min(len(recs), e)))
+                cache[one] = got
+            return set(got)
+        return None
+
+    def _prefilter(node, vma):
+        """
+        返回候选指令下标集（**超集**，只用于收窄求值点）；None = 不可收窄。
+        AND 取交、OR 取并；not / optional / match / 计数算子一概不收窄。
+        实测意义：块级规则 × 全部块是百万级求值，先用顶层合取里最稀疏的
+        可索引叶子（api/mnemonic/characteristic）收窄到候选，再跑完整树。
+        """
+        if isinstance(node, list):
+            known = None
+            for x in node:
+                s = _prefilter(x, vma)
+                if s is None:
+                    continue
+                known = s if known is None else (known & s)
+            return known
+        if not isinstance(node, dict) or not node or len(node) != 1:
+            return None
+        k, v = next(iter(node.items()))
+        if k == "and":
+            return _prefilter(v or [], vma)
+        if k == "or":
+            out = set()
+            for x in (v or []):
+                s = _prefilter(x, vma)
+                if s is None:
+                    return None
+                out |= s
+            return out
+        if k in SCOPE_NODE_KEYS:
+            return _prefilter(v, vma)
+        if k in ("not", "optional", "match"):
+            return None
+        vals = v if isinstance(v, list) else [v]
+        out = None
+        for one in vals:
+            s = _leaf_sites(vma, k, one)
+            if s is None:
+                return None
+            out = s if out is None else (out | s)
+        return out
+
+    def _fn_of(key):
+        return key[1] if isinstance(key, tuple) else key
+
+    def _expand(key, want):
+        """当前作用域项 key → want 粒度的求值项（外包上卷 / 内含存在量化）。"""
+        if want == "file":
+            return [None]
+        vma = _fn_of(key)
+        if want == "function":
+            return [vma] if vma is not None else list(fns)
+        if vma is None:
+            # 文件上下文引用块/指令规则：存在量化全部函数的全部项
+            out = []
+            for v2, fb2 in fns.items():
+                if want == "basic block":
+                    out.extend(("blk", v2, bi)
+                               for bi in range(len((fb2 or {}).get("blocks") or ())))
+                else:
+                    out.extend(("ins", v2, i)
+                               for i in range(len((fb2 or {}).get("insns") or ())))
+            return out
+        fb = fns.get(vma) or {}
+        if want == "basic block":
+            if isinstance(key, tuple) and key[0] == "blk":
+                return [key]
+            blocks = fb.get("blocks") or ()
+            if isinstance(key, tuple) and key[0] == "ins":
+                for bi, (s, e) in enumerate(blocks):
+                    if s <= key[2] < e:
+                        return [("blk", vma, bi)]
+                return []
+            return [("blk", vma, bi) for bi in range(len(blocks))]
+        # want == "instruction"
+        if isinstance(key, tuple) and key[0] == "ins":
+            return [key]
+        recs = fb.get("insns") or ()
+        if isinstance(key, tuple) and key[0] == "blk":
+            blocks = fb.get("blocks") or ()
+            if not (0 <= key[2] < len(blocks)):
+                return []
+            s, e = blocks[key[2]]
+            return [("ins", vma, i) for i in range(max(0, s), min(len(recs), e))]
+        return [("ins", vma, i) for i in range(len(recs))]
+
+    def _eval_at(rule: Rule, scope_key):
+        """在**指定作用域项**上求值一条规则（记忆化 + 成环检测）。"""
         key = (rule.name, scope_key)
         if key in ctx.memo:
             return ctx.memo[key]
+        if rule.name in ctx.stack:
+            raise RuleError("规则依赖成环：%s -> %s"
+                            % (" -> ".join(ctx.stack), rule.name))
         ctx.stack.append(rule.name)
         try:
             got = eval_node(rule.features, scope_key, rule)
@@ -1008,6 +1515,49 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
         res = bool(got)
         ctx.memo[key] = res
         return res
+
+    def _narrow(items, node):
+        """
+        按可索引叶子（api/mnemonic/指令级 characteristic）把候选求值项
+        收窄成**超集**。收不动（子树含 string/number/offset/match/not 等
+        不可索引叶子）就原样返回 —— 收窄只影响性能不影响语义。
+        实测意义：指令/块级规则 × 全部指令/块是百万级求值；先用最稀疏的
+        可索引叶子定位候选，再跑完整树（_prefilter 保证是超集，不会漏）。
+        """
+        if not items:
+            return items
+        out = []
+        by_vma = {}
+        for k2 in items:
+            if not isinstance(k2, tuple):
+                # 文件/函数粒度项（None / vma）没有细粒度下标可收窄，透传。
+                # （_expand 对不同 want 返回的项形态不统一：file/function 是
+                #   裸 None/int，block/instruction 是三元组。）
+                out.append(k2)
+                continue
+            by_vma.setdefault(k2[1], []).append(k2)
+        for vma, ks in by_vma.items():
+            cand = _prefilter(node, vma)
+            if cand is None:
+                out.extend(ks)
+                continue
+            if ks[0][0] == "ins":
+                out.extend(k2 for k2 in ks if k2[2] in cand)
+            else:
+                blk_of = _fn_index(vma).get("blk_of") or ()
+                keep = set()
+                for i in cand:
+                    if 0 <= i < len(blk_of) and blk_of[i] >= 0:
+                        keep.add(blk_of[i])
+                out.extend(k2 for k2 in ks if k2[2] in keep)
+        return out
+
+    def eval_rule(rule: Rule, scope_key):
+        """`match:` 引用求值：按被引规则自身 scope 在当前项的内外包项上求值。"""
+        for k2 in _narrow(_expand(scope_key, rule.scope), rule.features):
+            if _eval_at(rule, k2):
+                return True
+        return False
 
     counters = {"n": 0, "depth": 0}
     # 递归深度独立于步数计数：max_calls 管的是"总共求值多少次"，
@@ -1056,6 +1606,14 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
         if k == "optional":
             # optional 不改变真值：命中加分，不命中不扣
             return True
+        if k in SCOPE_NODE_KEYS:
+            # instruction: 子树必须在**同一条指令**上成立（capa 语义）。
+            # 在当前项的指令里存在量化：∃ 一条指令满足子树。
+            # 少了这个收缩，「同一条指令 xor + 立即数 4」会被放松成
+            # 「函数里既有 xor 又有 4」—— 实测误报根源。
+            return any(eval_node(v, k2, rule)
+                       for k2 in _narrow(
+                           _expand(scope_key, "instruction"), v))
         if k == "match":
             names = v if isinstance(v, list) else [v]
             for nm in names:
@@ -1066,10 +1624,25 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
                     return False
                 if not eval_rule(r2, scope_key):
                     return False
+                if getattr(r2, "lib", False):
+                    # 辅助规则命中：登记进证据链（不进能力结论）
+                    aux_seen.add((r2.name, scope_key))
             return True
+        m_cnt = re.fullmatch(r"(\d+) or more", str(k))
+        if m_cnt:
+            # capa 计数算子：至少 N 个子项命中。
+            # 求值全部子项（不做短路）——每项都要计数，语义上没有短路空间。
+            need = int(m_cnt.group(1))
+            hit = 0
+            for x in (v or []):
+                if eval_node(x, scope_key, rule):
+                    hit += 1
+                    if hit >= need:
+                        return True
+            return False
         return eval_leaf(k, v, scope_key, rule)
 
-    # 【性能】合并袋按 scope_key 记忆化。
+    # 【性能】判定袋按 scope_key 记忆化。
     # 原实现每求值一个叶子判据就重建一次 dict(ff) + 合并（同一行的 bag
     # 赋值随后立刻被覆盖，纯浪费）。规模放大后这是主要开销：
     # 2392 个函数 × 20 条规则 × 每规则若干叶子 → 十万次级重复建字典。
@@ -1077,8 +1650,69 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
     # 所以按 scope_key 缓存是安全的。
     _merged_cache: dict = {}
 
+    def _fine_bag(scope_key):
+        """
+        ("ins", vma, n) / ("blk", vma, n) → 逐指令记录聚合的判定袋。
+        指令级/块级的共现语义在这里落地：袋里只装**本指令/本块**的特征，
+        「同一条指令 xor + 立即数 4」才不会被放松成「函数里两样都有」。
+        """
+        tag, vma, n = scope_key
+        fb = fns.get(vma) or {}
+        recs = fb.get("insns") or ()
+        if tag == "ins":
+            sel = recs[n:n + 1] if 0 <= n < len(recs) else ()
+        else:
+            blocks = fb.get("blocks") or ()
+            if not (0 <= n < len(blocks)):
+                return None
+            s, e = blocks[n]
+            sel = recs[max(0, s):min(len(recs), e)]
+        bag = {"api": set(), "number": set(), "string": set(),
+               "mnemonic": set(), "characteristic": set(), "offset": set(),
+               "tag": set(), "function-name": set()}
+        for k in ("tag", "function-name"):
+            got = fb.get(k)
+            if got:
+                bag[k].update(got)
+        raws = []
+        for r in sel:
+            if r.mnem:
+                bag["mnemonic"].add(r.mnem)
+            if r.api:
+                bag["api"].add(r.api)
+            bag["number"].update(r.imms)
+            bag["string"].update(r.strs)
+            if r.disp is not None:
+                bag["offset"].add(r.disp & 0xFFFFFFFFFFFFFFFF)
+            if r.flags & 1:
+                bag["characteristic"].add("peb-access")
+            if r.flags & 2:
+                bag["characteristic"].add("nzxor")
+            if r.raw:
+                raws.append(r.raw)
+        if tag == "blk" and n in (fb.get("loop_blocks") or ()):
+            bag["characteristic"].add("loop")
+        # bytes 判据的字节流：capa 的 bytes 特征匹配**作用域字节流**
+        # （DES S-box 之类是 60+ 字节的表，跨指令边界）——
+        # 必须把选中指令的字节连成流再匹配，只搜单指令（≤15B）会让
+        # 长模式永不命中。块内指令在文件里连续（_offs 线性扫描保证），
+        # join 是「这些指令的字节连起来」的精确语义。
+        bag["insn_bytes"] = (b"".join(raws),) if raws else ()
+        return bag
+
     def _bag_for(scope_key):
-        """返回 (bag, ff)：file 作用域直接给文件级袋；函数作用域给合并袋（记忆化）。"""
+        """
+        返回 (bag, ff)：bag 是当前作用域项的判定袋。
+          file（None）   —— 文件级袋
+          函数（vma）    —— 函数个性特征 + 文件级事实类 characteristic
+          细粒度元组     —— 逐指令聚合，同样带文件级事实类
+
+        【语义修正】个性特征（api/number/string/mnemonic/offset…）只看
+        **本作用域项**。旧实现把文件级 string 全池并进函数袋，函数级
+        `string:` 判据退化成「文件里有就算」，把共现约束放松成存在约束。
+        文件级事实类（常量表签名/加壳信号）则在任何作用域可见 ——
+        它们本来就是「文件里有该证据」的事实。
+        """
         ff = feats.get("file") or {}
         if scope_key is None:
             return ff, ff
@@ -1088,23 +1722,32 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
             # 若写成 `return hit, ff` 会变成 ((bag, ff), ff)，
             # 调用方解包后 bag 变成元组 → 后续 .get() 全炸。
             return hit
-        fn_bag = (feats.get("functions") or {}).get(scope_key)
-        if fn_bag is None:
+        if isinstance(scope_key, tuple):
+            core = _fine_bag(scope_key)
+        else:
+            fn_bag = (feats.get("functions") or {}).get(scope_key)
+            if fn_bag is None:
+                _merged_cache[scope_key] = (None, ff)
+                return None, ff
+            core = {k: (set(v) if isinstance(v, set) else v)
+                    for k, v in fn_bag.items()
+                    if k not in ("insns", "blocks", "loop_blocks")}
+            recs = fn_bag.get("insns") or ()
+            if recs:
+                # 函数级 bytes 判据同理：函数体字节流（指令连缀）
+                joined = b"".join(r.raw for r in recs if r.raw)
+                core["insn_bytes"] = (joined,) if joined else ()
+        if core is None:
             _merged_cache[scope_key] = (None, ff)
             return None, ff
-        merged = {}
-        for kk, vv in (ff or {}).items():
-            merged[kk] = set(vv) if isinstance(vv, set) else vv
-        for kk, vv in (fn_bag or {}).items():
-            cur = merged.get(kk)
-            if isinstance(cur, set) and isinstance(vv, set):
-                cur.update(vv)
-            else:
-                s = set(cur) if isinstance(cur, (set, list, tuple)) else set()
-                s.update(vv if isinstance(vv, (set, list, tuple)) else [vv])
-                merged[kk] = s
-        _merged_cache[scope_key] = (merged, ff)
-        return merged, ff
+        fact = ff.get("characteristic")
+        if fact:
+            cur = core.setdefault("characteristic", set())
+            for c in fact:
+                if c in _FILE_FACT_CHARS:
+                    cur.add(c)
+        _merged_cache[scope_key] = (core, ff)
+        return core, ff
 
     def eval_leaf(kind, val, scope_key, rule: Rule) -> bool:
         bag, ff = _bag_for(scope_key)
@@ -1126,24 +1769,31 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
                     return True
             return any(p.endswith("|" + fn) for p in pool)
         if kind == "number":
-            try:
-                n = int(one)
-            except Exception:
+            # capa 数值面值可能带 `= 注释`（0xCC = INT3），用 _parse_num 剥离
+            n = _parse_num(one)
+            if n is None:
                 return False
             pool = bag.get("number") or set()
-            u = n & 0xFFFFFFFFFFFFFFFF
-            if u in pool:
-                return True
-            # 32 位立即数可能在 64 位语境里以符号扩展出现
-            if n >= 0 and (n | 0xFFFFFFFF00000000) & 0xFFFFFFFFFFFFFFFF in pool:
-                return True
-            return False
+            return any(c in pool for c in _num_cands(n))
+        if kind == "offset":
+            # 内存操作数位移（capa offset 特征）。与 number 分开判定，
+            # 但判等同样要双向归一（-4 ↔ 0xFF..FC ↔ 0xFFFFFFFC）。
+            n = _parse_num(one)
+            if n is None:
+                return False
+            pool = bag.get("offset") or set()
+            return any(c in pool for c in _num_cands(n))
         if kind in ("string", "substring"):
             want = str(one)
-            for s in (bag.get("string") or set()):
-                if want in str(s):
-                    return True
-            return False
+            pool = bag.get("string") or set()
+            if not pool:
+                return False
+            # 【性能】命中集预计算（见 _str_match_set）：同一判据的字符串池
+            # 在一次匹配里是固定的，正则/子串扫一遍就够，叶子求值退化成
+            # 集合交。旧实现每次求值都全池重扫 —— kernel32 上实测 8.15 亿次
+            # re.search，match_rules 跑 657 秒。语义不变：正则 search /
+            # 字面子串，判定约定（只有 /pat/i 尾部形态算正则）见 _str_match_set。
+            return bool(pool & _str_match_set(want))
         if kind == "mnemonic":
             return str(one).lower() in (bag.get("mnemonic") or set())
         if kind == "characteristic":
@@ -1169,20 +1819,35 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
         if kind == "format":
             return str(one).lower() in (ff.get("format") or set())
         if kind == "bytes":
-            # 字节序列特征需要原始数据，本引擎在无文件句柄时确实判不了。
-            # 【已修 bug】注释写的是「但要报出来（不能静默当成不命中）」，
-            # 旧实现却只有裸 `return False`：规则整条不命中，errors 里一个
-            # 字都没有，用户看到的是「样本干净」，真相是「这条规则没能力
-            # 判」。现在真的登记出去。
-            errors.append(
-                "%s: 使用了 bytes 字节序列特征，本规则引擎无文件句柄，"
-                "该叶子判据无法求值（不是不命中，是没判）" % (_cur_rule[0] or "?"))
+            # 指令字节序列（capa bytes 特征是指令级：指令字节含该模式）。
+            # 逐指令 raw 已随 InsnFeat 物化，函数/块/指令作用域都能判；
+            # 只有 file 级（全文件字节流）没有句柄，判不了 —— 那种情况
+            # 必须报出来（不是不命中，是没判），否则又成静默失效。
+            rx = _bytes_rx(one)
+            if rx is None:
+                errors.append("%s: bytes 模式非法：%r"
+                              % (_cur_rule[0] or "?", one))
+                return False
+            pool = bag.get("insn_bytes") or ()
+            for raw in pool:
+                if raw and rx.search(raw):
+                    return True
+            if not pool:
+                errors.append(
+                    "%s: bytes 判据在 file 作用域无文件句柄，"
+                    "该叶子无法求值（不是不命中，是没判）" % (_cur_rule[0] or "?"))
             return False
         return False
 
     # 自顶向下跑：file 作用域只跑一次；其余按函数跑
     _cur_rule = [None]   # 供叶子判据登记「是哪条规则」的轻量上下文
     for r in rules:
+        if getattr(r, "lib", False):
+            # 【结论与构件分离】lib 辅助规则（capa 的 lib/ 构件库）不单独
+            # 作为能力结论求值 —— 只经 `match:` 引用，命中时记入 aux_seen
+            # 供证据链复核。「contain loop」这种积木不是能力，混进结论
+            # 就是把积木当成品卖（实测 89/116 的命中是这种噪声）。
+            continue
         _cur_rule[0] = getattr(r, "name", None)
         # 【重要·修复】预算是**每条规则独立**的，不是全局共享。
         # 原实现用全局 counters["n"]，前面的规则（大 scope、规则依赖多）
@@ -1215,7 +1880,25 @@ def match_rules(rules: list[Rule], feats: dict, max_calls: int = 200000
             if n not in seen:
                 seen.append(n)
         by_ns[k] = seen
-    return {"hits": hits, "by_namespace": by_ns,
+
+    def _loc_str(sk):
+        if sk is None:
+            return ""
+        if isinstance(sk, tuple):
+            tag, vma, n = sk
+            return ("0x%x[block %d]" if tag == "blk"
+                    else "0x%x[insn %d]") % (vma, n)
+        return "0x%x" % sk
+
+    # 辅助规则命中登记（证据链复核用）：不进能力结论，但也不静默丢弃
+    aux_hits = []
+    for nm, sk in sorted(aux_seen, key=lambda t: (t[0], str(t[1]))):
+        h = {"rule": nm, "auxiliary": True}
+        loc = _loc_str(sk)
+        if loc:
+            h["location"] = loc
+        aux_hits.append(h)
+    return {"hits": hits, "aux_hits": aux_hits, "by_namespace": by_ns,
             "att_ck": sorted(att), "errors": errors}
 
 
@@ -1225,6 +1908,10 @@ def _mk_hit(r: Rule, vma) -> dict:
     h.pop("name", None)
     if vma is not None:
         h["location"] = "0x%x" % vma
+    else:
+        # 文件级命中的证据位置就是全文件。不给 location 会让
+        # 「命中必须可复核」的契约检查落空，也违背命中自带证据的约定。
+        h["location"] = "file"
     return h
 
 
