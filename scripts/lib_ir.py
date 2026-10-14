@@ -303,14 +303,21 @@ _CC_TEXT = {
     "e": "==", "z": "==", "ne": "!=", "nz": "!=",
     "l": "<", "ge": ">=", "le": "<=", "g": ">",
     "b": "<(u)", "ae": ">=(u)", "be": "<=(u)", "a": ">(u)",
-    "s": "<0", "ns": ">=0", "o": "溢出", "no": "不溢出",
-    "p": "偶校验", "np": "奇校验",
+    # 符号标志条件作用于最近运算结果，等价于「结果与 0 比符号」：
+    # cmp x,y 后 jns ≡ x>=y；test x,x 后 jns ≡ x>=0。因此映射成普通
+    # 运算符、由渲染层拼右操作数。曾映射为 "<0"/">=0"，会渲染出
+    # `eax >=0 0` 这种畸形文本。
+    "s": "<", "ns": ">=",
+    "o": "溢出", "no": "不溢出", "p": "偶校验", "np": "奇校验",
 }
 # ARM b.cond 的条件码（去掉点前缀后匹配）
 _CC_TEXT.update({
     "eq": "==", "ne": "!=", "lt": "<", "ge": ">=", "le": "<=", "gt": ">",
-    "mi": "<0", "pl": ">=0", "vs": "溢出", "vc": "不溢出",
+    "mi": "<", "pl": ">=",
+    "vs": "溢出", "vc": "不溢出",
 })
+# 描述类条件码（无法表达成二元比较，渲染时不拼操作数）
+_CC_DESC = {"溢出", "不溢出", "偶校验", "奇校验"}
 
 
 def _cond_of_block(idx, block_offs: list[int], term_mnem: str):
@@ -354,6 +361,8 @@ def _cond_of_block(idx, block_offs: list[int], term_mnem: str):
     op_text = _CC_TEXT.get(cc)
     if op_text is None:
         return {"text": "%s（极性 %s）" % (mn, cc), "approx": True}
+    if op_text in _CC_DESC:
+        return {"text": "%s（%s）" % (mn, op_text), "approx": True}
 
     if cmp_ins is None:
         return {"text": "条件码 %s（比较指令不可见）" % cc, "approx": True}
