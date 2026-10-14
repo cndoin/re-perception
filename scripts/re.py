@@ -25,6 +25,8 @@ re.py —— 逆向工程工具箱 CLI（Reverse Engineering Toolkit）
   disasm    反汇编（x86/x64/ARM64/Thumb）
   funcs     函数识别 + 指纹 + XREF（把字节变成函数）
   cfg       单个函数的控制流图
+  struct    控制流结构化（if / loop / switch 识别 + 伪代码骨架）
+  ir        指令级轻量 IR 提升（assign/load/store/branch 语义操作）
   xref      交叉引用（谁调用了谁）
   sim       两份二进制的函数级差分比对
   semantics 函数级语义摘要（调了什么 API / 什么行为）
@@ -100,7 +102,7 @@ import lib_netio as NET          # noqa: E402
 import lib_fsx as FX             # noqa: E402
 
 EXIT_OK, EXIT_USAGE, EXIT_TARGET, EXIT_RUNTIME = 0, 2, 3, 4
-VERSION = "1.8.0"
+VERSION = "1.9.0"
 
 
 # ---------------------------------------------------------------- 输出
@@ -499,6 +501,34 @@ def cmd_cfg(args):
     return EXIT_OK if d["ok"] else EXIT_RUNTIME
 
 
+def _struct_run(args, with_ir: bool):
+    """struct / ir 两个子命令的共同实现（lib_ir.structure_file 入口）。"""
+    need_path(args.target, args.json)
+    ident = F.identify(args.target, deep=True)
+    from lib_ir import structure_file
+    d = structure_file(args.target, ident=ident, addr=args.addr,
+                       with_ir=with_ir, max_insns=args.max_insns,
+                       max_functions=args.max_functions, region=args.section)
+    d["ok"] = d.get("ok", False)
+    if not args.json:
+        if not d["ok"]:
+            fail(d.get("error", "结构化失败"), EXIT_RUNTIME, args.json)
+        print(_fmt_struct(d, with_ir))
+        return EXIT_OK
+    emit(d, True)
+    return EXIT_OK if d["ok"] else EXIT_RUNTIME
+
+
+def cmd_struct(args):
+    """控制流结构化：if / loop / switch 识别 + 伪代码骨架。"""
+    return _struct_run(args, bool(getattr(args, "ir", False)))
+
+
+def cmd_ir(args):
+    """指令级轻量 IR：把指令折算成语义操作（assign/load/store/branch...）。"""
+    return _struct_run(args, True)
+
+
 def cmd_xref(args):
     """交叉引用：谁调用了谁。"""
     need_path(args.target, args.json)
@@ -610,6 +640,32 @@ def _fmt_cfg(d: dict) -> str:
             L.append(f"    #{e['from']} --call--> {e.get('target_vma')} (外部)")
         else:
             L.append(f"    #{e['from']} --{e['type']}--> #{e['to']}")
+    return "\n".join(L)
+
+
+def _fmt_struct(d: dict, with_ir: bool) -> str:
+    L = []
+    L.append(f"目标    : {d.get('path')}  [{d.get('arch')}]  代码区 {d.get('region')}")
+    L.append(f"基址    : {d.get('base_vma')}   函数 {d.get('function_count')} 个"
+             f"，已结构化 {d.get('structured_count')} 个")
+    if d.get("partial"):
+        L.append("!! 结果不完整：" + str(d.get("truncated_note") or "达到预算上限"))
+    for f in d.get("functions", []):
+        L.append("")
+        L.append(f"{f.get('name') or '?'}  {f.get('start_vma')} - {f.get('end_vma')}"
+                 f"  blocks={f.get('blocks')} edges={f.get('edges')}"
+                 f" cyclomatic={f.get('cyclomatic')}")
+        for line in f.get("structure", [])[1:]:     # 首行是标题，上面已打
+            L.append(line)
+        if with_ir:
+            for s in f.get("ir", []):
+                dst = f" {s.get('dst')} <-" if s.get("dst") else ""
+                srcs = " " + ", ".join(s.get("srcs") or []) if s.get("srcs") else ""
+                imm = f"  imm={s.get('imm')}" if s.get("imm") is not None else ""
+                approx = "  (约)" if s.get("approx") else ""
+                L.append(f"    {s.get('vma')}  {s.get('op'):<8}{dst}{srcs}{imm}{approx}")
+        for n in f.get("notes", []):
+            L.append(f"  note: {n}")
     return "\n".join(L)
 
 
@@ -2577,6 +2633,23 @@ def build_parser() -> argparse.ArgumentParser:
     s = add("cfg", "单个函数的控制流图", cmd_cfg)
     s.add_argument("target")
     s.add_argument("addr", help="函数入口地址（十六进制，如 140001094）")
+
+    s = add("struct", "控制流结构化（if / loop / switch 识别 + 伪代码骨架）",
+            cmd_struct)
+    s.add_argument("target")
+    s.add_argument("--addr", help="只结构化该入口地址所在的函数（十六进制）")
+    s.add_argument("--section")
+    s.add_argument("--max-insns", type=int, default=300000)
+    s.add_argument("--max-functions", type=int, default=8)
+    s.add_argument("--ir", action="store_true", help="附带每条指令的轻量 IR 明细")
+
+    s = add("ir", "指令级轻量 IR 提升（assign/load/store/branch 语义操作）",
+            cmd_ir)
+    s.add_argument("target")
+    s.add_argument("--addr", help="只看该入口地址所在的函数（十六进制）")
+    s.add_argument("--section")
+    s.add_argument("--max-insns", type=int, default=300000)
+    s.add_argument("--max-functions", type=int, default=8)
 
     s = add("xref", "交叉引用（谁调用了谁）", cmd_xref)
     s.add_argument("target")
